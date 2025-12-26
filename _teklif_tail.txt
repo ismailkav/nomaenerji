@@ -1,0 +1,60 @@
+                    'iskonto3'       => $iskontolar[3],
+                    'iskonto4'       => $iskontolar[4],
+                    'iskonto5'       => $iskontolar[5],
+                    'iskonto6'       => $iskontolar[6],
+                    'iskonto_tutar'  => $iskontoTutar,
+                    'kdv_orani'      => $kdvOrani,
+                    'kdv_tutar'      => $kdvTutar,
+                    'satir_toplam'   => $satirToplam,
+                ]);
+
+                $toplam += $brut;
+                $iskontoToplam += $iskontoTutar;
+                $kdvToplam += $kdvTutar;
+            }
+
+            $genelToplam = $toplam - $iskontoToplam + $kdvToplam;
+
+            $teklif->update([
+                'toplam'        => $toplam,
+                'iskonto_tutar' => $iskontoToplam,
+                'kdv'           => $kdvToplam,
+                'genel_toplam'  => $genelToplam,
+            ]);
+        });
+
+        return redirect()->route('offers.index')
+            ->with('status', 'Teklif güncellendi.');
+    }
+
+    protected function validatedHeader(Request $request): array
+    {
+        return $request->validate([
+            'carikod'           => ['required', 'string', 'max:50'],
+            'cariaciklama'      => ['required', 'string', 'max:255'],
+            'tarih'             => ['required', 'date'],
+            'gecerlilik_tarihi' => ['nullable', 'date'],
+            'teklif_no'         => ['required', 'string', 'max:50'],
+            'revize_no'         => ['nullable', 'string', 'max:20'],
+            'aciklama'          => ['nullable', 'string'],
+            'teklif_durum'      => ['nullable', 'string', 'max:50'],
+            'onay_durum'        => ['nullable', 'string', 'max:50'],
+            'onay_tarihi'       => ['nullable', 'date'],
+            'yetkili_personel'  => ['nullable', 'string', 'max:150'],
+            'hazirlayan'        => ['nullable', 'string', 'max:150'],
+        ]);
+    }
+
+    protected function durumlar(): array
+    {
+        return [
+            'hepsi'        => 'Hepsi',
+            'Taslak'       => 'Taslak',
+            'Gönderildi'   => 'Gönderildi',
+            'Kabul Edildi' => 'Kabul Edildi',
+            'Reddedildi'   => 'Reddedildi',
+            'Süresi Doldu' => 'Süresi Doldu',
+        ];
+    }
+}
+
