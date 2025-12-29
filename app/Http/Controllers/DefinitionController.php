@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CariCategory;
+use App\Models\Depot;
 use App\Models\ProductCategory;
 use App\Models\IslemTuru;
 use App\Models\Project;
@@ -182,5 +183,54 @@ class DefinitionController extends Controller
 
         return redirect()->route('definitions.projects')
             ->with('status', 'Projeler gÇ¬ncellendi.');
+    }
+
+    public function depots(Request $request)
+    {
+        $depots = Depot::orderBy('kod')->get();
+
+        return view('definitions.depots', compact('depots'));
+    }
+
+    public function saveDepots(Request $request)
+    {
+        $items = $request->input('depots', []);
+        $keptIds = [];
+
+        foreach ($items as $item) {
+            $kod = trim($item['kod'] ?? '');
+            $id = $item['id'] ?? null;
+            $pasif = !empty($item['pasif']);
+
+            if ($kod === '') {
+                continue;
+            }
+
+            if ($id) {
+                $depot = Depot::find($id);
+                if ($depot) {
+                    $depot->update([
+                        'kod' => $kod,
+                        'pasif' => $pasif,
+                    ]);
+                    $keptIds[] = $depot->id;
+                }
+            } else {
+                $depot = Depot::create([
+                    'kod' => $kod,
+                    'pasif' => $pasif,
+                ]);
+                $keptIds[] = $depot->id;
+            }
+        }
+
+        if (!empty($keptIds)) {
+            Depot::whereNotIn('id', $keptIds)->delete();
+        } else {
+            Depot::query()->delete();
+        }
+
+        return redirect()->route('definitions.depots')
+            ->with('status', 'Depolar güncellendi.');
     }
 }

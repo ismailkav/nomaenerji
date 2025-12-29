@@ -1036,6 +1036,40 @@
         var lineIndex = 0;
         var initialLines = @json(isset($teklif) ? $teklif->detaylar : []);
 
+        function fetchTodayForexSelling(currencyCode) {
+            var code = (currencyCode || '').toString().trim().toUpperCase();
+            if (!['USD', 'EUR'].includes(code)) {
+                return Promise.reject(new Error('unsupported'));
+            }
+
+            var url = '{{ route('exchange-rate.today') }}' + '?currency_code=' + encodeURIComponent(code);
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok || !data || !data.ok) throw (data || {});
+                        return data;
+                    });
+                })
+                .then(function (data) {
+                    return parseFloat((data.forex_selling || '0').toString()) || 0;
+                });
+        }
+
+        function setKurValue(kurInput, rate) {
+            if (!kurInput) return;
+            var n = parseFloat(rate || '0') || 0;
+            kurInput.value = n.toFixed(4);
+            try {
+                kurInput.dispatchEvent(new Event('input', { bubbles: true }));
+                kurInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (e) {
+            }
+            try {
+                if (typeof recalcTotals === 'function') recalcTotals();
+            } catch (e) {
+            }
+        }
+
         function applyCurrencyBehavior(tr, initializeDefault) {
             var currencySelect = tr.querySelector('.doviz');
             var kurInput = tr.querySelector('.kur');
@@ -1044,10 +1078,18 @@
             function updateForCurrency() {
                 var val = currencySelect.value || 'TL';
                 if (val === 'TL') {
-                    kurInput.value = '1.0000';
-                } else {
-                    kurInput.value = '0.0000';
+                    setKurValue(kurInput, 1);
+                    return;
                 }
+
+                if (val === 'USD' || val === 'EUR') {
+                    fetchTodayForexSelling(val)
+                        .then(function (rate) { setKurValue(kurInput, rate); })
+                        .catch(function () { setKurValue(kurInput, 0); });
+                    return;
+                }
+
+                setKurValue(kurInput, 0);
             }
 
             currencySelect.addEventListener('change', updateForCurrency);
@@ -1056,6 +1098,29 @@
                 updateForCurrency();
             }
         }
+
+        (function applyHeaderCurrency() {
+            var headerCurrency = document.getElementById('offer_currency');
+            var headerRate = document.getElementById('offer_rate');
+            if (!headerCurrency || !headerRate) return;
+
+            function updateHeaderKur() {
+                var val = headerCurrency.value || 'TL';
+                if (val === 'TL') {
+                    setKurValue(headerRate, 1);
+                    return;
+                }
+                if (val === 'USD' || val === 'EUR') {
+                    fetchTodayForexSelling(val)
+                        .then(function (rate) { setKurValue(headerRate, rate); })
+                        .catch(function () { setKurValue(headerRate, 0); });
+                    return;
+                }
+                setKurValue(headerRate, 0);
+            }
+
+            headerCurrency.addEventListener('change', updateHeaderKur);
+        })();
 
         function recalcTotals() {
             if (!linesBody) return;
@@ -1068,10 +1133,14 @@
             rows.forEach(function (tr) {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
 
                 if (!price && !qty) return;
 
-                var brut = price * qty;
+                var brut = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1221,7 +1290,11 @@
             function recalcDiscountBase() {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
-                var baseAmount = price * qty;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
+                var baseAmount = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1250,7 +1323,11 @@
             function recalcDiscount() {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
-                var baseAmount = price * qty;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
+                var baseAmount = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1343,6 +1420,7 @@
                 if (
                     input.classList.contains('birim-fiyat') ||
                     input.classList.contains('miktar') ||
+                    input.classList.contains('kur') ||
                     input.classList.contains('isk1') ||
                     input.classList.contains('isk2') ||
                     input.classList.contains('isk3') ||
@@ -1355,6 +1433,10 @@
                 }
 
                 if (input.classList.contains('kdv-durum')) {
+                    input.addEventListener('change', recalcDiscount);
+                }
+
+                if (input.classList.contains('doviz')) {
                     input.addEventListener('change', recalcDiscount);
                 }
             });

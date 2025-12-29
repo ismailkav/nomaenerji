@@ -229,14 +229,31 @@
             white-space: nowrap;
         }
 
+        .offers-table thead th.num,
+        .offers-table tbody td.num {
+            width: 96px;
+            min-width: 96px;
+            padding-left: 0.6rem;
+            padding-right: 0.6rem;
+        }
+
         .num input[type="number"] {
-            width: 120px;
+            width: 84px;
             border-radius: 999px;
             border: 1px solid #e5e7eb;
             padding: 0.3rem 0.6rem;
             font-size: 0.8rem;
             text-align: right;
             outline: none;
+        }
+
+        .offers-table tbody td.siparis-verilen-cell,
+        .offers-table tbody td.siparis-revize-cell {
+            color: #2563eb;
+        }
+
+        .offers-table tbody td.siparis-kalan-cell {
+            color: #dc2626;
         }
 
         .truncate {
@@ -312,15 +329,27 @@
                             <th>Stok Açıklama</th>
                             <th class="num">Miktar</th>
                             <th class="num">Sipariş Miktar</th>
+                            <th class="num">Siparis Revize</th>
+                            <th class="num">Revize Miktar</th>
                             <th class="num">Stok Miktar</th>
-                            <th class="num">Planlanan Miktar</th>
+                            <th class="num">Revize Edilen</th>
+                            <th class="num">Gerçek Stok</th>
+                            <th class="num">Sipariş Verilen</th>
+                            <th class="num">Sipariş Kalan</th>
                         </tr>
                         </thead>
                         <tbody id="planningTbody">
                         @forelse(($rows ?? []) as $row)
                             <tr data-search="{{ strtolower(trim(($row->siparis_no ?? '') . ' ' . ($row->carikod ?? '') . ' ' . ($row->stok_kod ?? '') . ' ' . ($row->stok_aciklama ?? ''))) }}"
                                 data-satis-detay-id="{{ $row->siparis_detay_id }}"
-                                data-urun-id="{{ $row->urun_id }}">
+                                data-urun-id="{{ $row->urun_id }}"
+                                data-stok-kod="{{ $row->stok_kod }}"
+                                data-stok-aciklama="{{ $row->stok_aciklama }}"
+                                data-stok-miktar="{{ (int) round((float) ($row->stok_miktar ?? 0)) }}"
+                                data-siparis-miktar="{{ (int) round((float) ($row->miktar ?? 0)) }}"
+                                data-siparis-verilen="{{ (int) round((float) ($row->planlanan_miktar ?? 0)) }}"
+                                data-revize-edilen="{{ (int) round((float) ($row->revize_toplam ?? 0)) }}"
+                                data-revize-this="{{ (int) round((float) ($row->revize_satir_miktar ?? 0)) }}">
                                 <td class="col-check">
                                     <input type="checkbox" class="row-check" value="{{ $row->siparis_id }}:{{ $row->siparis_detay_id }}">
                                 </td>
@@ -333,22 +362,50 @@
                                     {{ $dt ? $dt->format('d.m.Y') : '' }}
                                 </td>
                                 <td>{{ $row->carikod }}</td>
-                                <td>{{ $row->stok_kod }}</td>
+                                <td>
+                                    {{ $row->stok_kod }}
+                                    <span style="color:#6b7280;font-size:0.75rem;">
+                                        ({{ number_format((float)($row->stok_miktar ?? 0), 0, ',', '.') }})
+                                    </span>
+                                </td>
                                 <td><span class="truncate" title="{{ $row->stok_aciklama }}">{{ $row->stok_aciklama }}</span></td>
-                                <td class="num">{{ number_format((float)($row->miktar ?? 0), 3, ',', '.') }}</td>
+                                <td class="num">{{ number_format((float)($row->miktar ?? 0), 0, ',', '.') }}</td>
                                 <td class="num">
                                     <input type="number"
                                            class="siparis-miktar-input"
                                            min="0"
-                                           step="0.001"
-                                           value="{{ (float)($row->miktar ?? 0) }}">
+                                           step="1"
+                                           value="{{ (int) max(0, round(((float)($row->miktar ?? 0)) - (((float)($row->planlanan_miktar ?? 0)) + ((float)($row->revize_satir_miktar ?? 0))))) }}">
                                 </td>
-                                <td class="num">{{ number_format((float)($row->stok_miktar ?? 0), 3, ',', '.') }}</td>
-                                <td class="num">{{ number_format((float)($row->planlanan_miktar ?? 0), 2, ',', '.') }}</td>
+                                <td class="num siparis-revize-cell">
+                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 6px;">
+                                        <span class="siparis-revize-value">{{ number_format((float)($row->revize_satir_miktar ?? 0), 0, ',', '.') }}</span>
+                                        <button type="button" class="small-btn revize-list-btn" title="Revize Listesi">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="num">
+                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 6px;">
+                                        <span class="revize-action-value">0</span>
+                                        <button type="button" class="small-btn revize-open-btn" title="Revize Aktar">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="num">{{ number_format((float)($row->stok_miktar ?? 0), 0, ',', '.') }}</td>
+                                <td class="num revize-edilen-cell">{{ number_format((float)($row->revize_toplam ?? 0), 0, ',', '.') }}</td>
+                                <td class="num gercek-stok-cell">{{ number_format(((float)($row->stok_miktar ?? 0)) - ((float)($row->revize_toplam ?? 0)), 0, ',', '.') }}</td>
+                                <td class="num siparis-verilen-cell">{{ number_format((float)($row->planlanan_miktar ?? 0), 0, ',', '.') }}</td>
+                                <td class="num siparis-kalan-cell">0</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
+                                <td colspan="15" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -378,6 +435,26 @@
         var createPurchaseForm = document.getElementById('createPurchaseForm');
         var selectedRowsInput = document.getElementById('selectedRowsInput');
         var selectedCariInput = document.getElementById('selectedCariInput');
+
+        var revisionDepotModal = document.getElementById('revisionDepotModal');
+        var revisionDepotClose = document.getElementById('revisionDepotClose');
+        var revisionDepotCancel = document.getElementById('revisionDepotCancel');
+        var revisionDepotOk = document.getElementById('revisionDepotOk');
+        var revisionDepotStokKod = document.getElementById('revisionDepotStokKod');
+        var revisionDepotStokAciklama = document.getElementById('revisionDepotStokAciklama');
+        var revisionDepotTbody = document.getElementById('revisionDepotTbody');
+        var currentRevisionRow = null;
+        var currentRevisionDetailId = 0;
+
+        var revisionListModal = document.getElementById('revisionListModal');
+        var revisionListClose = document.getElementById('revisionListClose');
+        var revisionListCancel = document.getElementById('revisionListCancel');
+        var revisionListOk = document.getElementById('revisionListOk');
+        var revisionListStokKod = document.getElementById('revisionListStokKod');
+        var revisionListStokAciklama = document.getElementById('revisionListStokAciklama');
+        var revisionListTbody = document.getElementById('revisionListTbody');
+        var currentRevisionListRow = null;
+        var currentRevisionListDetailId = 0;
 
         function applyFilter() {
             if (!tbody) return;
@@ -416,6 +493,180 @@
             if (modal) modal.style.display = 'none';
         }
 
+        function clampAktarimInput(input) {
+            if (!input) return;
+            var max = parseInt(input.getAttribute('max') || '0', 10) || 0;
+            var v = Math.round(parseFloat(input.value || '0') || 0);
+            if (v < 0) v = 0;
+            if (v > max) v = max;
+            input.value = String(v);
+        }
+
+        function openRevisionModalForRow(tr) {
+            if (!tr) return;
+            var detailId = parseInt(tr.getAttribute('data-satis-detay-id') || '0', 10) || 0;
+            if (detailId <= 0) return;
+
+            currentRevisionRow = tr;
+            currentRevisionDetailId = detailId;
+
+            if (revisionDepotStokKod) revisionDepotStokKod.textContent = tr.getAttribute('data-stok-kod') || '';
+            if (revisionDepotStokAciklama) revisionDepotStokAciklama.textContent = tr.getAttribute('data-stok-aciklama') || '';
+            if (revisionDepotTbody) revisionDepotTbody.innerHTML = '';
+
+            openModal(revisionDepotModal);
+
+            fetch('{{ route('orders.planning.revision-depot-data') }}' + '?siparissatirid=' + encodeURIComponent(String(detailId)), {
+                headers: { 'Accept': 'application/json' }
+            }).then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw data;
+                    return data;
+                });
+            }).then(function (data) {
+                if (!data || !data.ok) throw data;
+                if (revisionDepotStokKod) revisionDepotStokKod.textContent = data.stokkod || '';
+                if (revisionDepotStokAciklama) revisionDepotStokAciklama.textContent = data.stokaciklama || '';
+
+                if (!revisionDepotTbody) return;
+                var rows = Array.isArray(data.rows) ? data.rows : [];
+                var html = '';
+                rows.forEach(function (row) {
+                    var depoId = row.depo_id;
+                    var depo = row.depo || '';
+                    var stokKod = row.stokkod || '';
+                    var stokMiktar = Math.round(parseFloat(row.stokmiktar || '0') || 0);
+                    var revizeMiktar = Math.round(parseFloat(row.revizemiktar || '0') || 0);
+                    var kullanilabilir = Math.round(parseFloat(row.kullanilabilir || '0') || 0);
+                    if (kullanilabilir < 0) kullanilabilir = 0;
+
+                    html += '<tr data-depo-id=\"' + depoId + '\">';
+                    html += '<td>' + depo + '</td>';
+                    html += '<td>' + stokKod + '</td>';
+                    html += '<td class=\"num\">' + formatInt(stokMiktar) + '</td>';
+                    html += '<td class=\"num\">' + formatInt(revizeMiktar) + '</td>';
+                    html += '<td class=\"num\">' + formatInt(kullanilabilir) + '</td>';
+                    html += '<td class=\"num\">' +
+                        '<input type=\"number\" class=\"aktarim-input\" min=\"0\" step=\"1\" value=\"0\" max=\"' + kullanilabilir + '\" style=\"width:84px; text-align:right; border-radius:999px; border:1px solid #e5e7eb; padding:0.3rem 0.6rem; font-size:0.8rem;\" />' +
+                        '</td>';
+                    html += '</tr>';
+                });
+                revisionDepotTbody.innerHTML = html;
+
+                revisionDepotTbody.querySelectorAll('input.aktarim-input').forEach(function (inp) {
+                    inp.addEventListener('input', function () { clampAktarimInput(inp); });
+                    inp.addEventListener('blur', function () { clampAktarimInput(inp); });
+                });
+            }).catch(function () {
+                closeModal(revisionDepotModal);
+                alert('Revize verileri alınamadı.');
+            });
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '';
+            try {
+                var d = new Date(value);
+                if (isNaN(d.getTime())) return value.toString();
+                return d.toLocaleString('tr-TR');
+            } catch (e) {
+                return value.toString();
+            }
+        }
+
+        function openRevisionListForRow(tr) {
+            if (!tr) return;
+            var detailId = parseInt(tr.getAttribute('data-satis-detay-id') || '0', 10) || 0;
+            if (detailId <= 0) return;
+
+            currentRevisionListRow = tr;
+            currentRevisionListDetailId = detailId;
+
+            if (revisionListStokKod) revisionListStokKod.textContent = tr.getAttribute('data-stok-kod') || '';
+            if (revisionListStokAciklama) revisionListStokAciklama.textContent = tr.getAttribute('data-stok-aciklama') || '';
+            if (revisionListTbody) revisionListTbody.innerHTML = '';
+
+            openModal(revisionListModal);
+
+            fetch('{{ route('orders.planning.revision-list-data') }}' + '?siparissatirid=' + encodeURIComponent(String(detailId)), {
+                headers: { 'Accept': 'application/json' }
+            }).then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw data;
+                    return data;
+                });
+            }).then(function (data) {
+                if (!data || !data.ok) throw data;
+                if (revisionListStokKod) revisionListStokKod.textContent = data.stokkod || '';
+                if (revisionListStokAciklama) revisionListStokAciklama.textContent = data.stokaciklama || '';
+
+                if (!revisionListTbody) return;
+                var rows = Array.isArray(data.rows) ? data.rows : [];
+                var html = '';
+                rows.forEach(function (row) {
+                    var id = row.id;
+                    var depoKod = row.depo_kod || '-';
+                    var qty = Math.round(parseFloat(row.miktar || '0') || 0);
+                    var max = Math.round(parseFloat(row.max || '0') || 0);
+                    var createdAt = formatDateTime(row.created_at);
+
+                    html += '<tr data-rev-id=\"' + id + '\">';
+                    html += '<td>' + depoKod + '</td>';
+                    html += '<td class=\"num\">' +
+                        '<input type=\"number\" class=\"rev-edit-input\" min=\"0\" step=\"1\" value=\"' + qty + '\" max=\"' + max + '\" style=\"width:84px; text-align:right; border-radius:999px; border:1px solid #e5e7eb; padding:0.3rem 0.6rem; font-size:0.8rem;\" />' +
+                        '</td>';
+                    html += '<td>' + createdAt + '</td>';
+                    html += '<td class=\"num\">' +
+                        '<button type=\"button\" class=\"offers-filter-reset rev-delete-btn\" style=\"padding:0.25rem 0.6rem; border-radius:999px; border:1px solid #fecaca; background:#fff; color:#dc2626;\">Sil</button>' +
+                        '</td>';
+                    html += '</tr>';
+                });
+                revisionListTbody.innerHTML = html;
+
+                revisionListTbody.querySelectorAll('input.rev-edit-input').forEach(function (inp) {
+                    inp.addEventListener('input', function () { clampAktarimInput(inp); });
+                    inp.addEventListener('blur', function () { clampAktarimInput(inp); });
+                });
+
+                revisionListTbody.querySelectorAll('button.rev-delete-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var rowEl = btn.closest('tr[data-rev-id]');
+                        var id = rowEl ? parseInt(rowEl.getAttribute('data-rev-id') || '0', 10) : 0;
+                        if (id <= 0) return;
+                        if (!confirm('Silmek istediğinize emin misiniz?')) return;
+
+                        fetch('{{ route('orders.planning.revision-list-delete') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ siparissatirid: currentRevisionListDetailId, id: id })
+                        }).then(function (r) {
+                            return r.json().then(function (data) {
+                                if (!r.ok) throw data;
+                                return data;
+                            });
+                        }).then(function (data) {
+                            var siparisRevize = Math.round(parseFloat(data.siparis_revize || '0') || 0);
+                            currentRevisionListRow.setAttribute('data-revize-this', String(siparisRevize));
+                            var v = currentRevisionListRow.querySelector('.siparis-revize-value');
+                            if (v) v.textContent = formatInt(siparisRevize);
+
+                            updateStockRows(data.stokkod, data.stok_miktar, data.revize_toplam);
+                            openRevisionListForRow(currentRevisionListRow);
+                        }).catch(function () {
+                            alert('Silme hatası.');
+                        });
+                    });
+                });
+            }).catch(function () {
+                closeModal(revisionListModal);
+                alert('Revize listesi alınamadı.');
+            });
+        }
+
         function collectSelectedSalesRows() {
             if (!tbody) return [];
             var selected = [];
@@ -425,7 +676,7 @@
                 var detailId = parseInt(tr.getAttribute('data-satis-detay-id') || '0', 10) || 0;
                 var urunId = parseInt(tr.getAttribute('data-urun-id') || '0', 10) || 0;
                 var qtyInput = tr.querySelector('.siparis-miktar-input');
-                var qty = qtyInput ? parseFloat(qtyInput.value || '0') || 0 : 0;
+                var qty = qtyInput ? Math.round(parseFloat(qtyInput.value || '0') || 0) : 0;
                 if (detailId > 0 && urunId > 0 && qty > 0) {
                     selected.push({ satis_detay_id: detailId, urun_id: urunId, siparis_miktar: qty });
                 }
@@ -444,6 +695,178 @@
                     selectedRowsInput.value = JSON.stringify(selected);
                 }
                 openModal(firmModal);
+            });
+        }
+
+        function debounce(fn, wait) {
+            var t = null;
+            return function () {
+                var ctx = this;
+                var args = arguments;
+                clearTimeout(t);
+                t = setTimeout(function () {
+                    fn.apply(ctx, args);
+                }, wait);
+            };
+        }
+
+        function formatInt(value) {
+            var n = Math.round(parseFloat(value || '0') || 0);
+            try {
+                return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n);
+            } catch (e) {
+                return String(n);
+            }
+        }
+
+        function getIntAttr(tr, name) {
+            if (!tr) return 0;
+            return Math.round(parseFloat(tr.getAttribute(name) || '0') || 0);
+        }
+
+        function recalcStockAndLimits(tr) {
+            if (!tr) return;
+            var stokMiktar = getIntAttr(tr, 'data-stok-miktar');
+            var revizeToplam = getIntAttr(tr, 'data-revize-edilen');
+            var gercek = stokMiktar - revizeToplam;
+
+            var gercekCell = tr.querySelector('.gercek-stok-cell');
+            if (gercekCell) {
+                gercekCell.textContent = formatInt(gercek);
+            }
+
+            var input = tr.querySelector('.revize-miktar-input');
+            if (input) {
+                var thisRevize = getIntAttr(tr, 'data-revize-this');
+                var maxForRow = Math.max(0, gercek + thisRevize);
+                input.max = String(maxForRow);
+            }
+        }
+
+        function updateStockRows(stokkod, stokMiktar, revizeToplam) {
+            if (!tbody) return;
+            var code = (stokkod || '').toString();
+            if (!code) return;
+
+            tbody.querySelectorAll('tr[data-stok-kod]').forEach(function (row) {
+                if ((row.getAttribute('data-stok-kod') || '').toString() !== code) return;
+
+                row.setAttribute('data-stok-miktar', String(Math.round(parseFloat(stokMiktar || '0') || 0)));
+                row.setAttribute('data-revize-edilen', String(Math.round(parseFloat(revizeToplam || '0') || 0)));
+
+                var revCell = row.querySelector('.revize-edilen-cell');
+                if (revCell) {
+                    revCell.textContent = formatInt(revizeToplam);
+                }
+
+                recalcStockAndLimits(row);
+                recalcKalan(row);
+            });
+        }
+
+        function saveRevisionForRow(tr) {
+            if (!tr) return;
+            var detailId = parseInt(tr.getAttribute('data-satis-detay-id') || '0', 10) || 0;
+            var input = tr.querySelector('.revize-miktar-input');
+            if (!input || detailId <= 0) return;
+
+            var valRaw = (input.value || '').toString().trim();
+            var currentThis = getIntAttr(tr, 'data-revize-this');
+            var maxForRow = parseInt(input.max || '0', 10);
+            if (!isFinite(maxForRow) || maxForRow < 0) {
+                recalcStockAndLimits(tr);
+                maxForRow = parseInt(input.max || '0', 10) || 0;
+            }
+            var payload = new URLSearchParams();
+            payload.set('siparissatirid', String(detailId));
+
+            if (valRaw !== '') {
+                var nextVal = Math.round(parseFloat(valRaw) || 0);
+                if (nextVal > maxForRow) nextVal = maxForRow;
+                if (nextVal < 0) nextVal = 0;
+                input.value = String(nextVal);
+                payload.set('miktar', String(nextVal));
+            } else {
+                if (currentThis <= 0) {
+                    input.style.outline = 'none';
+                    return;
+                }
+            }
+
+            fetch('{{ route('orders.planning.save-revision') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: payload.toString()
+            }).then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw data;
+                    return data;
+                });
+            }).then(function (data) {
+                input.style.outline = 'none';
+                var thisRevize = data && data.this_revize !== undefined ? Math.round(parseFloat(data.this_revize || '0') || 0) : 0;
+                tr.setAttribute('data-revize-this', String(thisRevize));
+                    var thisCell = tr.querySelector('.siparis-revize-value');
+                    if (thisCell) thisCell.textContent = formatInt(thisRevize);
+
+                if (data && data.stokkod) {
+                    updateStockRows(data.stokkod, data.stok_miktar, data.revize_toplam);
+                } else {
+                    recalcStockAndLimits(tr);
+                    recalcKalan(tr);
+                }
+                input.value = '';
+            }).catch(function (err) {
+                input.style.outline = '2px solid #ef4444';
+                if (err && err.max !== undefined) {
+                    input.max = String(Math.round(parseFloat(err.max || '0') || 0));
+                }
+            });
+        }
+
+        function recalcKalan(tr) {
+            if (!tr) return;
+            var verilen = Math.round(parseFloat(tr.getAttribute('data-siparis-verilen') || '0') || 0);
+            var siparisRevize = getIntAttr(tr, 'data-revize-this');
+            var siparisMiktar = getIntAttr(tr, 'data-siparis-miktar');
+            var kalan = siparisMiktar - (verilen + siparisRevize);
+            var cell = tr.querySelector('.siparis-kalan-cell');
+            if (cell) {
+                cell.textContent = formatInt(kalan);
+            }
+        }
+
+        if (tbody) {
+            tbody.querySelectorAll('tr[data-satis-detay-id]').forEach(function (tr) {
+                recalcStockAndLimits(tr);
+                recalcKalan(tr);
+            });
+
+            tbody.querySelectorAll('.siparis-miktar-input').forEach(function (input) {
+                var tr = input.closest('tr');
+                if (!tr) return;
+                input.addEventListener('input', function () { recalcKalan(tr); });
+                input.addEventListener('blur', function () { recalcKalan(tr); });
+            });
+
+            tbody.querySelectorAll('.revize-open-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var tr = btn.closest('tr');
+                    openRevisionModalForRow(tr);
+                });
+            });
+
+            tbody.querySelectorAll('.revize-list-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var tr = btn.closest('tr');
+                    openRevisionListForRow(tr);
+                });
             });
         }
 
@@ -468,6 +891,143 @@
                     if (!carikod) return;
                     selectedCariInput.value = carikod;
                     createPurchaseForm.submit();
+                });
+            });
+        }
+
+        if (revisionDepotClose) {
+            revisionDepotClose.addEventListener('click', function () { closeModal(revisionDepotModal); });
+        }
+        if (revisionDepotCancel) {
+            revisionDepotCancel.addEventListener('click', function () { closeModal(revisionDepotModal); });
+        }
+        if (revisionDepotModal) {
+            revisionDepotModal.addEventListener('click', function (e) {
+                if (e.target === revisionDepotModal) closeModal(revisionDepotModal);
+            });
+        }
+
+        if (revisionDepotOk) {
+            revisionDepotOk.addEventListener('click', function () {
+                if (!currentRevisionRow || currentRevisionDetailId <= 0 || !revisionDepotTbody) {
+                    closeModal(revisionDepotModal);
+                    return;
+                }
+
+                var items = [];
+                revisionDepotTbody.querySelectorAll('tr[data-depo-id]').forEach(function (row) {
+                    var depoId = parseInt(row.getAttribute('data-depo-id') || '0', 10) || 0;
+                    var inp = row.querySelector('input.aktarim-input');
+                    var qty = inp ? Math.round(parseFloat(inp.value || '0') || 0) : 0;
+                    if (depoId > 0 && qty > 0) {
+                        items.push({ depo_id: depoId, miktar: qty });
+                    }
+                });
+
+                if (items.length === 0) {
+                    closeModal(revisionDepotModal);
+                    return;
+                }
+
+                fetch('{{ route('orders.planning.revision-depot-save') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ siparissatirid: currentRevisionDetailId, items: items })
+                }).then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok) throw data;
+                        return data;
+                    });
+                }).then(function (data) {
+                    if (!data || !data.ok) throw data;
+
+                    var siparisRevize = Math.round(parseFloat(data.siparis_revize || '0') || 0);
+                    currentRevisionRow.setAttribute('data-revize-this', String(siparisRevize));
+                    var cell = currentRevisionRow.querySelector('.siparis-revize-value');
+                    if (cell) cell.textContent = formatInt(siparisRevize);
+
+                    updateStockRows(data.stokkod, data.stok_miktar, data.revize_toplam);
+                    closeModal(revisionDepotModal);
+                }).catch(function (err) {
+                    if (err && err.depo_id && err.max !== undefined && revisionDepotTbody) {
+                        var targetRow = revisionDepotTbody.querySelector('tr[data-depo-id=\"' + String(err.depo_id) + '\"]');
+                        var inp = targetRow ? targetRow.querySelector('input.aktarim-input') : null;
+                        if (inp) {
+                            inp.max = String(Math.round(parseFloat(err.max || '0') || 0));
+                            inp.style.outline = '2px solid #ef4444';
+                            clampAktarimInput(inp);
+                        }
+                    } else {
+                        alert('Kaydetme hatası.');
+                    }
+                });
+            });
+        }
+
+        if (revisionListClose) {
+            revisionListClose.addEventListener('click', function () { closeModal(revisionListModal); });
+        }
+        if (revisionListCancel) {
+            revisionListCancel.addEventListener('click', function () { closeModal(revisionListModal); });
+        }
+        if (revisionListModal) {
+            revisionListModal.addEventListener('click', function (e) {
+                if (e.target === revisionListModal) closeModal(revisionListModal);
+            });
+        }
+
+        if (revisionListOk) {
+            revisionListOk.addEventListener('click', function () {
+                if (!currentRevisionListRow || currentRevisionListDetailId <= 0 || !revisionListTbody) {
+                    closeModal(revisionListModal);
+                    return;
+                }
+
+                var items = [];
+                revisionListTbody.querySelectorAll('tr[data-rev-id]').forEach(function (row) {
+                    var id = parseInt(row.getAttribute('data-rev-id') || '0', 10) || 0;
+                    var inp = row.querySelector('input.rev-edit-input');
+                    var qty = inp ? Math.round(parseFloat(inp.value || '0') || 0) : 0;
+                    if (id > 0) items.push({ id: id, miktar: qty });
+                });
+
+                fetch('{{ route('orders.planning.revision-list-save') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ siparissatirid: currentRevisionListDetailId, items: items })
+                }).then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok) throw data;
+                        return data;
+                    });
+                }).then(function (data) {
+                    var siparisRevize = Math.round(parseFloat(data.siparis_revize || '0') || 0);
+                    currentRevisionListRow.setAttribute('data-revize-this', String(siparisRevize));
+                    var v = currentRevisionListRow.querySelector('.siparis-revize-value');
+                    if (v) v.textContent = formatInt(siparisRevize);
+
+                    updateStockRows(data.stokkod, data.stok_miktar, data.revize_toplam);
+                    closeModal(revisionListModal);
+                }).catch(function (err) {
+                    if (err && err.id && err.max !== undefined && revisionListTbody) {
+                        var targetRow = revisionListTbody.querySelector('tr[data-rev-id=\"' + String(err.id) + '\"]');
+                        var inp = targetRow ? targetRow.querySelector('input.rev-edit-input') : null;
+                        if (inp) {
+                            inp.max = String(Math.round(parseFloat(err.max || '0') || 0));
+                            inp.style.outline = '2px solid #ef4444';
+                            clampAktarimInput(inp);
+                        }
+                    } else {
+                        alert('Güncelleme hatası.');
+                    }
                 });
             });
         }
@@ -503,6 +1063,72 @@
                 @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div id="revisionDepotModal" class="modal-overlay">
+    <div class="modal" style="max-width: 980px;">
+        <div class="modal-header">
+            <div class="modal-title">Revize Aktarım</div>
+            <button type="button" id="revisionDepotClose" class="small-btn">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap;">
+                <div><span style="color:#6b7280;">Stok Kod:</span> <strong id="revisionDepotStokKod"></strong></div>
+                <div><span style="color:#6b7280;">Stok Açıklama:</span> <strong id="revisionDepotStokAciklama"></strong></div>
+            </div>
+
+            <table class="modal-table">
+                <thead>
+                <tr>
+                    <th>Depo</th>
+                    <th>Stok Kod</th>
+                    <th class="num">Stok Miktar</th>
+                    <th class="num">Revize Miktar</th>
+                    <th class="num">Kullanılabilir Stok</th>
+                    <th class="num">Aktarım Miktar</th>
+                </tr>
+                </thead>
+                <tbody id="revisionDepotTbody"></tbody>
+            </table>
+
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap: 12px; margin-top: 14px;">
+                <button type="button" id="revisionDepotCancel" class="offers-filter-reset" style="border:none; color:#dc2626; font-weight:700; background:transparent;">Kapat</button>
+                <button type="button" id="revisionDepotOk" class="offers-new-button">Tamam</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="revisionListModal" class="modal-overlay">
+    <div class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <div class="modal-title">Sipariş Revize</div>
+            <button type="button" id="revisionListClose" class="small-btn">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap;">
+                <div><span style="color:#6b7280;">Stok Kod:</span> <strong id="revisionListStokKod"></strong></div>
+                <div><span style="color:#6b7280;">Stok Açıklama:</span> <strong id="revisionListStokAciklama"></strong></div>
+            </div>
+
+            <table class="modal-table">
+                <thead>
+                <tr>
+                    <th>Depo Kodu</th>
+                    <th class="num">Revize Miktarı</th>
+                    <th>Ekleme Tarihi</th>
+                    <th class="num"></th>
+                </tr>
+                </thead>
+                <tbody id="revisionListTbody"></tbody>
+            </table>
+
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap: 12px; margin-top: 14px;">
+                <button type="button" id="revisionListCancel" class="offers-filter-reset" style="border:none; color:#dc2626; font-weight:700; background:transparent;">Kapat</button>
+                <button type="button" id="revisionListOk" class="offers-new-button">Tamam</button>
+            </div>
         </div>
     </div>
 </div>

@@ -5,19 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class SiparisDetay extends Model
+class FaturaDetay extends Model
 {
     use HasFactory;
 
-    protected $table = 'siparis_detaylari';
+    protected $table = 'fatura_detaylari';
 
     protected $fillable = [
-        'siparis_id',
+        'fatura_id',
         'urun_id',
+        'stokkod',
+        'siparis_detay_id',
         'satir_aciklama',
         'durum',
         'miktar',
-        'gelen',
         'birim',
         'birim_fiyat',
         'doviz',
@@ -34,9 +35,9 @@ class SiparisDetay extends Model
         'satir_toplam',
     ];
 
-    public function siparis()
+    public function fatura()
     {
-        return $this->belongsTo(Siparis::class, 'siparis_id');
+        return $this->belongsTo(Fatura::class, 'fatura_id');
     }
 
     public function urun()
@@ -44,13 +45,8 @@ class SiparisDetay extends Model
         return $this->belongsTo(Product::class, 'urun_id');
     }
 
-    public function alimEslestirmeleri()
+    public function siparisDetay()
     {
-        return $this->hasMany(SiparisSatirEslestirme::class, 'alim_detay_id');
-    }
-
-    public function satisEslestirmeleri()
-    {
-        return $this->hasMany(SiparisSatirEslestirme::class, 'satis_detay_id');
+        return $this->belongsTo(SiparisDetay::class, 'siparis_detay_id');
     }
 }

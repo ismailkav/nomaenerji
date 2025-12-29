@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siparişler - NomaEnerji</title>
+    <title>{{ ($resource ?? 'orders') === 'invoices' ? 'Faturalar' : 'Siparişler' }} - NomaEnerji</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -172,7 +172,7 @@
                               stroke-linejoin="round"/>
                     </svg>
                 </button>
-                {{ ($tur ?? 'alim') === 'satis' ? 'Satış Siparişleri' : 'Alım Siparişleri' }}
+                {{ $pageHeading ?? (($tur ?? 'alim') === 'satis' ? 'Satış Siparişleri' : 'Alım Siparişleri') }}
             </div>
         </header>
 
@@ -186,59 +186,61 @@
                             </div>
                         @endif
                     </div>
-                    <a href="{{ route('orders.create', ['tur' => $tur ?? 'alim']) }}" class="offers-new-button">
-                        Yeni Sipariş
+                    <a href="{{ route(($resource ?? 'orders') . '.create', ['tur' => $tur ?? 'alim']) }}" class="offers-new-button">
+                        {{ $newButtonText ?? 'Yeni Sipariş' }}
                     </a>
                 </div>
 
-                <form method="GET" action="{{ route('orders.index') }}">
+                <form method="GET" action="{{ route(($resource ?? 'orders') . '.index') }}">
                     <input type="hidden" name="tur" value="{{ $tur ?? 'alim' }}">
                     <div class="offers-filter-row">
                         <div class="filter-group">
-                            <label for="q">Arama (Sipariş No / Cari)</label>
+                            <label for="q">Arama ({{ ($resource ?? 'orders') === 'invoices' ? 'Fatura No' : 'Sipariş No' }} / Cari)</label>
                             <input type="text" id="q" name="q" value="{{ request('q') }}"
-                                   placeholder="Sipariş no, cari kod veya açıklama">
+                                   placeholder="{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura no, cari kod veya açıklama' : 'Sipariş no, cari kod veya açıklama' }}">
                         </div>
 
                         <div class="filter-group">
-                            <label for="tarih_baslangic">Sipariş Tarihi (Başlangıç)</label>
+                            <label for="tarih_baslangic">{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura Tarihi' : 'Sipariş Tarihi' }} (Başlangıç)</label>
                             <input type="date" id="tarih_baslangic" name="tarih_baslangic"
                                    value="{{ request('tarih_baslangic') }}">
                         </div>
 
                         <div class="filter-group">
-                            <label for="tarih_bitis">Sipariş Tarihi (Bitiş)</label>
+                            <label for="tarih_bitis">{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura Tarihi' : 'Sipariş Tarihi' }} (Bitiş)</label>
                             <input type="date" id="tarih_bitis" name="tarih_bitis"
                                    value="{{ request('tarih_bitis') }}">
                         </div>
 
-                        <div class="filter-group">
-                            <label for="islem_turu_id">İşlem Türü</label>
-                            <select id="islem_turu_id" name="islem_turu_id">
-                                <option value="">Hepsi</option>
-                                @foreach($islemTurleri as $islemTuru)
-                                    <option value="{{ $islemTuru->id }}" {{ (string) request('islem_turu_id') === (string) $islemTuru->id ? 'selected' : '' }}>
-                                        {{ $islemTuru->ad }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                        @if(($resource ?? 'orders') !== 'invoices')
+                            <div class="filter-group">
+                                <label for="islem_turu_id">İşlem Türü</label>
+                                <select id="islem_turu_id" name="islem_turu_id">
+                                    <option value="">Hepsi</option>
+                                    @foreach($islemTurleri as $islemTuru)
+                                        <option value="{{ $islemTuru->id }}" {{ (string) request('islem_turu_id') === (string) $islemTuru->id ? 'selected' : '' }}>
+                                            {{ $islemTuru->ad }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <div class="filter-group">
-                            <label for="proje_id">Proje</label>
-                            <select id="proje_id" name="proje_id">
-                                <option value="">Hepsi</option>
-                                @foreach($projects as $project)
-                                    <option value="{{ $project->id }}" {{ (string) request('proje_id') === (string) $project->id ? 'selected' : '' }}>
-                                        {{ $project->kod }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="filter-group">
+                                <label for="proje_id">Proje</label>
+                                <select id="proje_id" name="proje_id">
+                                    <option value="">Hepsi</option>
+                                    @foreach($projects as $project)
+                                        <option value="{{ $project->id }}" {{ (string) request('proje_id') === (string) $project->id ? 'selected' : '' }}>
+                                            {{ $project->kod }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
 
                         <div class="offers-filter-actions">
                             <button type="submit" class="offers-filter-button">Filtrele</button>
-                            <a href="{{ route('orders.index', ['tur' => $tur ?? 'alim']) }}" class="offers-filter-reset">Temizle</a>
+                            <a href="{{ route(($resource ?? 'orders') . '.index', ['tur' => $tur ?? 'alim']) }}" class="offers-filter-reset">Temizle</a>
                         </div>
                     </div>
                 </form>
@@ -248,10 +250,15 @@
                         @php($isSales = ($tur ?? 'alim') === 'satis')
                         <thead>
                         <tr>
-                            <th>Sipariş No</th>
-                            <th>Sipariş Tarih</th>
-                            <th>İşlem Türü</th>
-                            <th>Proje</th>
+                            <th>{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura No' : 'Sipariş No' }}</th>
+                            @if(($resource ?? 'orders') === 'invoices')
+                                <th>Belge No</th>
+                            @endif
+                            <th>{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura Tarih' : 'Sipariş Tarih' }}</th>
+                            @if(($resource ?? 'orders') !== 'invoices')
+                                <th>İşlem Türü</th>
+                                <th>Proje</th>
+                            @endif
                             <th>Cari Kod</th>
                             <th>Cari Açıklama</th>
                             <th>Onay Durum</th>
@@ -265,9 +272,14 @@
                         @forelse($siparisler as $siparis)
                             <tr>
                                 <td>{{ $siparis->siparis_no }}</td>
+                                @if(($resource ?? 'orders') === 'invoices')
+                                    <td>{{ $siparis->belge_no ?? '' }}</td>
+                                @endif
                                 <td>{{ $siparis->tarih ? $siparis->tarih->format('d.m.Y') : '' }}</td>
-                                <td>{{ $siparis->islemTuru->ad ?? '' }}</td>
-                                <td>{{ $siparis->proje->kod ?? '' }}</td>
+                                @if(($resource ?? 'orders') !== 'invoices')
+                                    <td>{{ $siparis->islemTuru->ad ?? '' }}</td>
+                                    <td>{{ $siparis->proje->kod ?? '' }}</td>
+                                @endif
                                 <td>{{ $siparis->carikod }}</td>
                                 <td>{{ $siparis->cariaciklama }}</td>
                                 <td>{{ $siparis->onay_durum }}</td>
@@ -305,12 +317,12 @@
                                     {{ $siparis->siparis_doviz ?? 'TL' }}
                                 </td>
                                 <td style="text-align:right;">
-                                    <x-edit-icon :href="route('orders.edit', $siparis)" />
+                                    <x-edit-icon :href="route(($resource ?? 'orders') . '.edit', $siparis)" />
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" style="text-align: center; padding: 16px;">Kayıtlı sipariş bulunamadı.</td>
+                                <td colspan="{{ ($resource ?? 'orders') === 'invoices' ? 9 : 11 }}" style="text-align: center; padding: 16px;">Kayıtlı sipariş bulunamadı.</td>
                             </tr>
                         @endforelse
                         </tbody>

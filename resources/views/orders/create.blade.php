@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     @php
         $siparisTuru = old('siparis_turu', $tur ?? ($siparis->siparis_turu ?? 'alim'));
-        $siparisBaslik = $siparisTuru === 'satis' ? 'Satış Siparişi' : 'Alım Siparişi';
+        $isInvoice = ($resource ?? 'orders') === 'invoices';
+        $invoiceBaslik = match ($siparisTuru) {
+            'satis' => 'Satış Faturası',
+            'alim-iade' => 'Alım İade Faturası',
+            'satis-iade' => 'Satış İade Faturası',
+            default => 'Alım Faturası',
+        };
+        $siparisBaslik = $isInvoice
+            ? ($pageHeading ?? $invoiceBaslik)
+            : ($siparisTuru === 'satis' ? 'Satış Siparişi' : 'Alım Siparişi');
     @endphp
     <title>{{ isset($siparis) ? ($siparisBaslik . ' Düzenle') : $siparisBaslik }} - NomaEnerji</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,6 +45,12 @@
             gap: 0.5rem;
         }
         .offer-header-right {
+            flex: 0 0 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .offer-header-middle {
             flex: 0 0 320px;
             display: flex;
             flex-direction: column;
@@ -81,6 +97,12 @@
             background: transparent;
             padding: 0;
             border-radius: 0;`n        }`n        .header-input {`n            border: none !important;`n            background: transparent !important;`n            padding: 0 !important;`n            border-radius: 0 !important;
+        }
+        .offer-header .form-group input.framed-input {
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem 0.85rem;
+            background: #ffffff;
         }
         .offer-header-right .form-group label {`n            font-size: 0.8rem;`n            font-weight: 500;`n            color: #2563eb;
             min-width: 110px;
@@ -405,7 +427,7 @@
                                 <path d="M7 4h10l-1 14H8L7 4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M10 4V3a2 2 0 0 1 4 0v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
-                            <span>Sipariş Oluştur</span>
+                            <span>{{ $isInvoice ? 'Fatura Oluştur' : 'Sipariş Oluştur' }}</span>
                         </button>
                         <button type="button"
                                 class="top-menu-item"
@@ -418,25 +440,40 @@
                                 <path d="M7 6l1 14h8l1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
-                            <span>Sipariş Sil</span>
+                            <span>{{ $isInvoice ? 'Fatura Sil' : 'Sipariş Sil' }}</span>
                         </button>
                     </div>
                 </div>
-                <a href="{{ route('orders.index', ['tur' => $tur ?? 'alim']) }}" class="btn btn-cancel" style="margin-left:0.75rem;">İptal</a>
+                <a href="{{ route(($resource ?? 'orders') . '.index', ['tur' => $tur ?? 'alim']) }}" class="btn btn-cancel" style="margin-left:0.75rem;">İptal</a>
                 <button type="submit" form="orderForm" class="btn btn-save">Kaydet</button>
             </div>
         </header>
 
           <section class="content-section" style="padding: 2rem;">
+            @if(session('status'))
+                <div style="margin-bottom:1rem; padding:0.75rem 1rem; border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; border-radius:12px;">
+                    {{ session('status') }}
+                </div>
+            @endif
+            @if($errors->any())
+                <div style="margin-bottom:1rem; padding:0.75rem 1rem; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; border-radius:12px;">
+                    <div style="font-weight:600; margin-bottom:0.25rem;">Kaydetme sırasında hata oluştu:</div>
+                    <ul style="margin:0; padding-left:1.25rem;">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             @if(isset($siparis))
-                <form id="deleteOrderForm" method="POST" action="{{ route('orders.destroy', $siparis) }}" style="display:none;">
+                <form id="deleteOrderForm" method="POST" action="{{ route(($resource ?? 'orders') . '.destroy', $siparis) }}" style="display:none;">
                     @csrf
                     @method('DELETE')
                 </form>
             @else
                 <form id="deleteOrderForm" style="display:none;"></form>
             @endif
-            <form id="orderForm" method="POST" action="{{ isset($siparis) ? route('orders.update', $siparis) : route('orders.store') }}">
+            <form id="orderForm" method="POST" action="{{ isset($siparis) ? route(($resource ?? 'orders') . '.update', $siparis) : route(($resource ?? 'orders') . '.store') }}">
                  @csrf
                  @if(isset($siparis))
                      @method('PUT')
@@ -447,9 +484,10 @@
         <div class="offer-header-left">
              <div class="offer-header-row">
      <div class="form-group">
-         <label for="siparis_no" style="color:#9ca3af;">Sipari&#351; No:</label>
+         <label for="siparis_no" style="color:#9ca3af;">{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura' : 'Sipari&#351;' }} No:</label>
          <input id="siparis_no" name="siparis_no" type="text" style="text-align:left;" value="{{ old('siparis_no', isset($siparis) ? $siparis->siparis_no : ($nextSiparisNo ?? '')) }}" readonly>
      </div>
+    @if(($resource ?? 'orders') !== 'invoices')
     <div class="form-group">
         <label for="teklif_no" style="color:#9ca3af;">Teklif No:</label>
         <div class="input-with-button">
@@ -462,6 +500,7 @@
             </button>
         </div>
     </div>
+    @endif
   </div>
             <div class="offer-header-row">
                 <div class="form-group">
@@ -589,9 +628,39 @@
             @endif
         </div>
 
+        @if(($resource ?? 'orders') === 'invoices')
+            <div class="offer-header-middle">
+                <div class="offer-header-row">
+                    <div class="form-group">
+                        <label for="belge_no" style="color:#9ca3af;">Belge No:</label>
+                        <input id="belge_no" name="belge_no" type="text" class="framed-input" style="text-align:left;width:210px;max-width:210px;min-height:38px;background:#ffffff !important;border-radius:12px !important;padding:0.5rem 0.85rem !important;border:1px solid #e5e7eb !important;box-shadow: inset 0 0 0 1px #e5e7eb;" value="{{ old('belge_no', isset($siparis) ? ($siparis->belge_no ?? '') : '') }}">
+                    </div>
+                </div>
+
+                <div class="offer-header-row">
+                    <div class="form-group">
+                        <label for="depo_kod" style="color:#9ca3af;">Depo:</label>
+                        <div class="input-with-button">
+                            <input id="depo_kod" type="text"
+                                   value="{{ old('depo_kod', isset($selectedDepot) ? $selectedDepot->kod : '') }}"
+                                   style="border:none;background:transparent;outline:none;padding:0;" readonly>
+                            <input id="depo_id" name="depo_id" type="hidden"
+                                   value="{{ old('depo_id', isset($siparis) ? ($siparis->depo_id ?? '') : '') }}">
+                            <button type="button" class="small-btn" id="btnDepoSearch" title="Depo Seç">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/>
+                                    <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="offer-header-right">
             <div class="form-group">
-                <label for="tarih" style="color:#9ca3af;">Sipariş Tarihi:</label>
+                <label for="tarih" style="color:#9ca3af;">{{ ($resource ?? 'orders') === 'invoices' ? 'Fatura Tarihi' : 'Sipariş Tarihi' }}:</label>
                 <input id="tarih" name="tarih" type="date" value="{{ old('tarih', isset($siparis) && $siparis->tarih ? $siparis->tarih->toDateString() : now()->toDateString()) }}" required>
             </div>
             <div class="form-group">
@@ -640,7 +709,11 @@
                             <th class="stok-kod">Stok Kod</th>
                             <th class="stok-aciklama">Stok Açıklama</th>
                             <th class="durum">Durum</th>
-                            <th class="birim-fiyat">Birim Fiyat</th>                            <th class="miktar">Miktar</th>
+                            <th class="birim-fiyat">Birim Fiyat</th>
+                            <th class="miktar">Miktar</th>
+                            @if(($resource ?? 'orders') !== 'invoices')
+                                <th class="gelen">Gelen</th>
+                            @endif
                             <th class="doviz">Doviz</th>
                             <th class="kur">Kur</th>                            <th>İsk.1%</th>
                             <th>İsk.2%</th>
@@ -652,7 +725,9 @@
                             <th class="kdv">KDV %</th>
                             <th class="kdv-durum">KDV Durum</th>
                             <th>Satır Tutar</th>
-                            @if(in_array($siparisTuru, ['satis', 'alim'], true))
+                            @if(($resource ?? 'orders') === 'invoices')
+                                <th class="detay">Detay</th>
+                            @elseif(in_array($siparisTuru, ['satis', 'alim'], true))
                                 <th class="detay">Detay</th>
                             @endif
                         </tr>
@@ -719,7 +794,7 @@
                     
 
                     <div class="actions">
-                        <a href="{{ route('orders.index', ['tur' => $tur ?? 'alim']) }}" class="btn btn-cancel">İptal</a>
+                        <a href="{{ route(($resource ?? 'orders') . '.index', ['tur' => $tur ?? 'alim']) }}" class="btn btn-cancel">İptal</a>
                         <button type="submit" class="btn btn-save">Kaydet</button>
                     </div>
                 </div>
@@ -895,6 +970,67 @@
         </div>
     </div>
 
+    <div id="depoModal" class="modal-overlay">
+        <div class="modal" style="max-width:520px;">
+            <div class="modal-header">
+                <div class="modal-title">Depo Seç</div>
+                <button type="button" class="small-btn" data-modal-close="depoModal">X</button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table">
+                    <thead>
+                    <tr>
+                        <th>Depo Kod</th>
+                        <th>Durum</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach(($depots ?? []) as $depot)
+                        <tr class="depot-row" data-id="{{ $depot->id }}" data-kod="{{ $depot->kod }}">
+                            <td>{{ $depot->kod }}</td>
+                            <td>{{ $depot->pasif ? 'Pasif' : 'Aktif' }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-cancel" data-modal-close="depoModal">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="orderTransferModal" class="modal-overlay">
+        <div class="modal" style="max-width:1100px;">
+            <div class="modal-header">
+                <div class="modal-title" id="orderTransferModalTitle">Sipariş Seçim</div>
+                <button type="button" class="small-btn" data-modal-close="orderTransferModal">X</button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table" style="font-size:0.85rem;">
+                    <thead>
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th>Stok Kod</th>
+                        <th>Stok Açıklama</th>
+                        <th class="num">Sipariş Miktar</th>
+                        <th class="num">Gelen Miktar</th>
+                        <th class="num">Kalan Miktar</th>
+                        <th class="num">Aktarım Miktar</th>
+                        <th>Proje</th>
+                        <th>İşlem Tipi</th>
+                    </tr>
+                    </thead>
+                    <tbody id="orderTransferTbody"></tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-cancel" data-modal-close="orderTransferModal">İptal</button>
+                <button type="button" class="btn btn-save" id="orderTransferConfirm">Tamam</button>
+            </div>
+        </div>
+    </div>
+
     @if($siparisTuru === 'satis')
         <div id="planningModal" class="modal-overlay">
             <div class="modal" style="max-width:520px;">
@@ -960,6 +1096,37 @@
             </div>
         </div>
     @endif
+
+    <div id="invoiceLinksModal" class="modal-overlay">
+        <div class="modal" style="max-width:980px;">
+            <div class="modal-header">
+                <div class="modal-title" id="invoiceLinksTitle">Sipariş Detayları</div>
+                <button type="button" class="small-btn" data-modal-close="invoiceLinksModal">X</button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table" style="font-size:0.85rem;">
+                    <thead>
+                    <tr>
+                        <th>Sipariş Numarası</th>
+                        <th>Sipariş Tarih</th>
+                        <th>Stok Kod</th>
+                        <th>Stok Açıklama</th>
+                        <th class="num">Sipariş Miktar</th>
+                        <th class="num">Aktarım Miktar</th>
+                    </tr>
+                    </thead>
+                    <tbody id="invoiceLinksTbody">
+                    <tr>
+                        <td colspan="6" style="padding:12px; text-align:center; color:#6b7280;">Kayıt yok.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-cancel" data-modal-close="invoiceLinksModal">Kapat</button>
+            </div>
+        </div>
+    </div>
 </div>
 </div>
 
@@ -1042,6 +1209,41 @@
         var initialLines = @json($prefillLines ?? (isset($siparis) ? $siparis->detaylar : []));
         var isSalesOrder = @json($siparisTuru === 'satis');
         var isPurchaseOrder = @json($siparisTuru === 'alim');
+        var isInvoicePage = @json(($resource ?? 'orders') === 'invoices');
+
+        function fetchTodayForexSelling(currencyCode) {
+            var code = (currencyCode || '').toString().trim().toUpperCase();
+            if (!['USD', 'EUR'].includes(code)) {
+                return Promise.reject(new Error('unsupported'));
+            }
+
+            var url = '{{ route('exchange-rate.today') }}' + '?currency_code=' + encodeURIComponent(code);
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok || !data || !data.ok) throw (data || {});
+                        return data;
+                    });
+                })
+                .then(function (data) {
+                    return parseFloat((data.forex_selling || '0').toString()) || 0;
+                });
+        }
+
+        function setKurValue(kurInput, rate) {
+            if (!kurInput) return;
+            var n = parseFloat(rate || '0') || 0;
+            kurInput.value = n.toFixed(4);
+            try {
+                kurInput.dispatchEvent(new Event('input', { bubbles: true }));
+                kurInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (e) {
+            }
+            try {
+                if (typeof recalcTotals === 'function') recalcTotals();
+            } catch (e) {
+            }
+        }
 
         function applyCurrencyBehavior(tr, initializeDefault) {
             var currencySelect = tr.querySelector('.doviz');
@@ -1051,10 +1253,18 @@
             function updateForCurrency() {
                 var val = currencySelect.value || 'TL';
                 if (val === 'TL') {
-                    kurInput.value = '1.0000';
-                } else {
-                    kurInput.value = '0.0000';
+                    setKurValue(kurInput, 1);
+                    return;
                 }
+
+                if (val === 'USD' || val === 'EUR') {
+                    fetchTodayForexSelling(val)
+                        .then(function (rate) { setKurValue(kurInput, rate); })
+                        .catch(function () { setKurValue(kurInput, 0); });
+                    return;
+                }
+
+                setKurValue(kurInput, 0);
             }
 
             currencySelect.addEventListener('change', updateForCurrency);
@@ -1063,6 +1273,29 @@
                 updateForCurrency();
             }
         }
+
+        (function applyHeaderCurrency() {
+            var headerCurrency = document.getElementById('offer_currency');
+            var headerRate = document.getElementById('offer_rate');
+            if (!headerCurrency || !headerRate) return;
+
+            function updateHeaderKur() {
+                var val = headerCurrency.value || 'TL';
+                if (val === 'TL') {
+                    setKurValue(headerRate, 1);
+                    return;
+                }
+                if (val === 'USD' || val === 'EUR') {
+                    fetchTodayForexSelling(val)
+                        .then(function (rate) { setKurValue(headerRate, rate); })
+                        .catch(function () { setKurValue(headerRate, 0); });
+                    return;
+                }
+                setKurValue(headerRate, 0);
+            }
+
+            headerCurrency.addEventListener('change', updateHeaderKur);
+        })();
 
         function recalcTotals() {
             if (!linesBody) return;
@@ -1075,10 +1308,14 @@
             rows.forEach(function (tr) {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
 
                 if (!price && !qty) return;
 
-                var brut = price * qty;
+                var brut = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1172,6 +1409,7 @@
                 '<td class="durum-cell"><select class="line-input durum"><option value="A" selected>A</option><option value="K">K</option></select></td>' +
                 '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input birim-fiyat"></td>' +
                 '<td class="miktar-cell"><input type="number" step="0.001" class="line-input miktar"></td>' +
+                (isInvoicePage ? '' : '<td class="gelen-cell"><input type="number" step="0.001" class="line-input gelen" readonly></td>') +
                 '<td class="doviz-cell"><select class="line-input doviz"><option value="TL" selected>TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></td>' +
                 '<td class="kur-cell"><input type="number" step="0.0001" class="line-input kur"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk1"></td>' +
@@ -1186,36 +1424,108 @@
                 '<td class="satir-tutar-cell"><input type="number" step="0.01" class="line-input satir-tutar" readonly></td>';
 
             if (isSalesOrder) {
-                rowHtml += '<td class="detay-cell">' +
-                    '<button type="button" class="order-planning-detail-button" aria-label="Planlama Detay" style="border:none;background:transparent;cursor:pointer;padding:0;color:#111827;">' +
-                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
-                    '<path d="M12 11c0 1.1046-.8954 2-2 2s-2-.8954-2-2 .8954-2 2-2 2 .8954 2 2Z" stroke="currentColor" stroke-width="2"/>' +
-                    '<path d="M22 12c-2.2 4-6 7-10 7S4.2 16 2 12c2.2-4 6-7 10-7s7.8 3 10 7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-                    '</svg>' +
-                    '</button>' +
+                rowHtml += '<td class="detay-cell" style="white-space:nowrap;">' +
+                    (isInvoicePage ?
+                        '<button type="button" class="invoice-line-links-button" aria-label="Sipariş Detay" title="Sipariş Detay" style="border:none;background:transparent;cursor:pointer;padding:0;color:#111827;display:inline-flex;align-items:center;justify-content:center;margin-left:0.25rem;">' +
+                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">' +
+                        '<path d="M12 11c0 1.1046-.8954 2-2 2s-2-.8954-2-2 .8954-2 2-2 2 .8954 2 2Z" stroke="currentColor" stroke-width="2"/>' +
+                        '<path d="M22 12c-2.2 4-6 7-10 7S4.2 16 2 12c2.2-4 6-7 10-7s7.8 3 10 7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
+                        '</svg>' +
+                        '</button>' +
+                        '<button type="button" class="invoice-line-delete-button" aria-label="Satırı Sil" title="Satırı Sil" style="border:none;background:transparent;cursor:pointer;padding:0;color:#dc2626;display:inline-flex;align-items:center;justify-content:center;margin-left:0.25rem;">' +
+                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">' +
+                        '<path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '</svg>' +
+                        '</button>'
+                        : '') +
                     '</td>';
             }
 
             if (isPurchaseOrder) {
-                rowHtml += '<td class="detay-cell">' +
+                rowHtml += '<td class="detay-cell" style="white-space:nowrap;">' +
                     '<button type="button" class="purchase-sales-detail-button" aria-label="Satış Siparişi Detay" style="border:none;background:transparent;cursor:pointer;padding:0;color:#111827;">' +
                     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
                     '<path d="M12 11c0 1.1046-.8954 2-2 2s-2-.8954-2-2 .8954-2 2-2 2 .8954 2 2Z" stroke="currentColor" stroke-width="2"/>' +
                     '<path d="M22 12c-2.2 4-6 7-10 7S4.2 16 2 12c2.2-4 6-7 10-7s7.8 3 10 7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
                     '</svg>' +
                     '</button>' +
+                    (isInvoicePage ?
+                        '<button type="button" class="invoice-line-delete-button" aria-label="Satırı Sil" title="Satırı Sil" style="border:none;background:transparent;cursor:pointer;padding:0;color:#dc2626;display:inline-flex;align-items:center;justify-content:center;margin-left:0.25rem;">' +
+                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">' +
+                        '<path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '<path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                        '</svg>' +
+                        '</button>'
+                        : '') +
                     '</td>';
             }
 
-            rowHtml += '<input type="hidden" class="satir-aciklama-hidden">' +
+            if (isInvoicePage && !isSalesOrder && !isPurchaseOrder) {
+                rowHtml += '<td class="detay-cell" style="white-space:nowrap;">' +
+                    '<button type="button" class="invoice-line-delete-button" aria-label="Satırı Sil" title="Satırı Sil" style="border:none;background:transparent;cursor:pointer;padding:0;color:#dc2626;display:inline-flex;align-items:center;justify-content:center;">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">' +
+                    '<path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                    '<path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                    '</svg>' +
+                    '</button>' +
+                    '</td>';
+            }
+
+            rowHtml += '<input type="hidden" class="line-input siparis-detay-id">' +
+                '<input type="hidden" class="fatura-detay-id">' +
+                '<input type="hidden" class="satir-aciklama-hidden">' +
                 '<input type="hidden" class="line-input satis-detay-ids">' +
                 '<input type="hidden" class="sales-links-json">';
             tr.innerHTML = rowHtml;
+
+            if (isInvoicePage) {
+                var detailCell = tr.querySelector('.detay-cell');
+                if (
+                    detailCell &&
+                    !detailCell.querySelector('.invoice-line-links-button') &&
+                    !detailCell.querySelector('.purchase-sales-detail-button')
+                ) {
+                    var deleteBtn = detailCell.querySelector('.invoice-line-delete-button');
+                    if (deleteBtn) {
+                        var linksBtn = document.createElement('button');
+                        linksBtn.type = 'button';
+                        linksBtn.className = 'invoice-line-links-button';
+                        linksBtn.setAttribute('aria-label', 'Sipariş Detay');
+                        linksBtn.setAttribute('title', 'Sipariş Detay');
+                        linksBtn.style.border = 'none';
+                        linksBtn.style.background = 'transparent';
+                        linksBtn.style.cursor = 'pointer';
+                        linksBtn.style.padding = '0';
+                        linksBtn.style.color = '#111827';
+                        linksBtn.style.display = 'inline-flex';
+                        linksBtn.style.alignItems = 'center';
+                        linksBtn.style.justifyContent = 'center';
+                        linksBtn.style.marginLeft = '0.25rem';
+                        linksBtn.innerHTML =
+                            '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" style=\"display:block;\">' +
+                            '<path d=\"M12 11c0 1.1046-.8954 2-2 2s-2-.8954-2-2 .8954-2 2-2 2 .8954 2 2Z\" stroke=\"currentColor\" stroke-width=\"2\"/>' +
+                            '<path d=\"M22 12c-2.2 4-6 7-10 7S4.2 16 2 12c2.2-4 6-7 10-7s7.8 3 10 7Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/>' +
+                            '</svg>';
+                        detailCell.insertBefore(linksBtn, deleteBtn);
+                    }
+                }
+            }
 
             // Varsayılan değerler: miktar 1, iskonto alanları 0, iskonto tutar 0, KDV %20, KDV Durum H
             var miktarInput = tr.querySelector('.miktar');
             if (miktarInput) {
                 miktarInput.value = '1';
+            }
+            var gelenInput = tr.querySelector('.gelen');
+            if (gelenInput) {
+                gelenInput.value = '0';
             }
 
             applyCurrencyBehavior(tr, true);
@@ -1255,7 +1565,11 @@
             function recalcDiscountBase() {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
-                var baseAmount = price * qty;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
+                var baseAmount = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1284,7 +1598,11 @@
             function recalcDiscount() {
                 var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
-                var baseAmount = price * qty;
+                var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
+                var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
+                var lineRate = doviz === 'TL' ? 1 : kur;
+                if (lineRate <= 0) lineRate = 0;
+                var baseAmount = (price * qty) * lineRate;
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1356,6 +1674,7 @@
                 else if (input.classList.contains('durum')) base = 'durum';
                 else if (input.classList.contains('birim-fiyat')) base = 'birim_fiyat';
                 else if (input.classList.contains('miktar')) base = 'miktar';
+                else if (input.classList.contains('gelen')) base = 'gelen';
                 else if (input.classList.contains('doviz')) base = 'doviz';
                 else if (input.classList.contains('kur')) base = 'kur';
                 else if (input.classList.contains('isk1')) base = 'iskonto1';
@@ -1370,6 +1689,7 @@
                 else if (input.classList.contains('satir-tutar')) base = 'satir_toplam';
                 else if (input.classList.contains('satir-aciklama-hidden')) base = 'satir_aciklama';
                 else if (input.classList.contains('satis-detay-ids')) base = 'satis_detay_ids';
+                else if (input.classList.contains('siparis-detay-id')) base = 'siparis_detay_id';
 
                 if (base) {
                     input.name = 'lines[' + lineIndex + '][' + base + ']';
@@ -1379,6 +1699,7 @@
                 if (
                     input.classList.contains('birim-fiyat') ||
                     input.classList.contains('miktar') ||
+                    input.classList.contains('kur') ||
                     input.classList.contains('isk1') ||
                     input.classList.contains('isk2') ||
                     input.classList.contains('isk3') ||
@@ -1391,6 +1712,10 @@
                 }
 
                 if (input.classList.contains('kdv-durum')) {
+                    input.addEventListener('change', recalcDiscount);
+                }
+
+                if (input.classList.contains('doviz')) {
                     input.addEventListener('change', recalcDiscount);
                 }
             });
@@ -1427,6 +1752,7 @@
                 var durumInput = tr.querySelector('.durum');
                 var fiyatInput = tr.querySelector('.birim-fiyat');
                 var miktarInput = tr.querySelector('.miktar');
+                var gelenInput = tr.querySelector('.gelen');
                 var isk1 = tr.querySelector('.isk1');
                 var isk2 = tr.querySelector('.isk2');
                 var isk3 = tr.querySelector('.isk3');
@@ -1440,6 +1766,8 @@
                 var satirAciklamaHidden = tr.querySelector('.satir-aciklama-hidden');
                 var satisDetayIdsHidden = tr.querySelector('.satis-detay-ids');
                 var salesLinksHidden = tr.querySelector('.sales-links-json');
+                var faturaDetayIdHidden = tr.querySelector('.fatura-detay-id');
+                var siparisDetayIdHidden = tr.querySelector('.siparis-detay-id');
 
                 if (kodInput && line.urun && line.urun.kod) {
                     kodInput.value = line.urun.kod;
@@ -1463,6 +1791,7 @@
                 }
                 if (fiyatInput && line.birim_fiyat != null) fiyatInput.value = line.birim_fiyat;
                 if (miktarInput && line.miktar != null) miktarInput.value = line.miktar;
+                if (gelenInput && line.gelen != null) gelenInput.value = line.gelen;
                 if (dovizInput && line.doviz) dovizInput.value = line.doviz;
                 if (kurInput && line.kur != null) kurInput.value = line.kur;
                 if (isk1 && line.iskonto1 != null) isk1.value = line.iskonto1;
@@ -1487,6 +1816,12 @@
                         salesLinksHidden.value = '';
                     }
                 }
+                if (siparisDetayIdHidden && line.siparis_detay_id != null) {
+                    siparisDetayIdHidden.value = line.siparis_detay_id;
+                }
+                if (faturaDetayIdHidden && line.id != null) {
+                    faturaDetayIdHidden.value = line.id;
+                }
 
                 applyCurrencyBehavior(tr, false);
 
@@ -1508,6 +1843,7 @@
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        var isInvoice = {{ ($resource ?? 'orders') === 'invoices' ? 'true' : 'false' }};
         var carikodInput = document.getElementById('carikod');
         var cariaciklamaInput = document.getElementById('cariaciklama');
         var firmaKodLabel = document.getElementById('firma_kod_label');
@@ -1521,6 +1857,37 @@
         var btnYetkiliSearch = document.getElementById('btnYetkiliSearch');
         var btnTeklifOpen = document.getElementById('btnTeklifOpen');
 
+        if (isInvoice) {
+            function hideFormGroupById(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var group = el.closest('.form-group');
+                if (group) group.style.display = 'none';
+            }
+
+            hideFormGroupById('yetkili_personel');
+            hideFormGroupById('islem_turu_adi');
+            hideFormGroupById('proje_kod');
+            hideFormGroupById('gecerlilik_tarihi');
+
+            var linesHeader = document.querySelector('.lines-header');
+            if (linesHeader) {
+                linesHeader.style.justifyContent = 'flex-start';
+                linesHeader.style.gap = '0.5rem';
+
+                if (!document.getElementById('btnSiparisAktar')) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.id = 'btnSiparisAktar';
+                    btn.textContent = 'Sipariş Aktar';
+                    linesHeader.appendChild(btn);
+                    btn.addEventListener('click', function () {
+                        openOrderTransferModal();
+                    });
+                }
+            }
+        }
+
         var firmModal = document.getElementById('firmModal');
         var authorityModal = document.getElementById('authorityModal');
         var authorityList = document.getElementById('authorityList');
@@ -1528,15 +1895,23 @@
         var authorityUseButton = document.getElementById('authorityUseButton');
         var islemTuruModal = document.getElementById('islemTuruModal');
         var projeModal = document.getElementById('projeModal');
+        var depoModal = document.getElementById('depoModal');
         var islemTuruIdInput = document.getElementById('islem_turu_id');
         var islemTuruAdiInput = document.getElementById('islem_turu_adi');
         var projeIdInput = document.getElementById('proje_id');
         var projeKodInput = document.getElementById('proje_kod');
+        var depoIdInput = document.getElementById('depo_id');
+        var depoKodInput = document.getElementById('depo_kod');
         var btnIslemTuruSearch = document.getElementById('btnIslemTuruSearch');
         var btnProjeSearch = document.getElementById('btnProjeSearch');
+        var btnDepoSearch = document.getElementById('btnDepoSearch');
         var productModal = document.getElementById('productModal');
         var planningModal = document.getElementById('planningModal');
         var salesLinksModal = document.getElementById('salesLinksModal');
+        var orderTransferModal = document.getElementById('orderTransferModal');
+        var orderTransferTbody = document.getElementById('orderTransferTbody');
+        var orderTransferConfirm = document.getElementById('orderTransferConfirm');
+        var orderTransferModalTitle = document.getElementById('orderTransferModalTitle');
         var currentProductRow = null;
         var linesBody = document.getElementById('offerLinesBody');
         var planningDurumHidden = document.getElementById('planlama_durum');
@@ -1550,6 +1925,161 @@
             isk5: {{ isset($selectedFirm) && $selectedFirm->iskonto5 !== null ? (float)$selectedFirm->iskonto5 : 0 }},
             isk6: {{ isset($selectedFirm) && $selectedFirm->iskonto6 !== null ? (float)$selectedFirm->iskonto6 : 0 }}
         };
+
+        function findEmptyInvoiceLineRow() {
+            if (!linesBody) return null;
+            var rows = linesBody.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var urunId = (row.querySelector('.urun-id') || {}).value || '';
+                var stokKod = (row.querySelector('.stok-kod') || {}).value || '';
+                if (String(urunId).trim() === '' && String(stokKod).trim() === '') {
+                    return row;
+                }
+            }
+            return null;
+        }
+
+        function addOrReuseLineRow() {
+            var empty = findEmptyInvoiceLineRow();
+            if (empty) return empty;
+            var btnAddLine = document.getElementById('btnAddLine');
+            if (btnAddLine) btnAddLine.click();
+            return linesBody ? linesBody.lastElementChild : null;
+        }
+
+        function openOrderTransferModal() {
+            if (!isInvoice || !orderTransferModal || !orderTransferTbody) return;
+
+            var carikod = (carikodInput && carikodInput.value ? carikodInput.value : '').toString().trim();
+            if (!carikod) {
+                window.alert('Önce firma seçiniz.');
+                return;
+            }
+
+            var firmaKod = (firmaKodLabel && firmaKodLabel.textContent ? firmaKodLabel.textContent : carikod).toString().trim();
+            var firmaAd = (firmaAciklamaLabel && firmaAciklamaLabel.textContent ? firmaAciklamaLabel.textContent : (cariaciklamaInput && cariaciklamaInput.value ? cariaciklamaInput.value : '')).toString().trim();
+            if (orderTransferModalTitle) {
+                orderTransferModalTitle.textContent = 'Sipariş Seçim - ' + firmaKod + (firmaAd ? (' / ' + firmaAd) : '');
+            }
+
+            orderTransferTbody.innerHTML = '<tr><td colspan="9">Yükleniyor...</td></tr>';
+            openModal(orderTransferModal);
+
+            var turInput = document.querySelector('input[name="siparis_turu"]');
+            var tur = (turInput && turInput.value ? turInput.value : '').toString().trim();
+            var baseUrl = @json(route('invoices.order-lines'));
+            var url = baseUrl + '?carikod=' + encodeURIComponent(carikod) + '&tur=' + encodeURIComponent(tur);
+
+            fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (payload) {
+                    var rows = (payload && Array.isArray(payload.data)) ? payload.data : [];
+                    if (!rows.length) {
+                        orderTransferTbody.innerHTML = '<tr><td colspan="9">Kayıt bulunamadı.</td></tr>';
+                        return;
+                    }
+
+                    orderTransferTbody.innerHTML = '';
+                    rows.forEach(function (row) {
+                        var kalan = parseFloat(row.kalan_miktar || '0') || 0;
+                        if (kalan <= 0) return;
+
+                        var tr = document.createElement('tr');
+                        tr.dataset.siparisDetayId = row.id != null ? String(row.id) : '';
+                        tr.dataset.urunId = row.urun_id != null ? String(row.urun_id) : '';
+                        tr.dataset.stokKod = row.stok_kod != null ? String(row.stok_kod) : '';
+                        tr.dataset.stokAciklama = row.stok_aciklama != null ? String(row.stok_aciklama) : '';
+                        tr.dataset.birim = row.birim != null ? String(row.birim) : '';
+                        tr.dataset.birimFiyat = row.birim_fiyat != null ? String(row.birim_fiyat) : '';
+                        tr.dataset.doviz = row.doviz != null ? String(row.doviz) : 'TL';
+                        tr.dataset.kur = row.kur != null ? String(row.kur) : '';
+                        tr.dataset.kalan = String(kalan);
+
+                        tr.innerHTML =
+                            '<td style="text-align:center;"><input type="checkbox" class="transfer-check"></td>' +
+                            '<td>' + (row.stok_kod || '') + '</td>' +
+                            '<td>' + (row.stok_aciklama || '') + '</td>' +
+                            '<td style="text-align:right;">' + (row.siparis_miktar != null ? row.siparis_miktar : '') + '</td>' +
+                            '<td style="text-align:right;">' + (row.gelen_miktar != null ? row.gelen_miktar : '') + '</td>' +
+                            '<td style="text-align:right;">' + (row.kalan_miktar != null ? row.kalan_miktar : '') + '</td>' +
+                            '<td style="text-align:right;"><input type="number" step="0.001" min="0" max="' + kalan + '" class="transfer-qty" style="width:110px;" value="' + kalan + '"></td>' +
+                            '<td>' + (row.proje || '') + '</td>' +
+                            '<td>' + (row.islem_tipi || '') + '</td>';
+
+                        orderTransferTbody.appendChild(tr);
+                    });
+
+                    if (!orderTransferTbody.children.length) {
+                        orderTransferTbody.innerHTML = '<tr><td colspan="9">Kayıt bulunamadı.</td></tr>';
+                    }
+                })
+                .catch(function () {
+                    orderTransferTbody.innerHTML = '<tr><td colspan="9">Veri alınamadı.</td></tr>';
+                });
+        }
+
+        if (orderTransferConfirm) {
+            orderTransferConfirm.addEventListener('click', function () {
+                if (!isInvoice || !orderTransferTbody || !linesBody) return;
+
+                var selected = Array.prototype.slice.call(orderTransferTbody.querySelectorAll('tr')).filter(function (tr) {
+                    var cb = tr.querySelector('.transfer-check');
+                    return cb && cb.checked;
+                });
+
+                if (!selected.length) {
+                    window.alert('Aktarım için en az 1 satır seçiniz.');
+                    return;
+                }
+
+                selected.forEach(function (tr) {
+                    var siparisDetayId = tr.dataset.siparisDetayId || '';
+                    var urunId = tr.dataset.urunId || '';
+                    var stokKod = tr.dataset.stokKod || '';
+                    var stokAciklama = tr.dataset.stokAciklama || '';
+                    var birimFiyat = tr.dataset.birimFiyat || '';
+                    var doviz = tr.dataset.doviz || 'TL';
+                    var kur = tr.dataset.kur || '';
+                    var kalan = parseFloat(tr.dataset.kalan || '0') || 0;
+
+                    var qtyInput = tr.querySelector('.transfer-qty');
+                    var qty = parseFloat((qtyInput && qtyInput.value) ? qtyInput.value : '0') || 0;
+                    if (qty <= 0) return;
+                    if (kalan > 0 && qty > kalan) qty = kalan;
+
+                    var targetRow = addOrReuseLineRow();
+                    if (!targetRow) return;
+
+                    var kodInput = targetRow.querySelector('.stok-kod');
+                    var aciklamaInput = targetRow.querySelector('.stok-aciklama');
+                    var urunIdInput = targetRow.querySelector('.urun-id');
+                    var fiyatInput = targetRow.querySelector('.birim-fiyat');
+                    var miktarInput = targetRow.querySelector('.miktar');
+                    var dovizInput = targetRow.querySelector('.doviz');
+                    var kurInput = targetRow.querySelector('.kur');
+                    var satirAciklamaHidden = targetRow.querySelector('.satir-aciklama-hidden');
+                    var siparisDetayIdHidden = targetRow.querySelector('.siparis-detay-id');
+
+                    if (kodInput) kodInput.value = stokKod;
+                    if (aciklamaInput) aciklamaInput.value = stokAciklama;
+                    if (satirAciklamaHidden) satirAciklamaHidden.value = stokAciklama;
+                    if (urunIdInput) urunIdInput.value = urunId;
+                    if (fiyatInput && birimFiyat !== '') fiyatInput.value = birimFiyat;
+                    if (miktarInput) miktarInput.value = String(qty);
+                    if (dovizInput) dovizInput.value = doviz;
+                    if (kurInput && kur !== '') kurInput.value = kur;
+                    if (siparisDetayIdHidden) siparisDetayIdHidden.value = siparisDetayId;
+
+                    if (aciklamaInput) aciklamaInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (dovizInput) dovizInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (miktarInput) miktarInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (fiyatInput) fiyatInput.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+
+                closeModal(orderTransferModal);
+            });
+        }
 
         if (btnYetkiliSearch && carikodInput) {
             btnYetkiliSearch.disabled = !carikodInput.value;
@@ -1581,6 +2111,54 @@
             }
         }
 
+        var currentInvoiceId = @json(isset($siparis) ? ($siparis->id ?? null) : null);
+        var deleteInvoiceLineUrlTemplate = @json(isset($siparis) ? route('invoices.lines.destroy', ['fatura' => $siparis->id, 'detay' => '__DETAY__']) : null);
+        var invoiceLinksUrlTemplate = @json(isset($siparis) ? route('invoices.lines.links', ['fatura' => $siparis->id, 'detay' => '__DETAY__']) : null);
+
+        function getCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? (meta.getAttribute('content') || '') : '';
+        }
+
+        if (linesBody) {
+            linesBody.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('.invoice-line-delete-button') : null;
+                if (!btn) return;
+                var tr = btn.closest('tr');
+                if (!tr) return;
+
+                var ok = window.confirm('Satır silinsin mi? Bu işlem geri alınamaz.');
+                if (!ok) return;
+
+                var detailIdInput = tr.querySelector('.fatura-detay-id');
+                var detailId = (detailIdInput && detailIdInput.value ? detailIdInput.value : '').toString().trim();
+
+                if (!isInvoice || !currentInvoiceId || !detailId || !deleteInvoiceLineUrlTemplate) {
+                    tr.remove();
+                    return;
+                }
+
+                var url = deleteInvoiceLineUrlTemplate.replace('__DETAY__', encodeURIComponent(detailId));
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('request_failed');
+                        return r.json().catch(function () { return {}; });
+                    })
+                    .then(function () {
+                        tr.remove();
+                    })
+                    .catch(function () {
+                        window.alert('Satır silinemedi.');
+                    });
+            });
+        }
+
         function labelPlanningStatus(v) {
             if (!v) return '-';
             if (v === 'bekliyor') return 'Bekliyor';
@@ -1599,6 +2177,60 @@
             return s;
         }
 
+        var invoiceLinksModal = document.getElementById('invoiceLinksModal');
+        var invoiceLinksTbody = document.getElementById('invoiceLinksTbody');
+        var invoiceLinksTitle = document.getElementById('invoiceLinksTitle');
+
+        function openInvoiceLinksForRow(tr) {
+            if (!tr || !invoiceLinksModal || !invoiceLinksTbody) return;
+            if (!currentInvoiceId || !invoiceLinksUrlTemplate) {
+                window.alert('Bu satır için detay göstermek için önce faturayı kaydediniz.');
+                return;
+            }
+
+            var stokKod = ((tr.querySelector('.stok-kod') || {}).value || '').toString().trim();
+            var stokAciklama = ((tr.querySelector('.stok-aciklama') || {}).value || '').toString().trim();
+            if (invoiceLinksTitle) {
+                invoiceLinksTitle.textContent = 'Sipariş Detayları' + (stokKod ? (' - ' + stokKod) : '') + (stokAciklama ? (' / ' + stokAciklama) : '');
+            }
+
+            var detailId = (((tr.querySelector('.fatura-detay-id') || {}).value) || '').toString().trim();
+            if (!detailId) {
+                window.alert('Bu satır için detay göstermek için önce faturayı kaydediniz.');
+                return;
+            }
+
+            invoiceLinksTbody.innerHTML = '<tr><td colspan=\"6\" style=\"padding:12px; text-align:center; color:#6b7280;\">Yükleniyor...</td></tr>';
+            openModal(invoiceLinksModal);
+
+            var url = invoiceLinksUrlTemplate.replace('__DETAY__', encodeURIComponent(detailId));
+            fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (payload) {
+                    var rows = payload && Array.isArray(payload.data) ? payload.data : [];
+                    invoiceLinksTbody.innerHTML = '';
+                    if (!rows.length) {
+                        invoiceLinksTbody.innerHTML = '<tr><td colspan=\"6\" style=\"padding:12px; text-align:center; color:#6b7280;\">Kayıt yok.</td></tr>';
+                        return;
+                    }
+
+                    rows.forEach(function (row) {
+                        var tr2 = document.createElement('tr');
+                        tr2.innerHTML =
+                            '<td>' + ((row.siparis_no || '').toString()) + '</td>' +
+                            '<td>' + formatDateTr(row.siparis_tarih || '') + '</td>' +
+                            '<td>' + ((row.stok_kod || '').toString()) + '</td>' +
+                            '<td>' + ((row.stok_aciklama || '').toString()) + '</td>' +
+                            '<td style=\"text-align:right;\">' + (row.siparis_miktar != null ? row.siparis_miktar : '') + '</td>' +
+                            '<td style=\"text-align:right;\">' + (row.aktarim_miktar != null ? row.aktarim_miktar : '') + '</td>';
+                        invoiceLinksTbody.appendChild(tr2);
+                    });
+                })
+                .catch(function () {
+                    invoiceLinksTbody.innerHTML = '<tr><td colspan=\"6\" style=\"padding:12px; text-align:center; color:#6b7280;\">Veri alınamadı.</td></tr>';
+                });
+        }
+
         document.querySelectorAll('[data-modal-close]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = this.getAttribute('data-modal-close');
@@ -1607,42 +2239,7 @@
             });
         });
 
-        if (linesBody && planningModal) {
-            var planningModalStatus = document.getElementById('planningModalStatus');
-            var planningModalQty = document.getElementById('planningModalQty');
-
-            linesBody.addEventListener('click', function (e) {
-                var btn = e.target.closest('.order-planning-detail-button');
-                if (!btn) return;
-                e.preventDefault();
-
-                if (planningModalStatus && planningDurumHidden) {
-                    planningModalStatus.value = planningDurumHidden.value || 'beklemede';
-                }
-                if (planningModalQty && planningMiktarHidden) {
-                    planningModalQty.value = planningMiktarHidden.value || '';
-                }
-                openModal(planningModal);
-            });
-
-            planningModal.addEventListener('click', function (e) {
-                if (e.target === planningModal) {
-                    closeModal(planningModal);
-                }
-            });
-
-            if (planningModalStatus && planningDurumHidden) {
-                planningModalStatus.addEventListener('change', function () {
-                    planningDurumHidden.value = planningModalStatus.value || 'beklemede';
-                });
-            }
-
-            if (planningModalQty && planningMiktarHidden) {
-                planningModalQty.addEventListener('input', function () {
-                    planningMiktarHidden.value = planningModalQty.value || '';
-                });
-            }
-        }
+        // Planlama Detay butonu kaldırıldı.
 
 
         if (linesBody && salesLinksModal) {
@@ -1657,6 +2254,11 @@
 
                 var tr = btn.closest('tr');
                 if (!tr) return;
+
+                if (isInvoice) {
+                    openInvoiceLinksForRow(tr);
+                    return;
+                }
 
                 var hidden = tr.querySelector('.sales-links-json');
                 var links = [];
@@ -1711,6 +2313,17 @@
             }
         }
 
+        if (linesBody) {
+            linesBody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.invoice-line-links-button');
+                if (!btn) return;
+                e.preventDefault();
+                var tr = btn.closest('tr');
+                if (!tr) return;
+                openInvoiceLinksForRow(tr);
+            });
+        }
+
         if (btnCariSearch && firmModal) {
             btnCariSearch.addEventListener('click', function () {
                 openModal(firmModal);
@@ -1725,6 +2338,33 @@
             });
 
             // ÃœrÃ¼n seÃ§imi â€“ stok kodu veya aÃ§Ä±klamaya Ã§ift tÄ±k
+        // Depo seçimi
+        if (btnDepoSearch && depoModal) {
+            btnDepoSearch.addEventListener('click', function () {
+                openModal(depoModal);
+            });
+        }
+
+        if (depoModal) {
+            depoModal.addEventListener('click', function (e) {
+                if (e.target === depoModal) {
+                    closeModal(depoModal);
+                }
+            });
+
+            document.querySelectorAll('.depot-row').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    var id = this.dataset.id || '';
+                    var kod = this.dataset.kod || '';
+
+                    if (depoIdInput) depoIdInput.value = id;
+                    if (depoKodInput) depoKodInput.value = kod;
+
+                    closeModal(depoModal);
+                });
+            });
+        }
+
         if (linesBody && productModal) {
             linesBody.addEventListener('dblclick', function (e) {
                 var target = e.target;

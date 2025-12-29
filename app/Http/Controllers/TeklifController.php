@@ -132,6 +132,8 @@ class TeklifController extends Controller
             $toplam = 0;
             $iskontoToplam = 0;
             $kdvToplam = 0;
+            $headerDoviz = strtoupper(trim((string) ($data['teklif_doviz'] ?? 'TL')));
+            $headerKur = (float) ($data['teklif_kur'] ?? 0);
 
               foreach ($lines as $line) {
                   $satirAciklama = trim($line['satir_aciklama'] ?? '');
@@ -144,8 +146,11 @@ class TeklifController extends Controller
                 }
 
                   $birim = $line['birim'] ?? null;
-                  $doviz = $line['doviz'] ?? 'TL';
-                  $kur   = isset($line['kur']) ? (float) $line['kur'] : 1.0;
+                  $doviz = strtoupper(trim((string) ($line['doviz'] ?? 'TL')));
+                  $kur   = isset($line['kur']) ? (float) $line['kur'] : 0.0;
+                  if ($doviz === 'TL') {
+                      $kur = 1.0;
+                  }
                 $iskontolar = [];
                 for ($i = 1; $i <= 6; $i++) {
                     $iskontolar[$i] = isset($line["iskonto{$i}"]) ? (float)$line["iskonto{$i}"] : 0.0;
@@ -154,7 +159,18 @@ class TeklifController extends Controller
                 $kdvOrani = isset($line['kdv_orani']) ? (float)$line['kdv_orani'] : 0.0;
                 $kdvDurum = $line['kdv_durum'] ?? 'H'; // H: hariç, D/E: dahil
 
-                $brut = $miktar * $birimFiyat;
+                $lineRate = 1.0;
+                if ($doviz !== 'TL') {
+                    $lineRate = $kur;
+                    if ($lineRate <= 0 && $headerDoviz === $doviz && $headerKur > 0) {
+                        $lineRate = $headerKur;
+                    }
+                    if ($lineRate <= 0) {
+                        $lineRate = 0.0;
+                    }
+                }
+
+                $brut = ($miktar * $birimFiyat) * $lineRate;
                 $net = $brut;
 
                 foreach ($iskontolar as $oran) {
@@ -357,6 +373,8 @@ class TeklifController extends Controller
             $toplam = 0;
             $iskontoToplam = 0;
             $kdvToplam = 0;
+            $headerDoviz = strtoupper(trim((string) ($data['teklif_doviz'] ?? 'TL')));
+            $headerKur = (float) ($data['teklif_kur'] ?? 0);
 
             foreach ($lines as $line) {
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
@@ -369,8 +387,11 @@ class TeklifController extends Controller
                 }
 
                 $birim = $line['birim'] ?? null;
-                $doviz = $line['doviz'] ?? 'TL';
-                $kur   = isset($line['kur']) ? (float) $line['kur'] : 1.0;
+                $doviz = strtoupper(trim((string) ($line['doviz'] ?? 'TL')));
+                $kur   = isset($line['kur']) ? (float) $line['kur'] : 0.0;
+                if ($doviz === 'TL') {
+                    $kur = 1.0;
+                }
                 $iskontolar = [];
                 for ($i = 1; $i <= 6; $i++) {
                     $iskontolar[$i] = isset($line["iskonto{$i}"]) ? (float)$line["iskonto{$i}"] : 0.0;
@@ -379,7 +400,18 @@ class TeklifController extends Controller
                 $kdvOrani = isset($line['kdv_orani']) ? (float)$line['kdv_orani'] : 0.0;
                 $kdvDurum = $line['kdv_durum'] ?? 'H';
 
-                $brut = $miktar * $birimFiyat;
+                $lineRate = 1.0;
+                if ($doviz !== 'TL') {
+                    $lineRate = $kur;
+                    if ($lineRate <= 0 && $headerDoviz === $doviz && $headerKur > 0) {
+                        $lineRate = $headerKur;
+                    }
+                    if ($lineRate <= 0) {
+                        $lineRate = 0.0;
+                    }
+                }
+
+                $brut = ($miktar * $birimFiyat) * $lineRate;
                 $net = $brut;
 
                 foreach ($iskontolar as $oran) {

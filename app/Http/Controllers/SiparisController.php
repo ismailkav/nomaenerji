@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Firm;
+use App\Models\Depot;
 use App\Models\IslemTuru;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\Siparis;
 use App\Models\SiparisDetay;
+use App\Models\StockRevision;
 use App\Models\Teklif;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -93,9 +95,31 @@ class SiparisController extends Controller
             'u.kod as stok_kod',
             'u.aciklama as stok_aciklama',
             'sd.miktar as miktar',
-            'u.stok_miktar as stok_miktar',
             's.planlanan_miktar as planlanan_miktar',
         ]);
+
+        $query->selectSub(
+            DB::table('stokenvanter as se')
+                ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                ->whereColumn('se.stokkod', 'u.kod'),
+            'stok_miktar'
+        );
+
+        $query->selectSub(
+            DB::table('stokrevize as sr2')
+                ->selectRaw('COALESCE(SUM(sr2.miktar),0)')
+                ->whereColumn('sr2.stokkod', 'u.kod')
+                ->whereIn('sr2.durum', ['A', 'Açık', 'AÇõŽñk']),
+            'revize_toplam'
+        );
+
+        $query->selectSub(
+            DB::table('stokrevize as sr3')
+                ->selectRaw('COALESCE(SUM(sr3.miktar),0)')
+                ->whereColumn('sr3.siparissatirid', 'sd.id')
+                ->whereIn('sr3.durum', ['A', 'Açık', 'AÇõŽñk']),
+            'revize_satir_miktar'
+        );
 
         $query->selectSub(
             DB::table('siparis_detaylari as sd2')
@@ -176,6 +200,42 @@ class SiparisController extends Controller
             return back()->withErrors(['selected_rows' => 'Satış sipariş satırı bulunamadı.']);
         }
 
+        $revizeMap = StockRevision::query()
+            ->whereIn('siparissatirid', array_keys($wanted))
+            ->whereIn('durum', ['A', 'Açık', 'AÇõŽñk'])
+            ->selectRaw('siparissatirid, COALESCE(SUM(miktar),0) as toplam')
+            ->groupBy('siparissatirid')
+            ->pluck('toplam', 'siparissatirid')
+            ->all();
+
+        DB::transaction(function () use ($details, $wanted) {
+            $totalsBySiparis = [];
+            foreach ($details as $detail) {
+                $siparisId = (int) ($detail->siparis_id ?? 0);
+                $qty = (float) ($wanted[$detail->id] ?? 0);
+                if ($siparisId <= 0 || $qty <= 0) {
+                    continue;
+                }
+                $totalsBySiparis[$siparisId] = ($totalsBySiparis[$siparisId] ?? 0) + $qty;
+            }
+
+            foreach ($totalsBySiparis as $siparisId => $qty) {
+                $siparis = Siparis::query()
+                    ->where('id', $siparisId)
+                    ->where('siparis_turu', 'satis')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$siparis) {
+                    continue;
+                }
+
+                $current = (float) ($siparis->planlanan_miktar ?? 0);
+                $siparis->planlanan_miktar = $current + $qty;
+                $siparis->save();
+            }
+        });
+
         $grouped = [];
         foreach ($details as $detail) {
             $urunId = (int) ($detail->urun_id ?? 0);
@@ -183,7 +243,8 @@ class SiparisController extends Controller
                 continue;
             }
 
-            $qty = $wanted[$detail->id] ?? 0.0;
+            $qty = (float) ($wanted[$detail->id] ?? 0.0);
+            $qty += isset($revizeMap[$detail->id]) ? (float) $revizeMap[$detail->id] : 0.0;
             if ($qty <= 0) {
                 continue;
             }
@@ -238,6 +299,551 @@ class SiparisController extends Controller
         ]);
 
         return redirect()->route('orders.create', ['tur' => 'alim']);
+    }
+
+    public function planningSaveRevision(Request $request)
+    {
+        $data = $request->validate([
+            'siparissatirid' => ['required', 'integer', 'min:1'],
+            'miktar' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $detailId = (int) $data['siparissatirid'];
+        $qty = $data['miktar'] !== null ? (float) $data['miktar'] : null;
+
+        $detail = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
+            ->where('sd.id', $detailId)
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->select([
+                'sd.id',
+                'u.kod as stokkod',
+            ])
+            ->first();
+
+        if (!$detail || empty($detail->stokkod)) {
+            return response()->json(['ok' => false, 'message' => 'Satır bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $detail->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $result = DB::transaction(function () use ($detailId, $stokkod, $qty, $openDurumlar) {
+            $stokMiktar = (float) DB::table('stokenvanter')
+                ->where('stokkod', $stokkod)
+                ->sum('stokmiktar');
+
+            $otherTotal = (float) StockRevision::query()
+                ->where('stokkod', $stokkod)
+                ->whereIn('durum', $openDurumlar)
+                ->where('siparissatirid', '!=', $detailId)
+                ->lockForUpdate()
+                ->sum('miktar');
+
+            if ($qty === null || $qty <= 0) {
+                StockRevision::where('siparissatirid', $detailId)->delete();
+                $thisQty = 0.0;
+            } else {
+                $thisQty = (float) (int) round($qty);
+                $maxForThis = max(0.0, $stokMiktar - $otherTotal);
+
+                if ($thisQty > $maxForThis) {
+                    abort(response()->json([
+                        'ok' => false,
+                        'message' => 'Revize miktar gerçek stoktan fazla olamaz.',
+                        'max' => (int) round($maxForThis),
+                    ], 422));
+                }
+
+                StockRevision::updateOrCreate(
+                    ['siparissatirid' => $detailId],
+                    [
+                        'stokkod' => $stokkod,
+                        'miktar' => $thisQty,
+                        'durum' => 'Açık',
+                    ]
+                );
+            }
+
+            $revizeToplam = (float) StockRevision::query()
+                ->where('stokkod', $stokkod)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $gercekStok = $stokMiktar - $revizeToplam;
+
+            return [
+                'stokkod' => $stokkod,
+                'stok_miktar' => (int) round($stokMiktar),
+                'revize_toplam' => (int) round($revizeToplam),
+                'gercek_stok' => (int) round($gercekStok),
+                'this_revize' => (int) round($thisQty ?? 0),
+            ];
+        });
+
+        return response()->json(array_merge(['ok' => true], $result));
+    }
+
+    public function planningRevisionDepotData(Request $request)
+    {
+        $detailId = (int) $request->query('siparissatirid', 0);
+        if ($detailId <= 0) {
+            return response()->json(['ok' => false, 'message' => 'Satır seçilmedi.'], 422);
+        }
+
+        $detail = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
+            ->where('sd.id', $detailId)
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->select([
+                'sd.id',
+                'u.kod as stokkod',
+                'u.aciklama as stokaciklama',
+            ])
+            ->first();
+
+        if (!$detail || empty($detail->stokkod)) {
+            return response()->json(['ok' => false, 'message' => 'Satır bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $detail->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $depots = Depot::query()
+            ->where('pasif', false)
+            ->orderBy('kod')
+            ->get(['id', 'kod']);
+
+        $stokByDepot = DB::table('stokenvanter')
+            ->selectRaw('depo_id, COALESCE(SUM(stokmiktar),0) as stokmiktar')
+            ->where('stokkod', $stokkod)
+            ->groupBy('depo_id')
+            ->pluck('stokmiktar', 'depo_id')
+            ->all();
+
+        $revizeByDepot = DB::table('stokrevize')
+            ->selectRaw('depo_id, COALESCE(SUM(miktar),0) as miktar')
+            ->where('stokkod', $stokkod)
+            ->whereIn('durum', $openDurumlar)
+            ->whereNotNull('depo_id')
+            ->groupBy('depo_id')
+            ->pluck('miktar', 'depo_id')
+            ->all();
+
+        $rows = [];
+        foreach ($depots as $depot) {
+            $stok = (float) ($stokByDepot[$depot->id] ?? 0);
+            $rev = (float) ($revizeByDepot[$depot->id] ?? 0);
+            $avail = $stok - $rev;
+            $rows[] = [
+                'depo_id' => (int) $depot->id,
+                'depo' => (string) $depot->kod,
+                'stokkod' => $stokkod,
+                'stokmiktar' => (int) round($stok),
+                'revizemiktar' => (int) round($rev),
+                'kullanilabilir' => (int) round($avail),
+            ];
+        }
+
+        return response()->json([
+            'ok' => true,
+            'siparissatirid' => $detailId,
+            'stokkod' => $stokkod,
+            'stokaciklama' => (string) ($detail->stokaciklama ?? ''),
+            'rows' => $rows,
+        ]);
+    }
+
+    public function planningTransferRevision(Request $request)
+    {
+        $data = $request->validate([
+            'siparissatirid' => ['required', 'integer', 'min:1'],
+            'items' => ['required', 'array'],
+            'items.*.depo_id' => ['required', 'integer', 'min:1'],
+            'items.*.miktar' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $detailId = (int) $data['siparissatirid'];
+        $items = $data['items'];
+
+        $detail = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
+            ->where('sd.id', $detailId)
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->select(['sd.id', 'u.kod as stokkod'])
+            ->first();
+
+        if (!$detail || empty($detail->stokkod)) {
+            return response()->json(['ok' => false, 'message' => 'Satır bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $detail->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $result = DB::transaction(function () use ($detailId, $stokkod, $items, $openDurumlar) {
+            foreach ($items as $item) {
+                $depoId = (int) ($item['depo_id'] ?? 0);
+                $qty = (float) ($item['miktar'] ?? 0);
+                $qty = (float) (int) round($qty);
+
+                if ($depoId <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $stokMiktarDepot = (float) DB::table('stokenvanter')
+                    ->where('depo_id', $depoId)
+                    ->where('stokkod', $stokkod)
+                    ->sum('stokmiktar');
+
+                $revizeDepot = (float) DB::table('stokrevize')
+                    ->where('depo_id', $depoId)
+                    ->where('stokkod', $stokkod)
+                    ->whereIn('durum', $openDurumlar)
+                    ->lockForUpdate()
+                    ->sum('miktar');
+
+                $available = $stokMiktarDepot - $revizeDepot;
+                if ($qty > $available) {
+                    abort(response()->json([
+                        'ok' => false,
+                        'message' => 'Aktarım miktarı kullanılabilir stoktan fazla olamaz.',
+                        'depo_id' => $depoId,
+                        'max' => (int) round(max(0, $available)),
+                    ], 422));
+                }
+
+                $existing = StockRevision::query()
+                    ->where('siparissatirid', $detailId)
+                    ->where('depo_id', $depoId)
+                    ->whereIn('durum', $openDurumlar)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing) {
+                    $existingQty = (float) $existing->miktar;
+                    $existing->miktar = $existingQty + $qty;
+                    $existing->save();
+                } else {
+                    StockRevision::create([
+                        'siparissatirid' => $detailId,
+                        'depo_id' => $depoId,
+                        'stokkod' => $stokkod,
+                        'miktar' => $qty,
+                        'durum' => 'Açık',
+                    ]);
+                }
+            }
+
+            $siparisRevize = (float) StockRevision::query()
+                ->where('siparissatirid', $detailId)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $stokMiktarTotal = (float) DB::table('stokenvanter')
+                ->where('stokkod', $stokkod)
+                ->sum('stokmiktar');
+
+            $revizeToplam = (float) StockRevision::query()
+                ->where('stokkod', $stokkod)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $gercekStok = $stokMiktarTotal - $revizeToplam;
+
+            return [
+                'siparis_revize' => (int) round($siparisRevize),
+                'stok_miktar' => (int) round($stokMiktarTotal),
+                'revize_toplam' => (int) round($revizeToplam),
+                'gercek_stok' => (int) round($gercekStok),
+            ];
+        });
+
+        return response()->json(array_merge([
+            'ok' => true,
+            'siparissatirid' => $detailId,
+            'stokkod' => $stokkod,
+        ], $result));
+    }
+
+    public function planningRevisionListData(Request $request)
+    {
+        $detailId = (int) $request->query('siparissatirid', 0);
+        if ($detailId <= 0) {
+            return response()->json(['ok' => false, 'message' => 'Satır seçilmedi.'], 422);
+        }
+
+        $detail = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
+            ->where('sd.id', $detailId)
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->select([
+                'sd.id',
+                'u.kod as stokkod',
+                'u.aciklama as stokaciklama',
+            ])
+            ->first();
+
+        if (!$detail || empty($detail->stokkod)) {
+            return response()->json(['ok' => false, 'message' => 'Satır bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $detail->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $revisions = DB::table('stokrevize as sr')
+            ->leftJoin('depolar as d', 'd.id', '=', 'sr.depo_id')
+            ->where('sr.siparissatirid', $detailId)
+            ->whereIn('sr.durum', $openDurumlar)
+            ->orderByDesc('sr.created_at')
+            ->get([
+                'sr.id',
+                'sr.depo_id',
+                'd.kod as depo_kod',
+                'sr.miktar',
+                'sr.created_at',
+            ]);
+
+        $rows = [];
+        foreach ($revisions as $rev) {
+            $depoId = $rev->depo_id !== null ? (int) $rev->depo_id : null;
+            $currentQty = (float) ($rev->miktar ?? 0);
+
+            if ($depoId) {
+                $stokDepot = (float) DB::table('stokenvanter')
+                    ->where('depo_id', $depoId)
+                    ->where('stokkod', $stokkod)
+                    ->sum('stokmiktar');
+
+                $totalDepot = (float) DB::table('stokrevize')
+                    ->where('depo_id', $depoId)
+                    ->where('stokkod', $stokkod)
+                    ->whereIn('durum', $openDurumlar)
+                    ->sum('miktar');
+
+                $max = $stokDepot - ($totalDepot - $currentQty);
+            } else {
+                $stokTotal = (float) DB::table('stokenvanter')
+                    ->where('stokkod', $stokkod)
+                    ->sum('stokmiktar');
+
+                $totalAll = (float) DB::table('stokrevize')
+                    ->where('stokkod', $stokkod)
+                    ->whereIn('durum', $openDurumlar)
+                    ->sum('miktar');
+
+                $max = $stokTotal - ($totalAll - $currentQty);
+            }
+
+            $rows[] = [
+                'id' => (int) $rev->id,
+                'depo_id' => $depoId,
+                'depo_kod' => (string) ($rev->depo_kod ?? '-'),
+                'miktar' => (int) round($currentQty),
+                'created_at' => $rev->created_at ? (string) $rev->created_at : null,
+                'max' => (int) round(max(0.0, $max)),
+            ];
+        }
+
+        return response()->json([
+            'ok' => true,
+            'siparissatirid' => $detailId,
+            'stokkod' => $stokkod,
+            'stokaciklama' => (string) ($detail->stokaciklama ?? ''),
+            'rows' => $rows,
+        ]);
+    }
+
+    public function planningRevisionListSave(Request $request)
+    {
+        $data = $request->validate([
+            'siparissatirid' => ['required', 'integer', 'min:1'],
+            'items' => ['required', 'array'],
+            'items.*.id' => ['required', 'integer', 'min:1'],
+            'items.*.miktar' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $detailId = (int) $data['siparissatirid'];
+        $items = $data['items'];
+
+        $detail = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
+            ->where('sd.id', $detailId)
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->select(['sd.id', 'u.kod as stokkod'])
+            ->first();
+
+        if (!$detail || empty($detail->stokkod)) {
+            return response()->json(['ok' => false, 'message' => 'Satır bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $detail->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $result = DB::transaction(function () use ($detailId, $stokkod, $items, $openDurumlar) {
+            foreach ($items as $item) {
+                $id = (int) ($item['id'] ?? 0);
+                $newQty = (float) ($item['miktar'] ?? 0);
+                $newQty = (float) (int) round($newQty);
+
+                $rev = StockRevision::query()
+                    ->where('id', $id)
+                    ->where('siparissatirid', $detailId)
+                    ->whereIn('durum', $openDurumlar)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$rev) {
+                    continue;
+                }
+
+                $depoId = $rev->depo_id ? (int) $rev->depo_id : null;
+                $currentQty = (float) $rev->miktar;
+
+                if ($depoId) {
+                    $stokDepot = (float) DB::table('stokenvanter')
+                        ->where('depo_id', $depoId)
+                        ->where('stokkod', $stokkod)
+                        ->sum('stokmiktar');
+
+                    $totalDepot = (float) DB::table('stokrevize')
+                        ->where('depo_id', $depoId)
+                        ->where('stokkod', $stokkod)
+                        ->whereIn('durum', $openDurumlar)
+                        ->lockForUpdate()
+                        ->sum('miktar');
+
+                    $max = $stokDepot - ($totalDepot - $currentQty);
+                } else {
+                    $stokTotal = (float) DB::table('stokenvanter')
+                        ->where('stokkod', $stokkod)
+                        ->sum('stokmiktar');
+
+                    $totalAll = (float) DB::table('stokrevize')
+                        ->where('stokkod', $stokkod)
+                        ->whereIn('durum', $openDurumlar)
+                        ->lockForUpdate()
+                        ->sum('miktar');
+
+                    $max = $stokTotal - ($totalAll - $currentQty);
+                }
+
+                $max = max(0.0, $max);
+                if ($newQty > $max) {
+                    abort(response()->json([
+                        'ok' => false,
+                        'message' => 'Revize miktarı kullanılabilir stoktan fazla olamaz.',
+                        'id' => $id,
+                        'max' => (int) round($max),
+                    ], 422));
+                }
+
+                if ($newQty <= 0) {
+                    $rev->delete();
+                } else {
+                    $rev->miktar = $newQty;
+                    $rev->save();
+                }
+            }
+
+            $siparisRevize = (float) StockRevision::query()
+                ->where('siparissatirid', $detailId)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $stokMiktarTotal = (float) DB::table('stokenvanter')
+                ->where('stokkod', $stokkod)
+                ->sum('stokmiktar');
+
+            $revizeToplam = (float) StockRevision::query()
+                ->where('stokkod', $stokkod)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $gercekStok = $stokMiktarTotal - $revizeToplam;
+
+            return [
+                'siparis_revize' => (int) round($siparisRevize),
+                'stok_miktar' => (int) round($stokMiktarTotal),
+                'revize_toplam' => (int) round($revizeToplam),
+                'gercek_stok' => (int) round($gercekStok),
+            ];
+        });
+
+        return response()->json(array_merge([
+            'ok' => true,
+            'siparissatirid' => $detailId,
+            'stokkod' => $stokkod,
+        ], $result));
+    }
+
+    public function planningRevisionListDelete(Request $request)
+    {
+        $data = $request->validate([
+            'siparissatirid' => ['required', 'integer', 'min:1'],
+            'id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $detailId = (int) $data['siparissatirid'];
+        $id = (int) $data['id'];
+
+        $rev = StockRevision::query()
+            ->where('id', $id)
+            ->where('siparissatirid', $detailId)
+            ->first();
+
+        if (!$rev) {
+            return response()->json(['ok' => false, 'message' => 'Revize satırı bulunamadı.'], 404);
+        }
+
+        $stokkod = (string) $rev->stokkod;
+        $openDurumlar = ['A', 'Açık', 'AÇõŽñk'];
+
+        $result = DB::transaction(function () use ($detailId, $stokkod, $id, $openDurumlar) {
+            StockRevision::query()
+                ->where('id', $id)
+                ->where('siparissatirid', $detailId)
+                ->whereIn('durum', $openDurumlar)
+                ->delete();
+
+            $siparisRevize = (float) StockRevision::query()
+                ->where('siparissatirid', $detailId)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $stokMiktarTotal = (float) DB::table('stokenvanter')
+                ->where('stokkod', $stokkod)
+                ->sum('stokmiktar');
+
+            $revizeToplam = (float) StockRevision::query()
+                ->where('stokkod', $stokkod)
+                ->whereIn('durum', $openDurumlar)
+                ->sum('miktar');
+
+            $gercekStok = $stokMiktarTotal - $revizeToplam;
+
+            return [
+                'siparis_revize' => (int) round($siparisRevize),
+                'stok_miktar' => (int) round($stokMiktarTotal),
+                'revize_toplam' => (int) round($revizeToplam),
+                'gercek_stok' => (int) round($gercekStok),
+            ];
+        });
+
+        return response()->json(array_merge([
+            'ok' => true,
+            'siparissatirid' => $detailId,
+            'stokkod' => $stokkod,
+        ], $result));
     }
 
     public function updatePlanning(Request $request, Siparis $siparis)
@@ -357,6 +963,8 @@ class SiparisController extends Controller
             $toplam = 0;
             $iskontoToplam = 0;
             $kdvToplam = 0;
+            $headerDoviz = strtoupper(trim((string) ($data['siparis_doviz'] ?? 'TL')));
+            $headerKur = (float) ($data['siparis_kur'] ?? 0);
 
             foreach ($lines as $line) {
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
@@ -369,8 +977,11 @@ class SiparisController extends Controller
                 }
 
                 $birim = $line['birim'] ?? null;
-                $doviz = $line['doviz'] ?? 'TL';
-                $kur = isset($line['kur']) ? (float) $line['kur'] : 1.0;
+                $doviz = strtoupper(trim((string) ($line['doviz'] ?? 'TL')));
+                $kur = isset($line['kur']) ? (float) $line['kur'] : 0.0;
+                if ($doviz === 'TL') {
+                    $kur = 1.0;
+                }
 
                 $iskontolar = [];
                 for ($i = 1; $i <= 6; $i++) {
@@ -385,7 +996,18 @@ class SiparisController extends Controller
                 $kdvOrani = isset($line['kdv_orani']) ? (float) $line['kdv_orani'] : 0.0;
                 $kdvDurum = $line['kdv_durum'] ?? 'H';
 
-                $brut = $miktar * $birimFiyat;
+                $lineRate = 1.0;
+                if ($doviz !== 'TL') {
+                    $lineRate = $kur;
+                    if ($lineRate <= 0 && $headerDoviz === $doviz && $headerKur > 0) {
+                        $lineRate = $headerKur;
+                    }
+                    if ($lineRate <= 0) {
+                        $lineRate = 0.0;
+                    }
+                }
+
+                $brut = ($miktar * $birimFiyat) * $lineRate;
                 $net = $brut;
 
                 foreach ($iskontolar as $oran) {
@@ -419,6 +1041,7 @@ class SiparisController extends Controller
                     'satir_aciklama' => $satirAciklama,
                     'durum'          => $durum,
                     'miktar'         => $miktar,
+                    'gelen'          => (float) ($line['gelen'] ?? 0),
                     'birim'          => $birim,
                     'birim_fiyat'    => $birimFiyat,
                     'doviz'          => $doviz,
@@ -565,6 +1188,8 @@ class SiparisController extends Controller
             $toplam = 0;
             $iskontoToplam = 0;
             $kdvToplam = 0;
+            $headerDoviz = strtoupper(trim((string) ($data['siparis_doviz'] ?? 'TL')));
+            $headerKur = (float) ($data['siparis_kur'] ?? 0);
 
             foreach ($lines as $line) {
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
@@ -577,8 +1202,11 @@ class SiparisController extends Controller
                 }
 
                 $birim = $line['birim'] ?? null;
-                $doviz = $line['doviz'] ?? 'TL';
-                $kur = isset($line['kur']) ? (float) $line['kur'] : 1.0;
+                $doviz = strtoupper(trim((string) ($line['doviz'] ?? 'TL')));
+                $kur = isset($line['kur']) ? (float) $line['kur'] : 0.0;
+                if ($doviz === 'TL') {
+                    $kur = 1.0;
+                }
 
                 $iskontolar = [];
                 for ($i = 1; $i <= 6; $i++) {
@@ -593,7 +1221,18 @@ class SiparisController extends Controller
                 $kdvOrani = isset($line['kdv_orani']) ? (float) $line['kdv_orani'] : 0.0;
                 $kdvDurum = $line['kdv_durum'] ?? 'H';
 
-                $brut = $miktar * $birimFiyat;
+                $lineRate = 1.0;
+                if ($doviz !== 'TL') {
+                    $lineRate = $kur;
+                    if ($lineRate <= 0 && $headerDoviz === $doviz && $headerKur > 0) {
+                        $lineRate = $headerKur;
+                    }
+                    if ($lineRate <= 0) {
+                        $lineRate = 0.0;
+                    }
+                }
+
+                $brut = ($miktar * $birimFiyat) * $lineRate;
                 $net = $brut;
 
                 foreach ($iskontolar as $oran) {
@@ -627,6 +1266,7 @@ class SiparisController extends Controller
                     'satir_aciklama' => $satirAciklama,
                     'durum'          => $durum,
                     'miktar'         => $miktar,
+                    'gelen'          => (float) ($line['gelen'] ?? 0),
                     'birim'          => $birim,
                     'birim_fiyat'    => $birimFiyat,
                     'doviz'          => $doviz,
