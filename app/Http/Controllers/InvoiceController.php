@@ -297,9 +297,16 @@ class InvoiceController extends Controller
                     $satirToplam = $net;
                 }
 
+                $projeKodu = trim((string) ($line['proje_kodu'] ?? ''));
+                if ($projeKodu === '' && $siparisDetay) {
+                    $projeKodu = trim((string) ($siparisDetay->proje_kodu ?? ($siparisDetay->siparis?->proje?->kod ?? '')));
+                }
+                $projeKodu = $projeKodu !== '' ? $projeKodu : null;
+
                 $createdDetay = FaturaDetay::create([
                     'fatura_id' => $siparis->id,
                     'urun_id' => $urunId,
+                    'proje_kodu' => $projeKodu,
                     'stokkod' => $stokKod !== '' ? $stokKod : null,
                     'satir_aciklama' => $satirAciklama,
                     'durum' => $durum,
@@ -640,9 +647,16 @@ class InvoiceController extends Controller
                     $satirToplam = $net;
                 }
 
+                $projeKodu = trim((string) ($line['proje_kodu'] ?? ''));
+                if ($projeKodu === '' && $siparisDetay) {
+                    $projeKodu = trim((string) ($siparisDetay->proje_kodu ?? ($siparisDetay->siparis?->proje?->kod ?? '')));
+                }
+                $projeKodu = $projeKodu !== '' ? $projeKodu : null;
+
                 $createdDetay = FaturaDetay::create([
                     'fatura_id' => $fatura->id,
                     'urun_id' => $urunId,
+                    'proje_kodu' => $projeKodu,
                     'stokkod' => $stokKod !== '' ? $stokKod : null,
                     'satir_aciklama' => $satirAciklama,
                     'durum' => $durum,
@@ -832,12 +846,17 @@ class InvoiceController extends Controller
         $links = DB::table('fatura_siparis_satir_eslestirmeleri as e')
             ->join('siparis_detaylari as sd', 'sd.id', '=', 'e.siparis_detay_id')
             ->join('siparisler as s', 's.id', '=', 'sd.siparis_id')
+            ->leftJoin('projeler as p', 'p.id', '=', 's.proje_id')
+            ->leftJoin('islem_turleri as it', 'it.id', '=', 's.islem_turu_id')
             ->leftJoin('urunler as u', 'u.id', '=', 'sd.urun_id')
             ->where('e.fatura_detay_id', $detay->id)
             ->orderByDesc('e.id')
             ->get([
                 's.siparis_no as siparis_no',
                 's.tarih as siparis_tarih',
+                'sd.proje_kodu as satir_proje_kodu',
+                'p.kod as header_proje_kodu',
+                'it.ad as islem_tipi',
                 'u.kod as stok_kod',
                 'u.aciklama as stok_aciklama',
                 'sd.satir_aciklama as satir_aciklama',
@@ -853,6 +872,8 @@ class InvoiceController extends Controller
                 return [
                     'siparis_no' => $row->siparis_no,
                     'siparis_tarih' => $row->siparis_tarih,
+                    'proje_kodu' => $row->satir_proje_kodu ?: $row->header_proje_kodu,
+                    'islem_tipi' => $row->islem_tipi,
                     'stok_kod' => $row->stok_kod,
                     'stok_aciklama' => $aciklama,
                     'siparis_miktar' => (float) $row->siparis_miktar,
@@ -950,6 +971,7 @@ class InvoiceController extends Controller
                     'urun_id' => $detay->urun_id,
                     'stok_kod' => $detay->urun?->kod,
                     'stok_aciklama' => $desc,
+                    'proje_kodu' => $detay->proje_kodu ?: $detay->siparis?->proje?->kod,
                     'siparis_miktar' => $miktar,
                     'gelen_miktar' => $gelen,
                     'kalan_miktar' => $kalan,

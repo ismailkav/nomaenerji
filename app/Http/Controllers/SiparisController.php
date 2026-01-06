@@ -7,6 +7,8 @@ use App\Models\Depot;
 use App\Models\IslemTuru;
 use App\Models\Product;
 use App\Models\Project;
+use App\Models\FiyatListesi;
+use App\Models\FiyatListesiDetay;
 use App\Models\Siparis;
 use App\Models\SiparisDetay;
 use App\Models\StockRevision;
@@ -14,6 +16,7 @@ use App\Models\Teklif;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SiparisController extends Controller
 {
@@ -73,6 +76,7 @@ class SiparisController extends Controller
     {
         $query = DB::table('siparis_detaylari as sd')
             ->join('siparisler as s', 'sd.siparis_id', '=', 's.id')
+            ->leftJoin('projeler as p', 's.proje_id', '=', 'p.id')
             ->leftJoin('urunler as u', 'sd.urun_id', '=', 'u.id')
             ->where('s.siparis_turu', 'satis')
             ->where('sd.durum', 'A');
@@ -91,12 +95,19 @@ class SiparisController extends Controller
             's.siparis_no',
             's.tarih',
             's.carikod',
+            'p.kod as proje_kod',
             'sd.urun_id',
             'u.kod as stok_kod',
             'u.aciklama as stok_aciklama',
             'sd.miktar as miktar',
-            's.planlanan_miktar as planlanan_miktar',
         ]);
+
+        $query->selectSub(
+            DB::table('siparis_satir_eslestirmeleri as e')
+                ->selectRaw('COALESCE(SUM(COALESCE(e.miktar,0)),0)')
+                ->whereColumn('e.satis_detay_id', 'sd.id'),
+            'planlanan_miktar'
+        );
 
         $query->selectSub(
             DB::table('stokenvanter as se')
@@ -167,6 +178,41 @@ class SiparisController extends Controller
             return back()->withErrors(['carikod' => 'Cari bulunamadı.']);
         }
 
+        $purchaseDate = now()->toDateString();
+
+        $activePriceList = FiyatListesi::query()
+            ->where('firm_id', $firm->id)
+            ->where('baslangic_tarihi', '<=', $purchaseDate)
+            ->where(function ($q) use ($purchaseDate) {
+                $q->whereNull('bitis_tarihi')
+                    ->orWhere('bitis_tarihi', '>=', $purchaseDate);
+            })
+            ->orderByDesc('baslangic_tarihi')
+            ->orderByDesc('id')
+            ->first();
+
+        $detailByProductId = [];
+        $detailByStockCode = [];
+        if ($activePriceList) {
+            $listDetails = FiyatListesiDetay::query()
+                ->where('fiyat_listesi_id', $activePriceList->id)
+                ->get(['urun_id', 'stok_kod', 'birim_fiyat', 'doviz']);
+
+            foreach ($listDetails as $d) {
+                $price = (float) ($d->birim_fiyat ?? 0);
+                $doviz = strtoupper(trim((string) ($d->doviz ?? 'TL')));
+                if (!in_array($doviz, ['TL', 'USD', 'EUR'], true)) {
+                    $doviz = 'TL';
+                }
+
+                if ($d->urun_id) {
+                    $detailByProductId[(int) $d->urun_id] = ['price' => $price, 'doviz' => $doviz];
+                } elseif ($d->stok_kod) {
+                    $detailByStockCode[(string) $d->stok_kod] = ['price' => $price, 'doviz' => $doviz];
+                }
+            }
+        }
+
         $selectedRows = json_decode($data['selected_rows'], true);
         if (!is_array($selectedRows) || count($selectedRows) === 0) {
             return back()->withErrors(['selected_rows' => 'Seçili satır bulunamadı.']);
@@ -187,7 +233,7 @@ class SiparisController extends Controller
         }
 
         $details = SiparisDetay::query()
-            ->with(['urun', 'siparis'])
+            ->with(['urun', 'siparis.islemTuru', 'siparis.proje'])
             ->whereIn('id', array_keys($wanted))
             ->where('durum', 'A')
             ->get()
@@ -208,34 +254,6 @@ class SiparisController extends Controller
             ->pluck('toplam', 'siparissatirid')
             ->all();
 
-        DB::transaction(function () use ($details, $wanted) {
-            $totalsBySiparis = [];
-            foreach ($details as $detail) {
-                $siparisId = (int) ($detail->siparis_id ?? 0);
-                $qty = (float) ($wanted[$detail->id] ?? 0);
-                if ($siparisId <= 0 || $qty <= 0) {
-                    continue;
-                }
-                $totalsBySiparis[$siparisId] = ($totalsBySiparis[$siparisId] ?? 0) + $qty;
-            }
-
-            foreach ($totalsBySiparis as $siparisId => $qty) {
-                $siparis = Siparis::query()
-                    ->where('id', $siparisId)
-                    ->where('siparis_turu', 'satis')
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$siparis) {
-                    continue;
-                }
-
-                $current = (float) ($siparis->planlanan_miktar ?? 0);
-                $siparis->planlanan_miktar = $current + $qty;
-                $siparis->save();
-            }
-        });
-
         $grouped = [];
         foreach ($details as $detail) {
             $urunId = (int) ($detail->urun_id ?? 0);
@@ -243,15 +261,41 @@ class SiparisController extends Controller
                 continue;
             }
 
-            $qty = (float) ($wanted[$detail->id] ?? 0.0);
-            $qty += isset($revizeMap[$detail->id]) ? (float) $revizeMap[$detail->id] : 0.0;
+            $proje = $detail->siparis->proje;
+            $projeId = (int) ($detail->siparis->proje_id ?? 0);
+            $groupKey = $urunId . ':' . $projeId;
+
+            $plannedQty = (float) ($wanted[$detail->id] ?? 0.0);
+            $revizeQty = isset($revizeMap[$detail->id]) ? (float) $revizeMap[$detail->id] : 0.0;
+            $qty = $plannedQty + $revizeQty;
             if ($qty <= 0) {
                 continue;
             }
 
-            if (!isset($grouped[$urunId])) {
-                $grouped[$urunId] = [
+            if (!isset($grouped[$groupKey])) {
+                $stockCode = (string) ($detail->urun->kod ?? '');
+                $priceFromList = null;
+                $dovizFromList = 'TL';
+
+                if (array_key_exists($urunId, $detailByProductId)) {
+                    $priceFromList = (float) ($detailByProductId[$urunId]['price'] ?? 0);
+                    $dovizFromList = (string) ($detailByProductId[$urunId]['doviz'] ?? 'TL');
+                } elseif ($stockCode !== '' && array_key_exists($stockCode, $detailByStockCode)) {
+                    $priceFromList = (float) ($detailByStockCode[$stockCode]['price'] ?? 0);
+                    $dovizFromList = (string) ($detailByStockCode[$stockCode]['doviz'] ?? 'TL');
+                }
+
+                if ($priceFromList === null) {
+                    $priceFromList = 0.0;
+                    $dovizFromList = 'TL';
+                }
+
+                $isk1 = $proje ? (float) ($proje->iskonto1 ?? 0) : 0.0;
+                $isk2 = $proje ? (float) ($proje->iskonto2 ?? 0) : 0.0;
+
+                $grouped[$groupKey] = [
                     'urun_id' => $urunId,
+                    'proje_kodu' => $proje ? ($proje->kod ?? null) : null,
                     'urun' => [
                         'kod' => $detail->urun->kod ?? null,
                         'aciklama' => $detail->urun->aciklama ?? null,
@@ -259,12 +303,12 @@ class SiparisController extends Controller
                     'satir_aciklama' => $detail->urun->aciklama ?? ($detail->satir_aciklama ?? ''),
                     'durum' => 'A',
                     'miktar' => 0.0,
-                    'birim_fiyat' => (float) ($detail->urun->satis_fiyat ?? 0),
+                    'birim_fiyat' => $priceFromList,
                     'kdv_orani' => (float) ($detail->urun->kdv_oran ?? 0),
-                    'doviz' => 'TL',
-                    'kur' => 1,
-                    'iskonto1' => 0,
-                    'iskonto2' => 0,
+                    'doviz' => $dovizFromList,
+                    'kur' => $dovizFromList === 'TL' ? 1 : null,
+                    'iskonto1' => $isk1,
+                    'iskonto2' => $isk2,
                     'iskonto3' => 0,
                     'iskonto4' => 0,
                     'iskonto5' => 0,
@@ -274,13 +318,18 @@ class SiparisController extends Controller
                 ];
             }
 
-            $grouped[$urunId]['miktar'] += $qty;
-            $grouped[$urunId]['satis_detay_ids'][] = $detail->id;
-            $grouped[$urunId]['sales_links'][] = [
+            $grouped[$groupKey]['miktar'] += $qty;
+            $grouped[$groupKey]['satis_detay_ids'][] = $detail->id;
+            $grouped[$groupKey]['sales_links'][] = [
                 'carikod' => $detail->siparis->carikod ?? null,
                 'siparis_no' => $detail->siparis->siparis_no ?? null,
                 'tarih' => $detail->siparis->tarih ? $detail->siparis->tarih->toDateString() : null,
-                'miktar' => $qty,
+                'eslesen_miktar' => $qty,
+                'islem_turu' => $detail->siparis->islemTuru->ad ?? null,
+                'proje' => $detail->siparis->proje->kod ?? null,
+                'miktar' => $detail->miktar ?? null,
+                'plan_miktar' => $plannedQty,
+                'revize_miktar' => $revizeQty,
             ];
         }
 
@@ -293,12 +342,15 @@ class SiparisController extends Controller
             'header' => [
                 'carikod' => $firm->carikod,
                 'cariaciklama' => $firm->cariaciklama,
-                'tarih' => now()->toDateString(),
+                'tarih' => $purchaseDate,
             ],
             'lines' => $lines,
         ]);
 
-        return redirect()->route('orders.create', ['tur' => 'alim']);
+        $token = Str::uuid()->toString();
+        session()->put("planning_auto_save_tokens.$token", true);
+
+        return redirect()->route('orders.create', ['tur' => 'alim', 'auto_save_token' => $token]);
     }
 
     public function planningSaveRevision(Request $request)
@@ -895,6 +947,7 @@ class SiparisController extends Controller
 
         $prefillLines = null;
         $selectedFirm = null;
+        $autoSaveToken = null;
 
         if ($tur === 'alim') {
             $prefill = session()->pull('planning_purchase_prefill');
@@ -914,6 +967,11 @@ class SiparisController extends Controller
                     $selectedFirm = Firm::where('carikod', $flash['carikod'])->first();
                 }
             }
+
+            $candidateToken = (string) $request->query('auto_save_token', '');
+            if ($candidateToken !== '' && $request->session()->get("planning_auto_save_tokens.$candidateToken")) {
+                $autoSaveToken = $candidateToken;
+            }
         }
 
         return view('orders.create', [
@@ -927,6 +985,7 @@ class SiparisController extends Controller
             'active'       => $active,
             'selectedFirm' => $selectedFirm,
             'prefillLines' => $prefillLines,
+            'autoSaveToken' => $autoSaveToken,
         ]);
     }
 
@@ -943,7 +1002,25 @@ class SiparisController extends Controller
 
         $lines = $request->input('lines', []);
 
-        DB::transaction(function () use ($data, $lines) {
+        $autoSaveToken = (string) $request->input('auto_save_token', '');
+        if ($autoSaveToken !== '') {
+            $completedId = (int) $request->session()->get("planning_auto_save_completed.$autoSaveToken", 0);
+            if ($completedId > 0) {
+                return redirect()
+                    ->route('orders.edit', $completedId)
+                    ->with('status', 'Sipariş oluşturuldu.');
+            }
+
+            $ok = (bool) $request->session()->pull("planning_auto_save_tokens.$autoSaveToken", false);
+            if (!$ok) {
+                return redirect()
+                    ->route('orders.create', ['tur' => $data['siparis_turu'] ?? 'alim'])
+                    ->withErrors(['auto_save_token' => 'Otomatik kaydetme anahtarı geçersiz veya süresi dolmuş.']);
+            }
+        }
+
+        $siparis = null;
+        DB::transaction(function () use ($data, $lines, &$siparis) {
             $start = ($data['siparis_turu'] ?? 'alim') === 'satis' ? 20000001 : 10000001;
 
             $maxSiparisNo = Siparis::query()
@@ -965,6 +1042,18 @@ class SiparisController extends Controller
             $kdvToplam = 0;
             $headerDoviz = strtoupper(trim((string) ($data['siparis_doviz'] ?? 'TL')));
             $headerKur = (float) ($data['siparis_kur'] ?? 0);
+
+            $headerProjeKodu = null;
+            if (($data['siparis_turu'] ?? 'alim') === 'alim') {
+                $projeId = (int) ($data['proje_id'] ?? 0);
+                if ($projeId > 0) {
+                    $headerProjeKodu = Project::query()->whereKey($projeId)->value('kod');
+                    $headerProjeKodu = $headerProjeKodu !== null ? trim((string) $headerProjeKodu) : null;
+                    if ($headerProjeKodu === '') {
+                        $headerProjeKodu = null;
+                    }
+                }
+            }
 
             foreach ($lines as $line) {
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
@@ -1035,9 +1124,16 @@ class SiparisController extends Controller
                     $satirToplam = $net;
                 }
 
+                $projeKodu = trim((string) ($line['proje_kodu'] ?? ''));
+                if ($projeKodu === '' && $headerProjeKodu) {
+                    $projeKodu = $headerProjeKodu;
+                }
+                $projeKodu = $projeKodu !== '' ? $projeKodu : null;
+
                 $detay = SiparisDetay::create([
                     'siparis_id'     => $siparis->id,
                     'urun_id'        => $urunId,
+                    'proje_kodu'     => $projeKodu,
                     'satir_aciklama' => $satirAciklama,
                     'durum'          => $durum,
                     'miktar'         => $miktar,
@@ -1065,15 +1161,28 @@ class SiparisController extends Controller
                         $raw = is_array($decoded) ? $decoded : null;
                     }
 
+                    $links = $line['sales_links'] ?? null;
+                    if (is_string($links)) {
+                        $decoded = json_decode($links, true);
+                        $links = is_array($decoded) ? $decoded : null;
+                    }
+
                     if (is_array($raw) && count($raw) > 0) {
                         $rowsToInsert = [];
-                        foreach ($raw as $satisId) {
+                        foreach ($raw as $idx => $satisId) {
                             $sid = (int) $satisId;
                             if ($sid <= 0) continue;
+
+                            $miktar = null;
+                            if (is_array($links) && isset($links[$idx]) && is_array($links[$idx])) {
+                                $miktar = $links[$idx]['eslesen_miktar'] ?? $links[$idx]['miktar'] ?? $links[$idx]['plan_miktar'] ?? null;
+                            }
+                            $miktar = $miktar !== null ? (float) $miktar : null;
+
                             $rowsToInsert[] = [
                                 'alim_detay_id' => $detay->id,
                                 'satis_detay_id' => $sid,
-                                'miktar' => null,
+                                'miktar' => $miktar,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ];
@@ -1101,6 +1210,14 @@ class SiparisController extends Controller
 
         $tur = $this->normalizeTur($data['siparis_turu'] ?? null);
 
+        if ($autoSaveToken !== '' && $siparis) {
+            $request->session()->put("planning_auto_save_completed.$autoSaveToken", (int) $siparis->id);
+
+            return redirect()
+                ->route('orders.edit', $siparis)
+                ->with('status', 'Sipariş oluşturuldu.');
+        }
+
         return redirect()->route('orders.index', ['tur' => $tur])
             ->with('status', 'Sipariş oluşturuldu.');
     }
@@ -1123,7 +1240,13 @@ class SiparisController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
 
-        $siparis->load(['detaylar.urun', 'detaylar.alimEslestirmeleri.satisDetay.siparis', 'islemTuru', 'proje']);
+        $siparis->load([
+            'detaylar.urun',
+            'detaylar.alimEslestirmeleri.satisDetay.siparis.islemTuru',
+            'detaylar.alimEslestirmeleri.satisDetay.siparis.proje',
+            'islemTuru',
+            'proje',
+        ]);
 
         if ($tur === 'alim') {
             foreach ($siparis->detaylar as $detay) {
@@ -1135,18 +1258,21 @@ class SiparisController extends Controller
                     if (!$satisDetay || !$satisSiparis) {
                         continue;
                     }
-                    $ids[] = $satisDetay->id;
-                    $links[] = [
-                        'carikod' => $satisSiparis->carikod ?? null,
-                        'siparis_no' => $satisSiparis->siparis_no ?? null,
-                        'tarih' => $satisSiparis->tarih ? $satisSiparis->tarih->toDateString() : null,
-                        'miktar' => $eslestirme->miktar ?? $satisDetay->miktar ?? null,
-                    ];
-                }
-                $detay->setAttribute('satis_detay_ids', $ids);
-                $detay->setAttribute('sales_links', $links);
-            }
-        }
+                     $ids[] = $satisDetay->id;
+                     $links[] = [
+                         'carikod' => $satisSiparis->carikod ?? null,
+                         'siparis_no' => $satisSiparis->siparis_no ?? null,
+                         'tarih' => $satisSiparis->tarih ? $satisSiparis->tarih->toDateString() : null,
+                         'eslesen_miktar' => $eslestirme->miktar ?? null,
+                         'islem_turu' => $satisSiparis->islemTuru->ad ?? null,
+                         'proje' => $satisSiparis->proje->kod ?? null,
+                         'miktar' => $satisDetay->miktar ?? null,
+                     ];
+                 }
+                 $detay->setAttribute('satis_detay_ids', $ids);
+                 $detay->setAttribute('sales_links', $links);
+             }
+         }
 
         $selectedFirm = null;
         if ($siparis->carikod) {
@@ -1191,6 +1317,18 @@ class SiparisController extends Controller
             $headerDoviz = strtoupper(trim((string) ($data['siparis_doviz'] ?? 'TL')));
             $headerKur = (float) ($data['siparis_kur'] ?? 0);
 
+            $headerProjeKodu = null;
+            if (($data['siparis_turu'] ?? 'alim') === 'alim') {
+                $projeId = (int) ($data['proje_id'] ?? 0);
+                if ($projeId > 0) {
+                    $headerProjeKodu = Project::query()->whereKey($projeId)->value('kod');
+                    $headerProjeKodu = $headerProjeKodu !== null ? trim((string) $headerProjeKodu) : null;
+                    if ($headerProjeKodu === '') {
+                        $headerProjeKodu = null;
+                    }
+                }
+            }
+
             foreach ($lines as $line) {
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
                 $urunId = $line['urun_id'] ?? null;
@@ -1260,9 +1398,16 @@ class SiparisController extends Controller
                     $satirToplam = $net;
                 }
 
+                $projeKodu = trim((string) ($line['proje_kodu'] ?? ''));
+                if ($projeKodu === '' && $headerProjeKodu) {
+                    $projeKodu = $headerProjeKodu;
+                }
+                $projeKodu = $projeKodu !== '' ? $projeKodu : null;
+
                 $detay = SiparisDetay::create([
                     'siparis_id'     => $siparis->id,
                     'urun_id'        => $urunId,
+                    'proje_kodu'     => $projeKodu,
                     'satir_aciklama' => $satirAciklama,
                     'durum'          => $durum,
                     'miktar'         => $miktar,
@@ -1290,15 +1435,28 @@ class SiparisController extends Controller
                         $raw = is_array($decoded) ? $decoded : null;
                     }
 
+                    $links = $line['sales_links'] ?? null;
+                    if (is_string($links)) {
+                        $decoded = json_decode($links, true);
+                        $links = is_array($decoded) ? $decoded : null;
+                    }
+
                     if (is_array($raw) && count($raw) > 0) {
                         $rowsToInsert = [];
-                        foreach ($raw as $satisId) {
+                        foreach ($raw as $idx => $satisId) {
                             $sid = (int) $satisId;
                             if ($sid <= 0) continue;
+
+                            $miktar = null;
+                            if (is_array($links) && isset($links[$idx]) && is_array($links[$idx])) {
+                                $miktar = $links[$idx]['eslesen_miktar'] ?? $links[$idx]['miktar'] ?? $links[$idx]['plan_miktar'] ?? null;
+                            }
+                            $miktar = $miktar !== null ? (float) $miktar : null;
+
                             $rowsToInsert[] = [
                                 'alim_detay_id' => $detay->id,
                                 'satis_detay_id' => $sid,
-                                'miktar' => null,
+                                'miktar' => $miktar,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ];
@@ -1334,6 +1492,16 @@ class SiparisController extends Controller
         $teklifNo = trim((string) ($siparis->teklif_no ?? ''));
 
         DB::transaction(function () use ($siparis, $teklifNo) {
+            if (($siparis->siparis_turu ?? 'alim') === 'alim') {
+                $alimDetayIds = $siparis->detaylar()->pluck('id')->all();
+
+                if (!empty($alimDetayIds)) {
+                    DB::table('siparis_satir_eslestirmeleri')
+                        ->whereIn('alim_detay_id', $alimDetayIds)
+                        ->delete();
+                }
+            }
+
             $siparis->delete();
 
             if ($teklifNo === '') {

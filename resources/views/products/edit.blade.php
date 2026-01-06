@@ -80,6 +80,24 @@
 
                         <div class="form-row">
                             <div class="form-group">
+                                <label for="urun_alt_grup_id">Alt Grup</label>
+                                <select id="urun_alt_grup_id" name="urun_alt_grup_id">
+                                    <option value="">Alt grup seçin</option>
+                                </select>
+                                @error('urun_alt_grup_id')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="urun_detay_grup_id">Detay Grup</label>
+                                <select id="urun_detay_grup_id" name="urun_detay_grup_id">
+                                    <option value="">Detay grup seçin</option>
+                                </select>
+                                @error('urun_detay_grup_id')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label for="satis_fiyat">Satış Fiyatı</label>
                                 <input type="text" id="satis_fiyat" name="satis_fiyat" value="{{ old('satis_fiyat', $product->satis_fiyat) }}" required>
                                 @error('satis_fiyat')<div class="form-error">{{ $message }}</div>@enderror
@@ -95,6 +113,40 @@
                                 <label for="pasif">Pasif</label>
                                 <input type="checkbox" id="pasif" name="pasif" value="1" {{ old('pasif', $product->pasif) ? 'checked' : '' }}>
                             </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prm1">Prm1</label>
+                                <input type="text" id="prm1" name="prm1" value="{{ old('prm1', $product->prm1) }}">
+                                @error('prm1')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prm2">Prm2</label>
+                                <input type="text" id="prm2" name="prm2" value="{{ old('prm2', $product->prm2) }}">
+                                @error('prm2')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prm3">Prm3</label>
+                                <input type="text" id="prm3" name="prm3" value="{{ old('prm3', $product->prm3) }}">
+                                @error('prm3')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prm4">Prm4</label>
+                                <input type="text" id="prm4" name="prm4" value="{{ old('prm4', $product->prm4) }}">
+                                @error('prm4')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fatura_kodu">Fatura Kodu</label>
+                            <input type="text" id="fatura_kodu" name="fatura_kodu" value="{{ old('fatura_kodu', $product->fatura_kodu) }}">
+                            @error('fatura_kodu')<div class="form-error">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="form-group">
@@ -122,6 +174,88 @@
 </div>
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script>
+    (function () {
+        var groupSelect = document.getElementById('kategori_id');
+        var subGroupSelect = document.getElementById('urun_alt_grup_id');
+        var detailGroupSelect = document.getElementById('urun_detay_grup_id');
+
+        if (!groupSelect || !subGroupSelect || !detailGroupSelect) {
+            return;
+        }
+
+        var subGroupsByGroup = @json($subGroupsByGroup ?? []);
+        var detailGroupsBySubGroup = @json($detailGroupsBySubGroup ?? []);
+
+        var selectedSubGroupId = @json((string)old('urun_alt_grup_id', $product->urun_alt_grup_id));
+        var selectedDetailGroupId = @json((string)old('urun_detay_grup_id', $product->urun_detay_grup_id));
+
+        function setOptions(selectEl, items, placeholder) {
+            selectEl.innerHTML = '';
+
+            var placeholderOpt = document.createElement('option');
+            placeholderOpt.value = '';
+            placeholderOpt.textContent = placeholder;
+            selectEl.appendChild(placeholderOpt);
+
+            (items || []).forEach(function (it) {
+                var opt = document.createElement('option');
+                opt.value = String(it.id);
+                opt.textContent = it.ad;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function hasId(items, id) {
+            return (items || []).some(function (it) {
+                return String(it.id) === String(id);
+            });
+        }
+
+        function refreshDetailGroups() {
+            var subGroupId = subGroupSelect.value || '';
+            var details = detailGroupsBySubGroup[subGroupId] || [];
+
+            setOptions(detailGroupSelect, details, 'Detay grup seçin');
+
+            if (selectedDetailGroupId && hasId(details, selectedDetailGroupId)) {
+                detailGroupSelect.value = String(selectedDetailGroupId);
+            } else {
+                detailGroupSelect.value = '';
+            }
+
+            selectedDetailGroupId = '';
+        }
+
+        function refreshSubGroups() {
+            var groupId = groupSelect.value || '';
+            var subs = subGroupsByGroup[groupId] || [];
+
+            setOptions(subGroupSelect, subs, 'Alt grup seçin');
+
+            if (selectedSubGroupId && hasId(subs, selectedSubGroupId)) {
+                subGroupSelect.value = String(selectedSubGroupId);
+            } else {
+                subGroupSelect.value = '';
+            }
+
+            selectedSubGroupId = '';
+            refreshDetailGroups();
+        }
+
+        groupSelect.addEventListener('change', function () {
+            selectedSubGroupId = '';
+            selectedDetailGroupId = '';
+            refreshSubGroups();
+        });
+
+        subGroupSelect.addEventListener('change', function () {
+            selectedDetailGroupId = '';
+            refreshDetailGroups();
+        });
+
+        refreshSubGroups();
+    })();
+
     (function () {
         var dropzone = document.getElementById('imageDropzoneEdit');
         var fileInput = document.getElementById('resim');
@@ -163,4 +297,3 @@
 </script>
 </body>
 </html>
-

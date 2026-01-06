@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($resource ?? 'orders') === 'invoices' ? 'Faturalar' : 'Siparişler' }} - NomaEnerji</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,6 +77,23 @@
             gap: 0.5rem;
         }
 
+        .offers-filter-actions .small-btn {
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            color: #2563eb;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .offers-filter-actions .small-btn:hover {
+            background: #f3f4f6;
+        }
+
         .offers-filter-button {
             padding: 0.45rem 1rem;
             border-radius: 999px;
@@ -127,6 +145,24 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
+        .offers-table thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .offers-table thead th.sortable:hover {
+            background-color: #e5e7eb;
+        }
+        .offers-table thead th.sort-asc::after {
+            content: " ▲";
+            font-size: 0.75em;
+            color: #6b7280;
+        }
+        .offers-table thead th.sort-desc::after {
+            content: " ▼";
+            font-size: 0.75em;
+            color: #6b7280;
+        }
+
         .offers-table tbody td {
             padding: 0.7rem 0.9rem;
             font-size: 0.8rem;
@@ -144,6 +180,90 @@
             font-weight: 500;
             background-color: #e5e7eb;
             color: #374151;
+        }
+
+        .offer-line-setting-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            user-select: none;
+        }
+        .offer-line-setting-item:last-child {
+            border-bottom: none;
+        }
+        .offer-line-setting-item.dragging {
+            opacity: 0.55;
+        }
+        .offer-line-setting-no {
+            width: 28px;
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-align: right;
+        }
+        .offer-line-setting-handle {
+            width: 18px;
+            color: #9ca3af;
+            cursor: grab;
+            text-align: center;
+        }
+        .offer-line-setting-label {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(15, 23, 42, 0.25);
+            max-width: 720px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .modal-body {
+            padding: 0.75rem 1rem;
+            overflow: auto;
+        }
+        .btn {
+            padding: 0.45rem 1.2rem;
+            border-radius: 999px;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+        .modal-close {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #6b7280;
         }
 
         @media (max-width: 1024px) {
@@ -241,12 +361,18 @@
                         <div class="offers-filter-actions">
                             <button type="submit" class="offers-filter-button">Filtrele</button>
                             <a href="{{ route(($resource ?? 'orders') . '.index', ['tur' => $tur ?? 'alim']) }}" class="offers-filter-reset">Temizle</a>
+                            <button type="button" id="btnOrderListSettings" class="small-btn" title="Tablo DÇ¬zenle" aria-label="Tablo DÇ¬zenle">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M19.4 15a1.9 1.9 0 0 0 .38 2.1l.06.06a2.3 2.3 0 0 1 0 3.25 2.3 2.3 0 0 1-3.25 0l-.06-.06a1.9 1.9 0 0 0-2.1-.38 1.9 1.9 0 0 0-1.15 1.74V22a2.3 2.3 0 0 1-4.6 0v-.09A1.9 1.9 0 0 0 7.5 20.7a1.9 1.9 0 0 0-2.1.38l-.06.06a2.3 2.3 0 0 1-3.25 0 2.3 2.3 0 0 1 0-3.25l.06-.06A1.9 1.9 0 0 0 2.5 15a1.9 1.9 0 0 0-1.74-1.15H.67a2.3 2.3 0 0 1 0-4.6h.09A1.9 1.9 0 0 0 2.5 7.5a1.9 1.9 0 0 0-.38-2.1l-.06-.06a2.3 2.3 0 0 1 0-3.25 2.3 2.3 0 0 1 3.25 0l.06.06A1.9 1.9 0 0 0 7.5 2.5a1.9 1.9 0 0 0 1.15-1.74V.67a2.3 2.3 0 0 1 4.6 0v.09A1.9 1.9 0 0 0 16.5 2.5a1.9 1.9 0 0 0 2.1-.38l.06-.06a2.3 2.3 0 0 1 3.25 0 2.3 2.3 0 0 1 0 3.25l-.06.06A1.9 1.9 0 0 0 21.5 7.5c0 .76.46 1.45 1.15 1.74H22a2.3 2.3 0 0 1 0 4.6h-.09A1.9 1.9 0 0 0 19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </form>
 
                 <div class="offers-table-wrapper">
-                    <table class="offers-table">
+                    <table class="offers-table" id="ordersListTable">
                         @php($isSales = ($tur ?? 'alim') === 'satis')
                         <thead>
                         <tr>
@@ -336,6 +462,453 @@
         </section>
     </main>
 </div>
+
+<div id="orderListSettingsModal" class="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="orderListSettingsTitle">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap: 0.75rem;">
+                <div class="modal-title" id="orderListSettingsTitle">Tablo DÇ¬zenle</div>
+                <label style="display:flex; align-items:center; gap: 0.35rem; font-size: 0.8rem; color:#374151;">
+                    <input type="checkbox" id="orderListToggleAll">
+                    <span>Hepsini SeÇ÷/KaldÇ¬r</span>
+                </label>
+            </div>
+            <div style="display:flex; align-items:center; gap: 0.5rem;">
+                <button type="button" id="orderListSaveBtn" class="btn btn-primary">Kaydet</button>
+                <button type="button" id="orderListCloseBtn" class="modal-close" aria-label="Kapat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div id="orderListSettingsList"></div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ asset('js/dashboard.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btnOrderListSettings');
+        var modal = document.getElementById('orderListSettingsModal');
+        var closeBtn = document.getElementById('orderListCloseBtn');
+        var listEl = document.getElementById('orderListSettingsList');
+        var toggleAllEl = document.getElementById('orderListToggleAll');
+        var saveBtn = document.getElementById('orderListSaveBtn');
+        var table = document.getElementById('ordersListTable');
+
+        if (!table) return;
+
+        var isInvoiceList = @json((($resource ?? 'orders') === 'invoices'));
+        var indexUrl = @json(route((($resource ?? 'orders') === 'invoices') ? 'invoice-list-columns.index' : 'order-list-columns.index'));
+        var storeUrl = @json(route((($resource ?? 'orders') === 'invoices') ? 'invoice-list-columns.store' : 'order-list-columns.store'));
+
+        var columns = [];
+        var draggingEl = null;
+        var currentSortKey = null;
+        var currentSortDir = 'asc';
+
+        function getCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) return meta.getAttribute('content') || '';
+            return '';
+        }
+
+        function openModal() {
+            if (!modal) return;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            if (!modal) return;
+            modal.style.display = 'none';
+        }
+
+        function normalizeColumns(cols) {
+            if (!Array.isArray(cols)) return [];
+            return cols
+                .filter(function (c) { return c && (c.key || c.sutun); })
+                .map(function (c) {
+                    return {
+                        key: String(c.key || c.sutun),
+                        label: String(c.label || c.key || c.sutun),
+                        durum: (typeof c.durum === 'boolean') ? c.durum : String(c.durum) === '1' || String(c.durum).toLowerCase() === 'true',
+                        sirano: (c.sirano !== undefined && c.sirano !== null) ? parseInt(c.sirano, 10) : 0
+                    };
+                })
+                .sort(function (a, b) {
+                    var aa = (Number.isFinite(a.sirano) ? a.sirano : 0);
+                    var bb = (Number.isFinite(b.sirano) ? b.sirano : 0);
+                    return aa - bb;
+                });
+        }
+
+        function parseDateTr(text) {
+            var s = (text || '').trim();
+            var m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+            if (!m) return null;
+            var d = parseInt(m[1], 10);
+            var mo = parseInt(m[2], 10) - 1;
+            var y = parseInt(m[3], 10);
+            var dt = new Date(y, mo, d);
+            if (Number.isNaN(dt.getTime())) return null;
+            return dt.getTime();
+        }
+
+        function parseNumberTr(text) {
+            var s = (text || '').trim();
+            if (!s) return null;
+            s = s.replace(/\s/g, '');
+            s = s.replace(/[^0-9,.-]/g, '');
+            if (!s) return null;
+            if (s.indexOf(',') >= 0 && s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                s = s.replace(/,/g, '');
+            }
+            var n = parseFloat(s);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function compareValues(a, b) {
+            if (a === null && b === null) return 0;
+            if (a === null) return -1;
+            if (b === null) return 1;
+            if (typeof a === 'number' && typeof b === 'number') return a - b;
+            return String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' });
+        }
+
+        function getCellValue(tr, key) {
+            var td = tr.querySelector('td[data-col-key=\"' + key + '\"]');
+            var text = td ? (td.textContent || '').trim() : '';
+
+            if (key === 'tarih' || key === 'onay_tarihi') {
+                return parseDateTr(text);
+            }
+            if (key === 'toplam_tutar') {
+                return parseNumberTr(text);
+            }
+            return text;
+        }
+
+        function setSortableHeaders() {
+            var ths = table.querySelectorAll('thead th[data-col-key]');
+            Array.prototype.forEach.call(ths, function (th) {
+                var key = th.getAttribute('data-col-key');
+                if (!key || key === 'islem') return;
+                th.classList.add('sortable');
+            });
+        }
+
+        function updateSortIndicator() {
+            var ths = table.querySelectorAll('thead th.sortable');
+            Array.prototype.forEach.call(ths, function (th) {
+                th.classList.remove('sort-asc', 'sort-desc');
+                var key = th.getAttribute('data-col-key');
+                if (key && key === currentSortKey) {
+                    th.classList.add(currentSortDir === 'desc' ? 'sort-desc' : 'sort-asc');
+                }
+            });
+        }
+
+        function sortTableByKey(key, dir) {
+            var tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            var sortableRows = rows.filter(function (tr) {
+                return !!tr.querySelector('td[data-col-key]');
+            });
+            if (!sortableRows.length) return;
+
+            var mapped = sortableRows.map(function (tr, idx) {
+                return { tr: tr, idx: idx, val: getCellValue(tr, key) };
+            });
+
+            mapped.sort(function (a, b) {
+                var cmp = compareValues(a.val, b.val);
+                if (cmp === 0) return a.idx - b.idx;
+                return (dir === 'desc' ? -cmp : cmp);
+            });
+
+            mapped.forEach(function (m) { tbody.appendChild(m.tr); });
+        }
+
+        function ensureDataColKeys() {
+            var keys = isInvoiceList
+                ? ['siparis_no', 'belge_no', 'tarih', 'carikod', 'cariaciklama', 'onay_durum', 'onay_tarihi', 'hazirlayan', 'toplam_tutar', 'islem']
+                : ['siparis_no', 'tarih', 'islem_turu', 'proje', 'carikod', 'cariaciklama', 'onay_durum', 'onay_tarihi', 'hazirlayan', 'toplam_tutar', 'islem'];
+
+            var ths = table.querySelectorAll('thead th');
+            Array.prototype.forEach.call(ths, function (th, idx) {
+                if (!th.getAttribute('data-col-key') && keys[idx]) th.setAttribute('data-col-key', keys[idx]);
+            });
+
+            var trs = table.querySelectorAll('tbody tr');
+            Array.prototype.forEach.call(trs, function (tr) {
+                var tds = tr.querySelectorAll('td');
+                Array.prototype.forEach.call(tds, function (td, idx) {
+                    if (!td.getAttribute('data-col-key') && keys[idx]) td.setAttribute('data-col-key', keys[idx]);
+                });
+            });
+        }
+
+        function fetchColumns() {
+            return fetch(indexUrl, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    columns = normalizeColumns((data && data.columns) ? data.columns : []);
+                    return columns;
+                });
+        }
+
+        function applyColumns() {
+            ensureDataColKeys();
+            if (!Array.isArray(columns) || !columns.length) return;
+
+            var theadRow = table.querySelector('thead tr');
+            if (!theadRow) return;
+
+            var currentOrder = columns.map(function (c) { return c.key; });
+
+            currentOrder.forEach(function (key) {
+                var th = theadRow.querySelector('th[data-col-key=\"' + key + '\"]');
+                if (th) theadRow.appendChild(th);
+            });
+
+            Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
+                currentOrder.forEach(function (key) {
+                    var td = tr.querySelector('td[data-col-key=\"' + key + '\"]');
+                    if (td) tr.appendChild(td);
+                });
+            });
+
+            var visibleMap = {};
+            columns.forEach(function (c) { visibleMap[c.key] = !!c.durum; });
+
+            Array.prototype.forEach.call(theadRow.querySelectorAll('th[data-col-key]'), function (th) {
+                var key = th.getAttribute('data-col-key');
+                var visible = (key in visibleMap) ? visibleMap[key] : true;
+                th.style.display = visible ? '' : 'none';
+            });
+
+            Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
+                Array.prototype.forEach.call(tr.querySelectorAll('td[data-col-key]'), function (td) {
+                    var key = td.getAttribute('data-col-key');
+                    var visible = (key in visibleMap) ? visibleMap[key] : true;
+                    td.style.display = visible ? '' : 'none';
+                });
+            });
+
+            setSortableHeaders();
+            updateSortIndicator();
+        }
+
+        function getItems() {
+            return listEl ? Array.prototype.slice.call(listEl.querySelectorAll('.offer-line-setting-item')) : [];
+        }
+
+        function getCheckboxes() {
+            return listEl ? Array.prototype.slice.call(listEl.querySelectorAll('input[type=\"checkbox\"][data-key]')) : [];
+        }
+
+        function syncToggleAll() {
+            if (!toggleAllEl) return;
+            var cbs = getCheckboxes();
+            if (!cbs.length) {
+                toggleAllEl.checked = false;
+                toggleAllEl.indeterminate = false;
+                return;
+            }
+            var checkedCount = cbs.filter(function (cb) { return cb.checked; }).length;
+            toggleAllEl.checked = checkedCount === cbs.length;
+            toggleAllEl.indeterminate = checkedCount > 0 && checkedCount < cbs.length;
+        }
+
+        function renumberItems() {
+            getItems().forEach(function (item, idx) {
+                var no = item.querySelector('.offer-line-setting-no');
+                if (no) no.textContent = String(idx + 1);
+            });
+        }
+
+        function buildList() {
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            columns.forEach(function (col) {
+                var item = document.createElement('div');
+                item.className = 'offer-line-setting-item';
+                item.setAttribute('draggable', 'true');
+                item.setAttribute('data-key', col.key);
+
+                var no = document.createElement('div');
+                no.className = 'offer-line-setting-no';
+                no.textContent = '';
+
+                var handle = document.createElement('div');
+                handle.className = 'offer-line-setting-handle';
+                handle.textContent = '⋮⋮';
+
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = !!col.durum;
+                cb.setAttribute('data-key', col.key);
+                cb.addEventListener('change', syncToggleAll);
+
+                var label = document.createElement('div');
+                label.className = 'offer-line-setting-label';
+                label.textContent = col.label || col.key;
+
+                item.appendChild(no);
+                item.appendChild(handle);
+                item.appendChild(cb);
+                item.appendChild(label);
+                listEl.appendChild(item);
+            });
+
+            renumberItems();
+            syncToggleAll();
+        }
+
+        function getDragAfterElement(container, y) {
+            var els = Array.prototype.slice.call(container.querySelectorAll('.offer-line-setting-item:not(.dragging)'));
+            var closest = null;
+            var closestOffset = Number.NEGATIVE_INFINITY;
+            els.forEach(function (child) {
+                var box = child.getBoundingClientRect();
+                var offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closestOffset) {
+                    closestOffset = offset;
+                    closest = child;
+                }
+            });
+            return closest;
+        }
+
+        function attachDnD() {
+            if (!listEl) return;
+            listEl.addEventListener('dragstart', function (e) {
+                var item = e.target && e.target.closest ? e.target.closest('.offer-line-setting-item') : null;
+                if (!item) return;
+                draggingEl = item;
+                item.classList.add('dragging');
+                try {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item.getAttribute('data-key') || '');
+                } catch (err) {}
+            });
+            listEl.addEventListener('dragend', function () {
+                if (draggingEl) draggingEl.classList.remove('dragging');
+                draggingEl = null;
+                renumberItems();
+            });
+            listEl.addEventListener('dragover', function (e) {
+                if (!draggingEl) return;
+                e.preventDefault();
+                var afterEl = getDragAfterElement(listEl, e.clientY);
+                if (!afterEl) listEl.appendChild(draggingEl);
+                else if (afterEl !== draggingEl) listEl.insertBefore(draggingEl, afterEl);
+                renumberItems();
+            });
+        }
+
+        attachDnD();
+
+        if (toggleAllEl) {
+            toggleAllEl.addEventListener('change', function () {
+                var checked = !!toggleAllEl.checked;
+                getCheckboxes().forEach(function (cb) { cb.checked = checked; });
+                syncToggleAll();
+            });
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function () {
+                var items = getItems();
+                if (!items.length) return;
+
+                var payload = items.map(function (item) {
+                    var key = item.getAttribute('data-key') || '';
+                    var cb = item.querySelector('input[type=\"checkbox\"]');
+                    return { key: key, durum: !!(cb && cb.checked) };
+                });
+
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.7';
+
+                fetch(storeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ columns: payload })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data || !data.ok) throw new Error('save_failed');
+                        columns = normalizeColumns(data.columns || []);
+                        applyColumns();
+                        closeModal();
+                    })
+                    .catch(function () {
+                        alert('Tablo ayarlarŽñ kaydedilemedi.');
+                    })
+                    .finally(function () {
+                        saveBtn.disabled = false;
+                        saveBtn.style.opacity = '1';
+                    });
+            });
+        }
+
+        if (btn) {
+            btn.addEventListener('click', function () {
+                fetchColumns()
+                    .then(function () {
+                        applyColumns();
+                        buildList();
+                        openModal();
+                    })
+                    .catch(function () {
+                        alert('Tablo ayarlarŽñ yÇ¬klenemedi.');
+                    });
+            });
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (modal) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        var thead = table.querySelector('thead');
+        if (thead) {
+            thead.addEventListener('click', function (e) {
+                var th = e.target && e.target.closest ? e.target.closest('th[data-col-key]') : null;
+                if (!th) return;
+                if (th.style.display === 'none') return;
+                var key = th.getAttribute('data-col-key');
+                if (!key || key === 'islem') return;
+
+                if (currentSortKey === key) currentSortDir = (currentSortDir === 'asc') ? 'desc' : 'asc';
+                else {
+                    currentSortKey = key;
+                    currentSortDir = 'asc';
+                }
+
+                updateSortIndicator();
+                sortTableByKey(key, currentSortDir);
+            });
+        }
+        setSortableHeaders();
+
+        fetchColumns().then(function () { applyColumns(); }).catch(function () { });
+    });
+</script>
 
 @if(false)
 <div id="planningDetailModal" style="display:none; position:fixed; inset:0; z-index:9999;">

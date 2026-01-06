@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductDetailGroup;
+use App\Models\ProductSubGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
@@ -44,7 +47,15 @@ class ProductController extends Controller
     {
         $categories = ProductCategory::orderBy('ad')->get();
 
-        return view('products.create', compact('categories'));
+        $subGroupsByGroup = ProductSubGroup::orderBy('ad')->get()->groupBy('urun_grup_id')->map(function ($items) {
+            return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
+        });
+
+        $detailGroupsBySubGroup = ProductDetailGroup::orderBy('ad')->get()->groupBy('urun_alt_grup_id')->map(function ($items) {
+            return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
+        });
+
+        return view('products.create', compact('categories', 'subGroupsByGroup', 'detailGroupsBySubGroup'));
     }
 
     public function store(Request $request)
@@ -65,7 +76,15 @@ class ProductController extends Controller
     {
         $categories = ProductCategory::orderBy('ad')->get();
 
-        return view('products.edit', compact('product', 'categories'));
+        $subGroupsByGroup = ProductSubGroup::orderBy('ad')->get()->groupBy('urun_grup_id')->map(function ($items) {
+            return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
+        });
+
+        $detailGroupsBySubGroup = ProductDetailGroup::orderBy('ad')->get()->groupBy('urun_alt_grup_id')->map(function ($items) {
+            return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
+        });
+
+        return view('products.edit', compact('product', 'categories', 'subGroupsByGroup', 'detailGroupsBySubGroup'));
     }
 
     public function update(Request $request, Product $product)
@@ -104,15 +123,53 @@ class ProductController extends Controller
             $uniqueRule .= ',' . $productId;
         }
 
-        return $request->validate([
+        $validator = Validator::make($request->all(), [
             'kod'         => ['required', 'string', 'max:50', $uniqueRule],
             'aciklama'    => ['required', 'string', 'max:255'],
             'satis_fiyat' => ['required', 'numeric', 'min:0'],
             'kdv_oran'    => ['required', 'integer', 'min:0', 'max:100'],
             'kategori_id' => ['nullable', 'integer', 'exists:urun_kategorileri,id'],
+            'urun_alt_grup_id' => ['nullable', 'integer', 'exists:urun_alt_gruplari,id'],
+            'urun_detay_grup_id' => ['nullable', 'integer', 'exists:urun_detay_gruplari,id'],
+            'prm1'        => ['nullable', 'string', 'max:255'],
+            'prm2'        => ['nullable', 'string', 'max:255'],
+            'prm3'        => ['nullable', 'string', 'max:255'],
+            'prm4'        => ['nullable', 'string', 'max:255'],
+            'fatura_kodu' => ['nullable', 'string', 'max:50'],
             'resim'       => ['nullable', 'image', 'max:2048'],
             'pasif'       => ['sometimes', 'boolean'],
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $groupId = (int) ($request->input('kategori_id') ?? 0);
+            $subGroupId = (int) ($request->input('urun_alt_grup_id') ?? 0);
+            $detailGroupId = (int) ($request->input('urun_detay_grup_id') ?? 0);
+
+            if ($subGroupId > 0 && $groupId > 0) {
+                $ok = ProductSubGroup::whereKey($subGroupId)->where('urun_grup_id', $groupId)->exists();
+                if (!$ok) {
+                    $validator->errors()->add('urun_alt_grup_id', 'Seçilen alt grup, seçilen ürün gruba ait değil.');
+                }
+            }
+
+            if ($detailGroupId > 0) {
+                if ($subGroupId <= 0) {
+                    $validator->errors()->add('urun_detay_grup_id', 'Detay grup seçildiğinde alt grup da seçilmelidir.');
+                    return;
+                }
+
+                $query = ProductDetailGroup::whereKey($detailGroupId)->where('urun_alt_grup_id', $subGroupId);
+                if ($groupId > 0) {
+                    $query->where('urun_grup_id', $groupId);
+                }
+
+                if (!$query->exists()) {
+                    $validator->errors()->add('urun_detay_grup_id', 'Seçilen detay grup, seçilen alt gruba ait değil.');
+                }
+            }
+        });
+
+        return $validator->validate();
     }
 
     protected function storeProductImage(Request $request): string

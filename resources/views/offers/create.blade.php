@@ -117,16 +117,52 @@
         }
         .lines-header {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 0.5rem;
         }
-        .lines-header button {
+        .lines-header #btnAddLine {
             border-radius: 999px;
             border: none;
             background: #e5e7eb;
             padding: 0.4rem 0.9rem;
             font-size: 0.8rem;
             cursor: pointer;
+        }
+        .lines-header .lines-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .offer-line-setting-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            user-select: none;
+        }
+        .offer-line-setting-item:last-child {
+            border-bottom: none;
+        }
+        .offer-line-setting-item.dragging {
+            opacity: 0.55;
+        }
+        .offer-line-setting-no {
+            width: 28px;
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-align: right;
+        }
+        .offer-line-setting-handle {
+            width: 18px;
+            color: #9ca3af;
+            cursor: grab;
+            text-align: center;
+        }
+        .offer-line-setting-label {
+            flex: 1;
+            font-size: 0.85rem;
         }
         table.offer-lines {
             table-layout: fixed;
@@ -153,9 +189,9 @@
         .offer-lines th.miktar,
         .offer-lines td.miktar-cell { width: 6%; }
         .offer-lines th.doviz,
-        .offer-lines td.doviz-cell { width: 4%; }
+        .offer-lines td.doviz-cell { width: 5%; }
         .offer-lines th.kur,
-        .offer-lines td.kur-cell { width: 4%; }
+        .offer-lines td.kur-cell { width: 6%; }
         .offer-lines th.kdv,
         .offer-lines td.kdv-cell { width: 6%; }
         .offer-lines th.kdv-durum,
@@ -173,6 +209,14 @@
         }
         .offer-lines input[type="number"] {
             text-align: right;
+        }
+        .offer-lines input[type="number"]::-webkit-outer-spin-button,
+        .offer-lines input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .offer-lines input[type="number"] {
+            -moz-appearance: textfield;
         }
         .offer-summary-table td:first-child {
             padding-right: 1.5rem;
@@ -659,10 +703,18 @@
 
     <div class="form-group" style="margin-bottom: 1rem;">
                         <label for="aciklama" style="color:#9ca3af;">Açıklama</label>
-                        <textarea id="aciklama" name="aciklama">{{ old('aciklama') }}</textarea>
+                        <textarea id="aciklama" name="aciklama">{{ old('aciklama', isset($teklif) ? ($teklif->aciklama ?? '') : '') }}</textarea>
                     </div>
 
                     <div class="lines-header">
+                        <div class="lines-header-left">
+                            <button type="button" id="btnOfferLineSettings" class="small-btn" title="Sütun Ayarları">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M19.4 15a8.07 8.07 0 0 0 .04-1 8.07 8.07 0 0 0-.04-1l2.1-1.64a.5.5 0 0 0 .12-.65l-2-3.46a.5.5 0 0 0-.6-.22l-2.48 1a7.74 7.74 0 0 0-1.73-1l-.38-2.65A.5.5 0 0 0 13.94 3h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.62.24-1.2.57-1.73 1l-2.48-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.65L4.6 13c-.03.33-.04.66-.04 1s.01.67.04 1l-2.1 1.64a.5.5 0 0 0-.12.65l2 3.46a.5.5 0 0 0 .6.22l2.48-1c.53.43 1.11.76 1.73 1l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65c.62-.24 1.2-.57 1.73-1l2.48 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.65L19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
                         <button type="button" id="btnAddLine">Satır Ekle</button>
                     </div>
 
@@ -719,9 +771,14 @@
                                     <option value="EUR" @selected($offerDoviz === 'EUR')>EUR</option>
                                 </select>
                             </div>
-                            <div>
+                            <div style="display:flex; align-items:center; gap: 6px;">
                                 <label for="offer_rate" style="color:#9ca3af;margin-right:0.5rem;">Teklif Kur:</label>
                                 <input id="offer_rate" name="teklif_kur" value="{{ old('teklif_kur', $teklif->teklif_kur ?? 1) }}" type="number" step="0.0001" style="width:100px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
+                                <button type="button" class="small-btn rate-search-btn" data-rate-target="header" title="Kur Seç">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     
@@ -958,6 +1015,51 @@
     </div>
 </div>
 
+<!-- Kur seçimi modal -->
+<div id="rateModal" class="modal-overlay">
+    <div class="modal" style="max-width: 560px;">
+        <div class="modal-header">
+            <div class="modal-title">Kur Seç</div>
+            <button type="button" class="small-btn" id="rateModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="rateModalMeta" style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem;"></div>
+            <div id="rateModalError" style="display:none;color:#dc2626;font-size:0.85rem;margin-bottom:0.75rem;"></div>
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead>
+                <tr>
+                    <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Tip</th>
+                    <th style="text-align:right;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Kur</th>
+                    <th style="text-align:right;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Seç</th>
+                </tr>
+                </thead>
+                <tbody id="rateModalBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+ <!-- Sütun ayarları modal -->
+ <div id="offerLineSettingsModal" class="modal-overlay">
+     <div class="modal" style="max-width: 520px;">
+         <div class="modal-header">
+             <div class="modal-title">Sütun Ayarları</div>
+             <div style="display:flex; align-items:center; gap:0.5rem;">
+                 <button type="button" class="btn btn-save" id="offerLineSettingsSave">Kaydet</button>
+                 <button type="button" class="small-btn" data-modal-close="offerLineSettingsModal">✕</button>
+             </div>
+         </div>
+         <div class="modal-body">
+             <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; padding-bottom:0.5rem; border-bottom:1px solid #e5e7eb; margin-bottom:0.5rem;">
+                 <input type="checkbox" id="offerLineSettingsToggleAll">
+                 <span>Hepsini Seç/Kaldır</span>
+             </label>
+             <div id="offerLineSettingsList" class="offer-line-settings-list"></div>
+         </div>
+     </div>
+ </div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var onayDurumInput = document.getElementById('onay_durum');
@@ -1033,8 +1135,134 @@
 
         var linesBody = document.getElementById('offerLinesBody');
         var btnAddLine = document.getElementById('btnAddLine');
+        var btnOfferLineSettings = document.getElementById('btnOfferLineSettings');
         var lineIndex = 0;
         var initialLines = @json(isset($teklif) ? $teklif->detaylar : []);
+
+        var offerLinesTable = document.querySelector('table.offer-lines');
+        var offerLineColumns = null; // [{key,label,durum,sirano}]
+        var offerLineThByKey = null;
+
+        function getCsrfToken() {
+            var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) return token;
+            return document.querySelector('input[name="_token"]')?.value || '';
+        }
+
+        function normalizeOfferLineColumns(columns) {
+            var cols = Array.isArray(columns) ? columns.slice() : [];
+            cols = cols.filter(function (c) { return c && c.key; });
+            cols.sort(function (a, b) {
+                return ((parseInt(a.sirano || 0, 10) || 0) - (parseInt(b.sirano || 0, 10) || 0)) || String(a.key).localeCompare(String(b.key));
+            });
+            return cols.map(function (c, idx) {
+                return {
+                    key: String(c.key),
+                    label: String(c.label || c.key),
+                    durum: !!c.durum,
+                    sirano: idx + 1,
+                };
+            });
+        }
+
+        function fetchOfferLineColumns() {
+            return fetch('{{ route('offer-line-columns.index') }}', {
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || !data.ok) throw new Error('load_failed');
+                    offerLineColumns = normalizeOfferLineColumns(data.columns || []);
+                    return offerLineColumns;
+                });
+        }
+
+        function getLineCellByKey(tr, key) {
+            if (!tr || !key) return null;
+            var selector = null;
+            if (key === 'stok_kod') selector = '.stok-kod';
+            else if (key === 'stok_aciklama') selector = '.stok-aciklama';
+            else if (key === 'birim_fiyat') selector = '.birim-fiyat';
+            else if (key === 'miktar') selector = '.miktar';
+            else if (key === 'doviz') selector = '.doviz';
+            else if (key === 'kur') selector = '.kur';
+            else if (key === 'isk1') selector = '.isk1';
+            else if (key === 'isk2') selector = '.isk2';
+            else if (key === 'isk3') selector = '.isk3';
+            else if (key === 'isk4') selector = '.isk4';
+            else if (key === 'isk5') selector = '.isk5';
+            else if (key === 'isk6') selector = '.isk6';
+            else if (key === 'isk_tutar') selector = '.isk-tutar';
+            else if (key === 'kdv_orani') selector = '.kdv-oran';
+            else if (key === 'kdv_durum') selector = '.kdv-durum';
+            else if (key === 'satir_tutar') selector = '.satir-tutar';
+
+            if (!selector) return null;
+            var el = tr.querySelector(selector);
+            return el ? el.closest('td') : null;
+        }
+
+        function ensureOfferLineHeaderMap() {
+            if (offerLineThByKey) return;
+            if (!offerLinesTable || !offerLineColumns) return;
+            var headerRow = offerLinesTable.querySelector('thead tr');
+            if (!headerRow) return;
+            var ths = Array.prototype.slice.call(headerRow.querySelectorAll('th'));
+            if (ths.length < offerLineColumns.length) return;
+
+            offerLineThByKey = {};
+            offerLineColumns.forEach(function (col, idx) {
+                offerLineThByKey[col.key] = ths[idx];
+            });
+        }
+
+        function applyOfferLineColumnSettingsToRow(tr) {
+            if (!tr || !offerLineColumns) return;
+            offerLineColumns.forEach(function (col) {
+                var td = getLineCellByKey(tr, col.key);
+                if (td) {
+                    td.style.display = col.durum ? '' : 'none';
+                }
+            });
+        }
+
+        function reorderOfferLineColumns() {
+            if (!offerLinesTable || !offerLineColumns) return;
+            ensureOfferLineHeaderMap();
+            var headerRow = offerLinesTable.querySelector('thead tr');
+            if (headerRow && offerLineThByKey) {
+                offerLineColumns.forEach(function (col) {
+                    var th = offerLineThByKey[col.key];
+                    if (th) headerRow.appendChild(th);
+                });
+            }
+
+            var rows = offerLinesTable.querySelectorAll('tbody tr');
+            Array.prototype.forEach.call(rows, function (tr) {
+                offerLineColumns.forEach(function (col) {
+                    var td = getLineCellByKey(tr, col.key);
+                    if (td) tr.appendChild(td);
+                });
+            });
+        }
+
+        function applyOfferLineColumnSettingsToTable() {
+            if (!offerLinesTable || !offerLineColumns) return;
+            ensureOfferLineHeaderMap();
+            reorderOfferLineColumns();
+
+            if (offerLineThByKey) {
+                offerLineColumns.forEach(function (col) {
+                    var th = offerLineThByKey[col.key];
+                    if (th) th.style.display = col.durum ? '' : 'none';
+                });
+            }
+
+            var rows = offerLinesTable.querySelectorAll('tbody tr');
+            Array.prototype.forEach.call(rows, function (tr) {
+                applyOfferLineColumnSettingsToRow(tr);
+            });
+        }
 
         function fetchTodayForexSelling(currencyCode) {
             var code = (currencyCode || '').toString().trim().toUpperCase();
@@ -1069,6 +1297,176 @@
             } catch (e) {
             }
         }
+
+        function fetchRatesForDate(currencyCode, dateISO) {
+            var code = (currencyCode || '').toString().trim().toUpperCase();
+            var date = (dateISO || '').toString().trim();
+            if (!code) {
+                return Promise.reject(new Error('currency_missing'));
+            }
+            if (!date) {
+                return Promise.reject(new Error('date_missing'));
+            }
+
+            var url = '{{ route('exchange-rate.by-date') }}' +
+                '?currency_code=' + encodeURIComponent(code) +
+                '&tarih=' + encodeURIComponent(date);
+
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok || !data || !data.ok) throw (data || {});
+                        return data;
+                    });
+                });
+        }
+
+        (function setupRatePicker() {
+            var modal = document.getElementById('rateModal');
+            var closeBtn = document.getElementById('rateModalClose');
+            var metaEl = document.getElementById('rateModalMeta');
+            var errorEl = document.getElementById('rateModalError');
+            var bodyEl = document.getElementById('rateModalBody');
+
+            var currentTargetInput = null;
+
+            function openModal() {
+                if (modal) modal.style.display = 'flex';
+            }
+
+            function closeModal() {
+                if (modal) modal.style.display = 'none';
+                currentTargetInput = null;
+            }
+
+            function showError(message) {
+                if (!errorEl) return;
+                errorEl.textContent = message || 'Kur verisi alınamadı.';
+                errorEl.style.display = 'block';
+            }
+
+            function clearError() {
+                if (!errorEl) return;
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
+
+            function fmtRate(val) {
+                if (val === null || val === undefined || val === '') return '-';
+                var n = parseFloat(val.toString().replace(',', '.'));
+                if (!isFinite(n)) return '-';
+                return n.toFixed(6);
+            }
+
+            function buildRows(data) {
+                if (!bodyEl) return;
+                bodyEl.innerHTML = '';
+
+                var rows = [
+                    { key: 'forex_buying', label: 'Merkez Alış', value: data.forex_buying },
+                    { key: 'forex_selling', label: 'Merkez Satış', value: data.forex_selling },
+                    { key: 'banknote_buying', label: 'Serbest Alış', value: data.banknote_buying },
+                    { key: 'banknote_selling', label: 'Serbest Satış', value: data.banknote_selling },
+                ];
+
+                rows.forEach(function (row) {
+                    var canPick = row.value !== null && row.value !== undefined && row.value !== '';
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;">' + row.label + '</td>' +
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;text-align:right;">' + fmtRate(row.value) + '</td>' +
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;text-align:right;">' +
+                        '<button type="button" class="small-btn rate-pick-btn" data-rate="' + (canPick ? row.value : '') + '"' + (canPick ? '' : ' disabled style="opacity:0.4;cursor:not-allowed;"') + '>Seç</button>' +
+                        '</td>';
+                    bodyEl.appendChild(tr);
+                });
+            }
+
+            function loadAndShow(targetInput, currencyCode, tarih) {
+                currentTargetInput = targetInput;
+                clearError();
+
+                if (metaEl) {
+                    metaEl.textContent = (currencyCode || '') + ' - ' + (tarih || '');
+                }
+                if (bodyEl) {
+                    bodyEl.innerHTML = '<tr><td colspan="3" style="padding:0.75rem;color:#6b7280;">Yükleniyor...</td></tr>';
+                }
+
+                openModal();
+
+                fetchRatesForDate(currencyCode, tarih)
+                    .then(function (data) {
+                        if (metaEl) {
+                            metaEl.textContent = (data.currency_code || currencyCode) + ' - ' + (data.tarih || tarih);
+                        }
+                        buildRows(data);
+                    })
+                    .catch(function (err) {
+                        var msg = (err && err.message) ? err.message : 'Kur verisi alınamadı.';
+                        showError(msg);
+                        if (bodyEl) bodyEl.innerHTML = '';
+                    });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    closeModal();
+                });
+            }
+
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) closeModal();
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('.rate-search-btn') : null;
+                if (!btn) return;
+
+                e.preventDefault();
+
+                var target = btn.getAttribute('data-rate-target') || 'line';
+                var tarihEl = document.getElementById('tarih');
+                var tarih = tarihEl ? (tarihEl.value || '') : '';
+
+                if (!tarih) {
+                    alert('Teklif tarihi seçiniz.');
+                    return;
+                }
+
+                var currencyCode = 'TL';
+                var input = null;
+
+                if (target === 'header') {
+                    currencyCode = (document.getElementById('offer_currency')?.value || 'TL').toString();
+                    input = document.getElementById('offer_rate');
+                } else {
+                    var tr = btn.closest('tr');
+                    currencyCode = (tr?.querySelector('.doviz')?.value || 'TL').toString();
+                    input = tr ? tr.querySelector('.kur') : null;
+                }
+
+                if (!input) return;
+
+                loadAndShow(input, currencyCode, tarih);
+            });
+
+            document.addEventListener('click', function (e) {
+                var pickBtn = e.target && e.target.closest ? e.target.closest('.rate-pick-btn') : null;
+                if (!pickBtn) return;
+
+                e.preventDefault();
+                if (!currentTargetInput) return;
+
+                var rateVal = pickBtn.getAttribute('data-rate') || '';
+                if (rateVal === '') return;
+
+                setKurValue(currentTargetInput, rateVal);
+                closeModal();
+            });
+        })();
 
         function applyCurrencyBehavior(tr, initializeDefault) {
             var currencySelect = tr.querySelector('.doviz');
@@ -1234,7 +1632,16 @@
                 '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input birim-fiyat"></td>' +
                 '<td class="miktar-cell"><input type="number" step="0.001" class="line-input miktar"></td>' +
                 '<td class="doviz-cell"><select class="line-input doviz"><option value="TL" selected>TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></td>' +
-                '<td class="kur-cell"><input type="number" step="0.0001" class="line-input kur"></td>' +
+                '<td class="kur-cell">' +
+                '<div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">' +
+                '<input type="number" step="0.0001" class="line-input kur" style="width: 96px;">' +
+                '<button type="button" class="small-btn rate-search-btn" data-rate-target="line" title="Kur Seç">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                '<path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                '</svg>' +
+                '</button>' +
+                '</div>' +
+                '</td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk1"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk2"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk3"></td>' +
@@ -1446,6 +1853,7 @@
 
             if (linesBody) {
                 linesBody.appendChild(tr);
+                applyOfferLineColumnSettingsToRow(tr);
                 lineIndex++;
             }
         }
@@ -1457,7 +1865,220 @@
         // baï¿½langï¿½ï¿½ta bir satï¿½r olsun
         if (linesBody) {
             addLineRow();
+            fetchOfferLineColumns()
+                .then(function () { applyOfferLineColumnSettingsToTable(); })
+                .catch(function () { });
         }
+
+        (function setupOfferLineSettings() {
+             var modal = document.getElementById('offerLineSettingsModal');
+             var listEl = document.getElementById('offerLineSettingsList');
+             var toggleAllEl = document.getElementById('offerLineSettingsToggleAll');
+             var saveBtn = document.getElementById('offerLineSettingsSave');
+
+             var draggingEl = null;
+
+            function openSelf() {
+                if (modal) modal.style.display = 'flex';
+            }
+
+            function closeSelf() {
+                if (modal) modal.style.display = 'none';
+            }
+
+            function getItems() {
+                if (!listEl) return [];
+                return Array.prototype.slice.call(listEl.querySelectorAll('.offer-line-setting-item'));
+            }
+
+            function getItemCheckboxes() {
+                return getItems()
+                    .map(function (el) { return el.querySelector('input[type=\"checkbox\"]'); })
+                    .filter(Boolean);
+            }
+
+            function renumberItems() {
+                getItems().forEach(function (item, idx) {
+                    var no = item.querySelector('.offer-line-setting-no');
+                    if (no) no.textContent = String(idx + 1);
+                });
+            }
+
+            function syncToggleAllState() {
+                if (!toggleAllEl) return;
+                var cbs = getItemCheckboxes();
+                if (!cbs.length) {
+                    toggleAllEl.checked = true;
+                    toggleAllEl.indeterminate = false;
+                    return;
+                }
+                var checkedCount = cbs.filter(function (cb) { return cb.checked; }).length;
+                toggleAllEl.checked = checkedCount === cbs.length;
+                toggleAllEl.indeterminate = checkedCount > 0 && checkedCount < cbs.length;
+            }
+
+            function buildList() {
+                if (!listEl || !offerLineColumns) return;
+
+                listEl.innerHTML = '';
+                offerLineColumns.forEach(function (col, idx) {
+                    var label = document.createElement('div');
+                    label.className = 'offer-line-setting-item';
+                    label.draggable = true;
+                    label.setAttribute('data-key', col.key);
+
+                    var no = document.createElement('div');
+                    no.className = 'offer-line-setting-no';
+                    no.textContent = String(idx + 1);
+
+                    var handle = document.createElement('div');
+                    handle.className = 'offer-line-setting-handle';
+                    handle.textContent = '≡';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = !!col.durum;
+                    cb.addEventListener('change', syncToggleAllState);
+
+                    var text = document.createElement('div');
+                    text.className = 'offer-line-setting-label';
+                    text.textContent = col.label || ('Sütun ' + String(col.index + 1));
+
+                    label.appendChild(no);
+                    label.appendChild(handle);
+                    label.appendChild(cb);
+                    label.appendChild(text);
+                    listEl.appendChild(label);
+                });
+
+                renumberItems();
+                syncToggleAllState();
+            }
+
+            function getDragAfterElement(container, y) {
+                var els = Array.prototype.slice.call(container.querySelectorAll('.offer-line-setting-item:not(.dragging)'));
+                var closest = null;
+                var closestOffset = Number.NEGATIVE_INFINITY;
+
+                els.forEach(function (child) {
+                    var box = child.getBoundingClientRect();
+                    var offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closestOffset) {
+                        closestOffset = offset;
+                        closest = child;
+                    }
+                });
+
+                return closest;
+            }
+
+            function attachDnD() {
+                if (!listEl) return;
+
+                listEl.addEventListener('dragstart', function (e) {
+                    var item = e.target && e.target.closest ? e.target.closest('.offer-line-setting-item') : null;
+                    if (!item) return;
+                    draggingEl = item;
+                    item.classList.add('dragging');
+                    try {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', item.getAttribute('data-key') || '');
+                    } catch (err) {
+                    }
+                });
+
+                listEl.addEventListener('dragend', function () {
+                    if (draggingEl) draggingEl.classList.remove('dragging');
+                    draggingEl = null;
+                    renumberItems();
+                });
+
+                listEl.addEventListener('dragover', function (e) {
+                    if (!draggingEl) return;
+                    e.preventDefault();
+                    var afterEl = getDragAfterElement(listEl, e.clientY);
+                    if (!afterEl) {
+                        listEl.appendChild(draggingEl);
+                    } else if (afterEl !== draggingEl) {
+                        listEl.insertBefore(draggingEl, afterEl);
+                    }
+                    renumberItems();
+                });
+            }
+
+            attachDnD();
+
+            if (toggleAllEl) {
+                toggleAllEl.addEventListener('change', function () {
+                    var checked = !!toggleAllEl.checked;
+                    getItemCheckboxes().forEach(function (cb) {
+                        cb.checked = checked;
+                    });
+                    syncToggleAllState();
+                });
+            }
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    var items = getItems();
+                    if (!items.length) return;
+
+                    var payload = items.map(function (item) {
+                        var key = item.getAttribute('data-key') || '';
+                        var cb = item.querySelector('input[type=\"checkbox\"]');
+                        return { key: key, durum: !!(cb && cb.checked) };
+                    });
+
+                    saveBtn.disabled = true;
+                    saveBtn.style.opacity = '0.7';
+
+                    fetch('{{ route('offer-line-columns.store') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': getCsrfToken(),
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ columns: payload })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data || !data.ok) throw new Error('save_failed');
+                            offerLineColumns = normalizeOfferLineColumns(data.columns || []);
+                            applyOfferLineColumnSettingsToTable();
+                            closeSelf();
+                        })
+                        .catch(function () {
+                            alert('Sütun ayarları kaydedilemedi.');
+                        })
+                        .finally(function () {
+                            saveBtn.disabled = false;
+                            saveBtn.style.opacity = '1';
+                        });
+                });
+        }
+
+        if (btnOfferLineSettings && modal) {
+            btnOfferLineSettings.addEventListener('click', function () {
+                fetchOfferLineColumns()
+                    .then(function () {
+                        applyOfferLineColumnSettingsToTable();
+                        buildList();
+                        openSelf();
+                    })
+                    .catch(function () {
+                        alert('Sütun ayarları yüklenemedi.');
+                    });
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) {
+                    closeSelf();
+                }
+            });
+        }
+    })();
 
         if (linesBody && Array.isArray(initialLines) && initialLines.length > 0) {
             linesBody.innerHTML = '';
@@ -1592,6 +2213,31 @@
             gecenSureInput.value = diffDays + ' gün';
         }
 
+        function formatISO(d) {
+            if (!d) return '';
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        function addDays(d, days) {
+            var copy = new Date(d.getTime());
+            copy.setDate(copy.getDate() + (parseInt(days, 10) || 0));
+            return copy;
+        }
+
+        function syncGecerlilikFromTeklifTarih(force) {
+            if (!teklifTarihInput || !gecerlilikTarihiInput) return;
+            if (!force && (gecerlilikTarihiInput.value || '').trim() !== '') return;
+
+            var teklifTarih = parseISODate(teklifTarihInput.value);
+            if (!teklifTarih) return;
+
+            gecerlilikTarihiInput.value = formatISO(addDays(teklifTarih, 15));
+            updateGecenSure();
+        }
+
         var currentFirmAuthorities = [];
         var currentFirmDiscounts = {
             isk1: {{ isset($selectedFirm) && $selectedFirm->iskonto1 !== null ? (float)$selectedFirm->iskonto1 : 0 }},
@@ -1606,8 +2252,10 @@
             btnYetkiliSearch.disabled = !carikodInput.value;
         }
 
+        syncGecerlilikFromTeklifTarih(false);
         updateGecenSure();
         if (teklifTarihInput) {
+            teklifTarihInput.addEventListener('change', function () { syncGecerlilikFromTeklifTarih(true); });
             teklifTarihInput.addEventListener('change', updateGecenSure);
             teklifTarihInput.addEventListener('input', updateGecenSure);
         }

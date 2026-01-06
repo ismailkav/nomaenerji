@@ -12,6 +12,8 @@ use App\Http\Controllers\StockInventoryController;
 use App\Http\Controllers\StockFicheController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\OfferLineColumnController;
+use App\Http\Controllers\FiyatListesiController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
@@ -23,7 +25,43 @@ Route::middleware(['auth'])->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
+    Route::view('/raporlar', 'reports.index')->name('reports.index');
+    Route::view('/raporlar/proje', 'reports.project')->name('reports.project');
+
     Route::resource('users', UserController::class);
+
+    Route::get('teklifler/sutunlar', [OfferLineColumnController::class, 'offerIndex'])
+        ->name('offer-line-columns.index');
+    Route::post('teklifler/sutunlar', [OfferLineColumnController::class, 'offerStore'])
+        ->name('offer-line-columns.store');
+
+    Route::get('teklifler/liste-sutunlar', [OfferLineColumnController::class, 'offerListIndex'])
+        ->name('offer-list-columns.index');
+    Route::post('teklifler/liste-sutunlar', [OfferLineColumnController::class, 'offerListStore'])
+        ->name('offer-list-columns.store');
+
+    Route::get('siparisler/sutunlar', [OfferLineColumnController::class, 'orderIndex'])
+        ->name('order-line-columns.index');
+    Route::post('siparisler/sutunlar', [OfferLineColumnController::class, 'orderStore'])
+        ->name('order-line-columns.store');
+
+    Route::get('siparisler/liste-sutunlar', [OfferLineColumnController::class, 'orderListIndex'])
+        ->name('order-list-columns.index');
+    Route::post('siparisler/liste-sutunlar', [OfferLineColumnController::class, 'orderListStore'])
+        ->name('order-list-columns.store');
+
+    Route::get('faturalar/sutunlar', [OfferLineColumnController::class, 'invoiceIndex'])
+        ->name('invoice-line-columns.index');
+    Route::post('faturalar/sutunlar', [OfferLineColumnController::class, 'invoiceStore'])
+        ->name('invoice-line-columns.store');
+
+    Route::get('faturalar/liste-sutunlar', [OfferLineColumnController::class, 'invoiceListIndex'])
+        ->name('invoice-list-columns.index');
+    Route::post('faturalar/liste-sutunlar', [OfferLineColumnController::class, 'invoiceListStore'])
+        ->name('invoice-list-columns.store');
+
+    Route::post('users/{user}/teklif-sutunlari/olustur', [OfferLineColumnController::class, 'seedForUser'])
+        ->name('users.offer-line-columns.seed');
     Route::resource('firmalar', FirmController::class)
         ->parameters(['firmalar' => 'firm'])
         ->names('firms');
@@ -67,6 +105,14 @@ Route::middleware(['auth'])->group(function () {
         ->parameters(['teklifler' => 'teklif'])
         ->names('offers');
 
+    Route::resource('fiyat-listeleri', FiyatListesiController::class)
+        ->parameters(['fiyat-listeleri' => 'fiyatListesi'])
+        ->names('price-lists')
+        ->only(['index', 'create', 'store', 'edit', 'update']);
+
+    Route::get('fiyat-listeleri/lookup-price', [FiyatListesiController::class, 'lookupPrice'])
+        ->name('price-lists.lookup-price');
+
     Route::get('faturalar/siparis-satirlari', [InvoiceController::class, 'orderLinesForTransfer'])
         ->name('invoices.order-lines');
 
@@ -82,6 +128,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('kur/today', [ExchangeRateController::class, 'today'])
         ->name('exchange-rate.today');
+
+    Route::get('kur/by-date', [ExchangeRateController::class, 'byDate'])
+        ->name('exchange-rate.by-date');
 
     Route::post('teklifler/{teklif}/revize', [TeklifController::class, 'revize'])
         ->name('offers.revize');
@@ -110,6 +159,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('definitions.product-groups');
     Route::post('urun-gruplar', [DefinitionController::class, 'saveProductGroups'])
         ->name('definitions.product-groups.save');
+
+    Route::get('urun-alt-gruplar', [DefinitionController::class, 'productSubGroups'])
+        ->name('definitions.product-sub-groups');
+    Route::post('urun-alt-gruplar', [DefinitionController::class, 'saveProductSubGroups'])
+        ->name('definitions.product-sub-groups.save');
+
+    Route::get('urun-detay-gruplar', [DefinitionController::class, 'productDetailGroups'])
+        ->name('definitions.product-detail-groups');
+    Route::post('urun-detay-gruplar', [DefinitionController::class, 'saveProductDetailGroups'])
+        ->name('definitions.product-detail-groups.save');
 
     Route::get('islem-turleri', [DefinitionController::class, 'islemTurleri'])
         ->name('definitions.islem-turleri');

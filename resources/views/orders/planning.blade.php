@@ -190,6 +190,7 @@
             border-collapse: collapse;
             background: #ffffff;
             border: 1px solid #e5e7eb;
+            table-layout: fixed;
         }
 
         .offers-table thead {
@@ -199,7 +200,7 @@
         .offers-table thead th {
             padding: 0.75rem 0.9rem;
             text-align: left;
-            font-size: 0.75rem;
+            font-size: 0.6875rem;
             font-weight: 600;
             color: #374151;
             border-bottom: 1px solid #e5e7eb;
@@ -208,10 +209,20 @@
 
         .offers-table tbody td {
             padding: 0.7rem 0.9rem;
-            font-size: 0.8rem;
+            font-size: 0.7375rem;
             color: #111827;
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
+        }
+
+        #planningTable thead th:nth-child(2),
+        #planningTable tbody td:nth-child(2),
+        #planningTable thead th:nth-child(3),
+        #planningTable tbody td:nth-child(3),
+        #planningTable thead th:nth-child(4),
+        #planningTable tbody td:nth-child(4) {
+            padding-left: 0.45rem;
+            padding-right: 0.45rem;
         }
 
         .offers-table tbody tr:hover {
@@ -231,17 +242,34 @@
 
         .offers-table thead th.num,
         .offers-table tbody td.num {
-            width: 96px;
-            min-width: 96px;
-            padding-left: 0.6rem;
-            padding-right: 0.6rem;
+            width: 48px;
+            min-width: 48px;
+            padding-left: 0.3rem;
+            padding-right: 0.3rem;
+        }
+
+        .offers-table thead th.num {
+            white-space: normal;
+            line-height: 1.15;
+        }
+
+        #planningTable thead th:nth-child(10),
+        #planningTable tbody td:nth-child(10),
+        #planningTable thead th:nth-child(11),
+        #planningTable tbody td:nth-child(11),
+        #planningTable thead th:nth-child(14),
+        #planningTable tbody td:nth-child(14) {
+            width: 72px;
+            min-width: 72px;
         }
 
         .num input[type="number"] {
-            width: 84px;
+            width: 100%;
+            max-width: 48px;
+            box-sizing: border-box;
             border-radius: 999px;
             border: 1px solid #e5e7eb;
-            padding: 0.3rem 0.6rem;
+            padding: 0.25rem 0.35rem;
             font-size: 0.8rem;
             text-align: right;
             outline: none;
@@ -325,6 +353,7 @@
                             <th>Sipariş No</th>
                             <th>Sipariş Tarih</th>
                             <th>Cari Kod</th>
+                            <th>Proje Kod</th>
                             <th>Stok Kod</th>
                             <th>Stok Açıklama</th>
                             <th class="num">Miktar</th>
@@ -340,7 +369,7 @@
                         </thead>
                         <tbody id="planningTbody">
                         @forelse(($rows ?? []) as $row)
-                            <tr data-search="{{ strtolower(trim(($row->siparis_no ?? '') . ' ' . ($row->carikod ?? '') . ' ' . ($row->stok_kod ?? '') . ' ' . ($row->stok_aciklama ?? ''))) }}"
+                            <tr data-search="{{ strtolower(trim(($row->siparis_no ?? '') . ' ' . ($row->carikod ?? '') . ' ' . ($row->proje_kod ?? '') . ' ' . ($row->stok_kod ?? '') . ' ' . ($row->stok_aciklama ?? ''))) }}"
                                 data-satis-detay-id="{{ $row->siparis_detay_id }}"
                                 data-urun-id="{{ $row->urun_id }}"
                                 data-stok-kod="{{ $row->stok_kod }}"
@@ -362,6 +391,7 @@
                                     {{ $dt ? $dt->format('d.m.Y') : '' }}
                                 </td>
                                 <td>{{ $row->carikod }}</td>
+                                <td>{{ $row->proje_kod }}</td>
                                 <td>
                                     {{ $row->stok_kod }}
                                     <span style="color:#6b7280;font-size:0.75rem;">
@@ -378,7 +408,7 @@
                                            value="{{ (int) max(0, round(((float)($row->miktar ?? 0)) - (((float)($row->planlanan_miktar ?? 0)) + ((float)($row->revize_satir_miktar ?? 0))))) }}">
                                 </td>
                                 <td class="num siparis-revize-cell">
-                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 6px;">
+                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 4px; flex-wrap: wrap;">
                                         <span class="siparis-revize-value">{{ number_format((float)($row->revize_satir_miktar ?? 0), 0, ',', '.') }}</span>
                                         <button type="button" class="small-btn revize-list-btn" title="Revize Listesi">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -388,7 +418,7 @@
                                     </div>
                                 </td>
                                 <td class="num">
-                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 6px;">
+                                    <div style="display:flex; justify-content:flex-end; align-items:center; gap: 4px; flex-wrap: wrap;">
                                         <span class="revize-action-value">0</span>
                                         <button type="button" class="small-btn revize-open-btn" title="Revize Aktar">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -405,7 +435,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="15" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
+                                <td colspan="16" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -425,7 +455,15 @@
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        var usableStockTh = document.querySelector('#planningTable thead tr th:nth-child(14)');
+        if (usableStockTh) {
+            usableStockTh.textContent = 'Kullanılabilir Stok';
+        }
+
         var q = document.getElementById('q');
+        if (q) {
+            q.placeholder = 'Sipariş no, cari kod, proje, stok...';
+        }
         var tbody = document.getElementById('planningTbody');
         var selectAll = document.getElementById('selectAllRows');
         var btnCreatePurchase = document.getElementById('btnCreatePurchase');

@@ -18,6 +18,13 @@ class Product extends Model
         'satis_fiyat',
         'kdv_oran',
         'kategori_id',
+        'urun_alt_grup_id',
+        'urun_detay_grup_id',
+        'prm1',
+        'prm2',
+        'prm3',
+        'prm4',
+        'fatura_kodu',
         'resim_yolu',
         'pasif',
     ];
@@ -30,5 +37,15 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'kategori_id');
+    }
+
+    public function subGroup()
+    {
+        return $this->belongsTo(ProductSubGroup::class, 'urun_alt_grup_id');
+    }
+
+    public function detailGroup()
+    {
+        return $this->belongsTo(ProductDetailGroup::class, 'urun_detay_grup_id');
     }
 }

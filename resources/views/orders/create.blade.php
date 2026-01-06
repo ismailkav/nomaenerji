@@ -143,16 +143,52 @@
         }
         .lines-header {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 0.5rem;
         }
-        .lines-header button {
+        .lines-header #btnAddLine {
             border-radius: 999px;
             border: none;
             background: #e5e7eb;
             padding: 0.4rem 0.9rem;
             font-size: 0.8rem;
             cursor: pointer;
+        }
+        .lines-header .lines-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .offer-line-setting-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            user-select: none;
+        }
+        .offer-line-setting-item:last-child {
+            border-bottom: none;
+        }
+        .offer-line-setting-item.dragging {
+            opacity: 0.55;
+        }
+        .offer-line-setting-no {
+            width: 28px;
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-align: right;
+        }
+        .offer-line-setting-handle {
+            width: 18px;
+            color: #9ca3af;
+            cursor: grab;
+            text-align: center;
+        }
+        .offer-line-setting-label {
+            flex: 1;
+            font-size: 0.85rem;
         }
         table.offer-lines {
             table-layout: fixed;
@@ -172,6 +208,8 @@
         .offer-lines td.stok-kod-cell { width: 12%; }
         .offer-lines th.stok-aciklama,
         .offer-lines td.stok-aciklama-cell { width: 16%; }
+        .offer-lines th.proje-kodu,
+        .offer-lines td.proje-kodu-cell { width: 8%; }
         .offer-lines th.detay,
         .offer-lines td.detay-cell { width: 4%; text-align: center; }
         .offer-lines th.durum,
@@ -179,13 +217,13 @@
         .offer-lines th.iskonto,
         .offer-lines td.iskonto-cell { width: 4%; }
         .offer-lines th.birim-fiyat,
-        .offer-lines td.birim-fiyat-cell { width: 8%; }
+        .offer-lines td.birim-fiyat-cell { width: 7%; }
         .offer-lines th.miktar,
         .offer-lines td.miktar-cell { width: 6%; }
         .offer-lines th.doviz,
-        .offer-lines td.doviz-cell { width: 4%; }
+        .offer-lines td.doviz-cell { width: 5%; }
         .offer-lines th.kur,
-        .offer-lines td.kur-cell { width: 4%; }
+        .offer-lines td.kur-cell { width: 7%; }
         .offer-lines th.kdv,
         .offer-lines td.kdv-cell { width: 6%; }
         .offer-lines th.kdv-durum,
@@ -203,6 +241,22 @@
         }
         .offer-lines input[type="number"] {
             text-align: right;
+        }
+        .offer-lines input[type="number"]::-webkit-outer-spin-button,
+        .offer-lines input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .offer-lines input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        .form-page-card input[type="number"]::-webkit-outer-spin-button,
+        .form-page-card input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .form-page-card input[type="number"] {
+            -moz-appearance: textfield;
         }
         .offer-summary-table td:first-child {
             padding-right: 1.5rem;
@@ -476,9 +530,12 @@
             <form id="orderForm" method="POST" action="{{ isset($siparis) ? route(($resource ?? 'orders') . '.update', $siparis) : route(($resource ?? 'orders') . '.store') }}">
                  @csrf
                  @if(isset($siparis))
-                     @method('PUT')
-                 @endif
-                 <input type="hidden" name="siparis_turu" value="{{ old('siparis_turu', $tur ?? ($siparis->siparis_turu ?? 'alim')) }}">
+                      @method('PUT')
+                  @endif
+                  <input type="hidden" name="siparis_turu" value="{{ old('siparis_turu', $tur ?? ($siparis->siparis_turu ?? 'alim')) }}">
+                  @if(!empty($autoSaveToken))
+                      <input type="hidden" name="auto_save_token" value="{{ $autoSaveToken }}">
+                  @endif
                 <div class="offer-card">
     <div class="offer-header">
         <div class="offer-header-left">
@@ -696,10 +753,18 @@
 
     <div class="form-group" style="margin-bottom: 1rem;">
                         <label for="aciklama" style="color:#9ca3af;">Açıklama</label>
-                        <textarea id="aciklama" name="aciklama">{{ old('aciklama') }}</textarea>
+                        <textarea id="aciklama" name="aciklama">{{ old('aciklama', isset($siparis) ? ($siparis->aciklama ?? '') : '') }}</textarea>
                     </div>
 
                     <div class="lines-header">
+                        <div class="lines-header-left">
+                            <button type="button" id="btnOrderLineSettings" class="small-btn" title="Sütun Ayarları">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M19.4 15a8.07 8.07 0 0 0 .04-1 8.07 8.07 0 0 0-.04-1l2.1-1.64a.5.5 0 0 0 .12-.65l-2-3.46a.5.5 0 0 0-.6-.22l-2.48 1a7.74 7.74 0 0 0-1.73-1l-.38-2.65A.5.5 0 0 0 13.94 3h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.62.24-1.2.57-1.73 1l-2.48-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.65L4.6 13c-.03.33-.04.66-.04 1s.01.67.04 1l-2.1 1.64a.5.5 0 0 0-.12.65l2 3.46a.5.5 0 0 0 .6.22l2.48-1c.53.43 1.11.76 1.73 1l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65c.62-.24 1.2-.57 1.73-1l2.48 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.65L19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
                         <button type="button" id="btnAddLine">Satır Ekle</button>
                     </div>
 
@@ -708,6 +773,7 @@
                         <tr>
                             <th class="stok-kod">Stok Kod</th>
                             <th class="stok-aciklama">Stok Açıklama</th>
+                            <th class="proje-kodu">Proje Kodu</th>
                             <th class="durum">Durum</th>
                             <th class="birim-fiyat">Birim Fiyat</th>
                             <th class="miktar">Miktar</th>
@@ -769,6 +835,11 @@
                             <div>
                                 <label for="offer_rate" style="color:#9ca3af;margin-right:0.5rem;">Sipariş Kur:</label>
                                 <input id="offer_rate" name="siparis_kur" value="{{ old('siparis_kur', $siparis->siparis_kur ?? 1) }}" type="number" step="0.0001" style="width:100px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
+                                <button type="button" class="small-btn rate-search-btn" data-rate-target="header" title="Kur Seç">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     
@@ -921,7 +992,11 @@
                     </thead>
                     <tbody>
                     @foreach($projects as $project)
-                        <tr class="project-row" data-id="{{ $project->id }}" data-kod="{{ $project->kod }}">
+                        <tr class="project-row"
+                            data-id="{{ $project->id }}"
+                            data-kod="{{ $project->kod }}"
+                            data-isk1="{{ $project->iskonto1 ?? 0 }}"
+                            data-isk2="{{ $project->iskonto2 ?? 0 }}">
                             <td>{{ $project->kod }}</td>
                         </tr>
                     @endforeach
@@ -1007,10 +1082,12 @@
                 <button type="button" class="small-btn" data-modal-close="orderTransferModal">X</button>
             </div>
             <div class="modal-body">
-                <table class="modal-table" style="font-size:0.85rem;">
+                <table class="modal-table" style="font-size:0.85rem; table-layout:fixed;">
                     <thead>
                     <tr>
                         <th style="width:40px;"></th>
+                        <th>Proje Kodu</th>
+                        <th>İşlem Tipi</th>
                         <th>Stok Kod</th>
                         <th>Stok Açıklama</th>
                         <th class="num">Sipariş Miktar</th>
@@ -1080,12 +1157,15 @@
                             <th>Cari Kod</th>
                             <th>Sipariş No</th>
                             <th>Sipariş Tarih</th>
+                            <th style="text-align:right;">Eşleşen Miktar</th>
+                            <th>İşlem Türü</th>
+                            <th>Proje</th>
                             <th style="text-align:right;">Miktar</th>
                         </tr>
                         </thead>
                         <tbody id="salesLinksTbody">
                         <tr>
-                            <td colspan="4" style="padding:12px; text-align:center; color:#6b7280;">Kayıt yok.</td>
+                            <td colspan="7" style="padding:12px; text-align:center; color:#6b7280;">Kayıt yok.</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1098,7 +1178,7 @@
     @endif
 
     <div id="invoiceLinksModal" class="modal-overlay">
-        <div class="modal" style="max-width:980px;">
+        <div class="modal" style="max-width:1200px;">
             <div class="modal-header">
                 <div class="modal-title" id="invoiceLinksTitle">Sipariş Detayları</div>
                 <button type="button" class="small-btn" data-modal-close="invoiceLinksModal">X</button>
@@ -1107,12 +1187,12 @@
                 <table class="modal-table" style="font-size:0.85rem;">
                     <thead>
                     <tr>
-                        <th>Sipariş Numarası</th>
-                        <th>Sipariş Tarih</th>
-                        <th>Stok Kod</th>
-                        <th>Stok Açıklama</th>
-                        <th class="num">Sipariş Miktar</th>
-                        <th class="num">Aktarım Miktar</th>
+                        <th style="width:16%;">Sipariş Numarası</th>
+                        <th style="width:14%;">Sipariş Tarih</th>
+                        <th style="width:18%;">Proje</th>
+                        <th style="width:26%;">İşlem Tipi</th>
+                        <th style="width:13%; text-align:right;">Sipariş Miktar</th>
+                        <th style="width:13%; text-align:right;">Aktarım Miktar</th>
                     </tr>
                     </thead>
                     <tbody id="invoiceLinksTbody">
@@ -1128,6 +1208,50 @@
         </div>
     </div>
 </div>
+</div>
+
+<!-- Kur seçimi modal -->
+<div id="rateModal" class="modal-overlay">
+    <div class="modal" style="max-width: 560px;">
+        <div class="modal-header">
+            <div class="modal-title">Kur Seç</div>
+            <button type="button" class="small-btn" id="rateModalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="rateModalMeta" style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem;"></div>
+            <div id="rateModalError" style="display:none;color:#dc2626;font-size:0.85rem;margin-bottom:0.75rem;"></div>
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead>
+                <tr>
+                    <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Tip</th>
+                    <th style="text-align:right;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Kur</th>
+                    <th style="text-align:right;padding:0.5rem;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;">Seç</th>
+                </tr>
+                </thead>
+                <tbody id="rateModalBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Sütun ayarları modal -->
+<div id="orderLineSettingsModal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px;">
+        <div class="modal-header">
+            <div class="modal-title">Sütun Ayarları</div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <button type="button" class="btn btn-save" id="orderLineSettingsSave">Kaydet</button>
+                <button type="button" class="small-btn" data-modal-close="orderLineSettingsModal">✕</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; padding-bottom:0.5rem; border-bottom:1px solid #e5e7eb; margin-bottom:0.5rem;">
+                <input type="checkbox" id="orderLineSettingsToggleAll">
+                <span>Hepsini Seç/Kaldır</span>
+            </label>
+            <div id="orderLineSettingsList"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -1210,6 +1334,363 @@
         var isSalesOrder = @json($siparisTuru === 'satis');
         var isPurchaseOrder = @json($siparisTuru === 'alim');
         var isInvoicePage = @json(($resource ?? 'orders') === 'invoices');
+        var autoSaveToken = @json($autoSaveToken ?? null);
+        var isEditPage = @json(isset($siparis));
+
+        var btnOrderLineSettings = document.getElementById('btnOrderLineSettings');
+        var orderLineSettingsModal = document.getElementById('orderLineSettingsModal');
+        var orderLineSettingsList = document.getElementById('orderLineSettingsList');
+        var orderLineSettingsToggleAll = document.getElementById('orderLineSettingsToggleAll');
+        var orderLineSettingsSave = document.getElementById('orderLineSettingsSave');
+
+        var orderLinesTable = document.querySelector('table.offer-lines');
+        var orderLineColumns = null;
+        var orderLineHeaderCache = null;
+        var orderLineDraggingEl = null;
+
+        var orderLineColumnsIndexUrl = @json(($resource ?? 'orders') === 'invoices' ? route('invoice-line-columns.index') : route('order-line-columns.index'));
+        var orderLineColumnsStoreUrl = @json(($resource ?? 'orders') === 'invoices' ? route('invoice-line-columns.store') : route('order-line-columns.store'));
+
+        function getCsrfToken() {
+            var token = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content');
+            if (token) return token;
+            return document.querySelector('input[name=\"_token\"]')?.value || '';
+        }
+
+        function normalizeColumns(columns) {
+            var cols = Array.isArray(columns) ? columns.slice() : [];
+            cols = cols.filter(function (c) { return c && c.key; });
+            cols.sort(function (a, b) {
+                return ((parseInt(a.sirano || 0, 10) || 0) - (parseInt(b.sirano || 0, 10) || 0)) || String(a.key).localeCompare(String(b.key));
+            });
+            return cols.map(function (c, idx) {
+                return { key: String(c.key), label: String(c.label || c.key), durum: !!c.durum, sirano: idx + 1 };
+            });
+        }
+
+        function fetchOrderLineColumns() {
+            return fetch(orderLineColumnsIndexUrl, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || !data.ok) throw new Error('load_failed');
+                    orderLineColumns = normalizeColumns(data.columns || []);
+                    orderLineHeaderCache = null;
+                    return orderLineColumns;
+                });
+        }
+
+        function cellByInputClass(tr, cls) {
+            var el = tr.querySelector('.' + cls);
+            return el ? el.closest('td') : null;
+        }
+
+        function getRowCellByKey(tr, key) {
+            if (!tr || !key) return null;
+            if (key === 'stok_kod') return tr.querySelector('td.stok-kod-cell');
+            if (key === 'stok_aciklama') return tr.querySelector('td.stok-aciklama-cell');
+            if (key === 'proje_kodu') return tr.querySelector('td.proje-kodu-cell');
+            if (key === 'durum') return tr.querySelector('td.durum-cell');
+            if (key === 'birim_fiyat') return tr.querySelector('td.birim-fiyat-cell');
+            if (key === 'miktar') return tr.querySelector('td.miktar-cell');
+            if (key === 'gelen') return tr.querySelector('td.gelen-cell');
+            if (key === 'doviz') return tr.querySelector('td.doviz-cell');
+            if (key === 'kur') return tr.querySelector('td.kur-cell');
+            if (key === 'isk1') return cellByInputClass(tr, 'isk1');
+            if (key === 'isk2') return cellByInputClass(tr, 'isk2');
+            if (key === 'isk3') return cellByInputClass(tr, 'isk3');
+            if (key === 'isk4') return cellByInputClass(tr, 'isk4');
+            if (key === 'isk5') return cellByInputClass(tr, 'isk5');
+            if (key === 'isk6') return cellByInputClass(tr, 'isk6');
+            if (key === 'isk_tutar') return cellByInputClass(tr, 'isk-tutar');
+            if (key === 'kdv_orani') return cellByInputClass(tr, 'kdv-oran');
+            if (key === 'kdv_durum') return cellByInputClass(tr, 'kdv-durum');
+            if (key === 'satir_tutar') return cellByInputClass(tr, 'satir-tutar');
+            if (key === 'detay') return tr.querySelector('td.detay-cell');
+            return null;
+        }
+
+        function ensureHeaderCache() {
+            if (orderLineHeaderCache) return;
+            if (!orderLinesTable) return;
+            var headerRow = orderLinesTable.querySelector('thead tr');
+            if (!headerRow) return;
+            var ths = Array.prototype.slice.call(headerRow.querySelectorAll('th'));
+
+            function idxOf(sel) {
+                var el = headerRow.querySelector(sel);
+                if (!el) return -1;
+                return ths.indexOf(el);
+            }
+
+            var idxKur = idxOf('th.kur');
+            var idxKdvDurum = idxOf('th.kdv-durum');
+
+            orderLineHeaderCache = {
+                row: headerRow,
+                ths: ths,
+                stok_kod: headerRow.querySelector('th.stok-kod'),
+                stok_aciklama: headerRow.querySelector('th.stok-aciklama'),
+                proje_kodu: headerRow.querySelector('th.proje-kodu'),
+                durum: headerRow.querySelector('th.durum'),
+                birim_fiyat: headerRow.querySelector('th.birim-fiyat'),
+                miktar: headerRow.querySelector('th.miktar'),
+                gelen: headerRow.querySelector('th.gelen'),
+                doviz: headerRow.querySelector('th.doviz'),
+                kur: headerRow.querySelector('th.kur'),
+                detay: headerRow.querySelector('th.detay'),
+                isk1: idxKur >= 0 ? ths[idxKur + 1] : null,
+                isk2: idxKur >= 0 ? ths[idxKur + 2] : null,
+                isk3: idxKur >= 0 ? ths[idxKur + 3] : null,
+                isk4: idxKur >= 0 ? ths[idxKur + 4] : null,
+                isk5: idxKur >= 0 ? ths[idxKur + 5] : null,
+                isk6: idxKur >= 0 ? ths[idxKur + 6] : null,
+                isk_tutar: idxKur >= 0 ? ths[idxKur + 7] : null,
+                kdv_orani: headerRow.querySelector('th.kdv'),
+                kdv_durum: headerRow.querySelector('th.kdv-durum'),
+                satir_tutar: idxKdvDurum >= 0 ? ths[idxKdvDurum + 1] : null,
+            };
+        }
+
+        function getHeaderCellByKey(key) {
+            ensureHeaderCache();
+            if (!orderLineHeaderCache) return null;
+            return orderLineHeaderCache[key] || null;
+        }
+
+        function applyColumnsToRow(tr) {
+            if (!tr || !orderLineColumns) return;
+            orderLineColumns.forEach(function (col) {
+                var td = getRowCellByKey(tr, col.key);
+                if (td) td.style.display = col.durum ? '' : 'none';
+            });
+        }
+
+        function applyColumnsToTable() {
+            if (!orderLinesTable || !orderLineColumns) return;
+            ensureHeaderCache();
+            if (!orderLineHeaderCache) return;
+
+            var headerRow = orderLineHeaderCache.row;
+
+            orderLineColumns.forEach(function (col) {
+                var th = getHeaderCellByKey(col.key);
+                if (th) headerRow.appendChild(th);
+            });
+
+            var rows = orderLinesTable.querySelectorAll('tbody tr');
+            Array.prototype.forEach.call(rows, function (tr) {
+                orderLineColumns.forEach(function (col) {
+                    var td = getRowCellByKey(tr, col.key);
+                    if (td) tr.appendChild(td);
+                });
+            });
+
+            orderLineColumns.forEach(function (col) {
+                var th = getHeaderCellByKey(col.key);
+                if (th) th.style.display = col.durum ? '' : 'none';
+            });
+
+            Array.prototype.forEach.call(rows, function (tr) { applyColumnsToRow(tr); });
+        }
+
+        function openSettingsModal() {
+            if (orderLineSettingsModal) orderLineSettingsModal.style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            if (orderLineSettingsModal) orderLineSettingsModal.style.display = 'none';
+        }
+
+        function getSettingItems() {
+            if (!orderLineSettingsList) return [];
+            return Array.prototype.slice.call(orderLineSettingsList.querySelectorAll('.offer-line-setting-item'));
+        }
+
+        function getSettingCheckboxes() {
+            return getSettingItems()
+                .map(function (el) { return el.querySelector('input[type=\"checkbox\"]'); })
+                .filter(Boolean);
+        }
+
+        function renumberSettingItems() {
+            getSettingItems().forEach(function (item, idx) {
+                var no = item.querySelector('.offer-line-setting-no');
+                if (no) no.textContent = String(idx + 1);
+            });
+        }
+
+        function syncToggleAll() {
+            if (!orderLineSettingsToggleAll) return;
+            var cbs = getSettingCheckboxes();
+            if (!cbs.length) {
+                orderLineSettingsToggleAll.checked = true;
+                orderLineSettingsToggleAll.indeterminate = false;
+                return;
+            }
+            var checkedCount = cbs.filter(function (cb) { return cb.checked; }).length;
+            orderLineSettingsToggleAll.checked = checkedCount === cbs.length;
+            orderLineSettingsToggleAll.indeterminate = checkedCount > 0 && checkedCount < cbs.length;
+        }
+
+        function buildSettingsList() {
+            if (!orderLineSettingsList || !orderLineColumns) return;
+            orderLineSettingsList.innerHTML = '';
+
+            orderLineColumns.forEach(function (col, idx) {
+                var item = document.createElement('div');
+                item.className = 'offer-line-setting-item';
+                item.draggable = true;
+                item.setAttribute('data-key', col.key);
+
+                var no = document.createElement('div');
+                no.className = 'offer-line-setting-no';
+                no.textContent = String(idx + 1);
+
+                var handle = document.createElement('div');
+                handle.className = 'offer-line-setting-handle';
+                handle.textContent = '≡';
+
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = !!col.durum;
+                cb.addEventListener('change', syncToggleAll);
+
+                var label = document.createElement('div');
+                label.className = 'offer-line-setting-label';
+                label.textContent = col.label || col.key;
+
+                item.appendChild(no);
+                item.appendChild(handle);
+                item.appendChild(cb);
+                item.appendChild(label);
+                orderLineSettingsList.appendChild(item);
+            });
+
+            renumberSettingItems();
+            syncToggleAll();
+        }
+
+        function getDragAfterElement(container, y) {
+            var els = Array.prototype.slice.call(container.querySelectorAll('.offer-line-setting-item:not(.dragging)'));
+            var closest = null;
+            var closestOffset = Number.NEGATIVE_INFINITY;
+
+            els.forEach(function (child) {
+                var box = child.getBoundingClientRect();
+                var offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closestOffset) {
+                    closestOffset = offset;
+                    closest = child;
+                }
+            });
+
+            return closest;
+        }
+
+        function attachSettingsDnD() {
+            if (!orderLineSettingsList) return;
+
+            orderLineSettingsList.addEventListener('dragstart', function (e) {
+                var item = e.target && e.target.closest ? e.target.closest('.offer-line-setting-item') : null;
+                if (!item) return;
+                orderLineDraggingEl = item;
+                item.classList.add('dragging');
+                try {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item.getAttribute('data-key') || '');
+                } catch (err) {
+                }
+            });
+
+            orderLineSettingsList.addEventListener('dragend', function () {
+                if (orderLineDraggingEl) orderLineDraggingEl.classList.remove('dragging');
+                orderLineDraggingEl = null;
+                renumberSettingItems();
+            });
+
+            orderLineSettingsList.addEventListener('dragover', function (e) {
+                if (!orderLineDraggingEl) return;
+                e.preventDefault();
+                var afterEl = getDragAfterElement(orderLineSettingsList, e.clientY);
+                if (!afterEl) {
+                    orderLineSettingsList.appendChild(orderLineDraggingEl);
+                } else if (afterEl !== orderLineDraggingEl) {
+                    orderLineSettingsList.insertBefore(orderLineDraggingEl, afterEl);
+                }
+                renumberSettingItems();
+            });
+        }
+
+        attachSettingsDnD();
+
+        if (orderLineSettingsToggleAll) {
+            orderLineSettingsToggleAll.addEventListener('change', function () {
+                var checked = !!orderLineSettingsToggleAll.checked;
+                getSettingCheckboxes().forEach(function (cb) { cb.checked = checked; });
+                syncToggleAll();
+            });
+        }
+
+        if (orderLineSettingsSave) {
+            orderLineSettingsSave.addEventListener('click', function () {
+                var items = getSettingItems();
+                if (!items.length) return;
+
+                var payload = items.map(function (item) {
+                    var key = item.getAttribute('data-key') || '';
+                    var cb = item.querySelector('input[type=\"checkbox\"]');
+                    return { key: key, durum: !!(cb && cb.checked) };
+                });
+
+                orderLineSettingsSave.disabled = true;
+                orderLineSettingsSave.style.opacity = '0.7';
+
+                fetch(orderLineColumnsStoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ columns: payload })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data || !data.ok) throw new Error('save_failed');
+                        orderLineColumns = normalizeColumns(data.columns || []);
+                        orderLineHeaderCache = null;
+                        applyColumnsToTable();
+                        closeSettingsModal();
+                    })
+                    .catch(function () {
+                        alert('Sütun ayarları kaydedilemedi.');
+                    })
+                    .finally(function () {
+                        orderLineSettingsSave.disabled = false;
+                        orderLineSettingsSave.style.opacity = '1';
+                    });
+            });
+        }
+
+        if (btnOrderLineSettings) {
+            btnOrderLineSettings.addEventListener('click', function () {
+                fetchOrderLineColumns()
+                    .then(function () {
+                        applyColumnsToTable();
+                        buildSettingsList();
+                        openSettingsModal();
+                    })
+                    .catch(function () {
+                        alert('Sütun ayarları yüklenemedi.');
+                    });
+            });
+        }
+
+        if (orderLineSettingsModal) {
+            orderLineSettingsModal.addEventListener('click', function (e) {
+                if (e.target === orderLineSettingsModal) closeSettingsModal();
+            });
+        }
 
         function fetchTodayForexSelling(currencyCode) {
             var code = (currencyCode || '').toString().trim().toUpperCase();
@@ -1244,6 +1725,176 @@
             } catch (e) {
             }
         }
+
+        function fetchRatesForDate(currencyCode, dateISO) {
+            var code = (currencyCode || '').toString().trim().toUpperCase();
+            var date = (dateISO || '').toString().trim();
+            if (!code) {
+                return Promise.reject(new Error('currency_missing'));
+            }
+            if (!date) {
+                return Promise.reject(new Error('date_missing'));
+            }
+
+            var url = '{{ route('exchange-rate.by-date') }}' +
+                '?currency_code=' + encodeURIComponent(code) +
+                '&tarih=' + encodeURIComponent(date);
+
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!r.ok || !data || !data.ok) throw (data || {});
+                        return data;
+                    });
+                });
+        }
+
+        (function setupRatePicker() {
+            var modal = document.getElementById('rateModal');
+            var closeBtn = document.getElementById('rateModalClose');
+            var metaEl = document.getElementById('rateModalMeta');
+            var errorEl = document.getElementById('rateModalError');
+            var bodyEl = document.getElementById('rateModalBody');
+
+            var currentTargetInput = null;
+
+            function openModal() {
+                if (modal) modal.style.display = 'flex';
+            }
+
+            function closeModal() {
+                if (modal) modal.style.display = 'none';
+                currentTargetInput = null;
+            }
+
+            function showError(message) {
+                if (!errorEl) return;
+                errorEl.textContent = message || 'Kur verisi alınamadı.';
+                errorEl.style.display = 'block';
+            }
+
+            function clearError() {
+                if (!errorEl) return;
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
+
+            function fmtRate(val) {
+                if (val === null || val === undefined || val === '') return '-';
+                var n = parseFloat(val.toString().replace(',', '.'));
+                if (!isFinite(n)) return '-';
+                return n.toFixed(6);
+            }
+
+            function buildRows(data) {
+                if (!bodyEl) return;
+                bodyEl.innerHTML = '';
+
+                var rows = [
+                    { key: 'forex_buying', label: 'Merkez Alış', value: data.forex_buying },
+                    { key: 'forex_selling', label: 'Merkez Satış', value: data.forex_selling },
+                    { key: 'banknote_buying', label: 'Serbest Alış', value: data.banknote_buying },
+                    { key: 'banknote_selling', label: 'Serbest Satış', value: data.banknote_selling },
+                ];
+
+                rows.forEach(function (row) {
+                    var canPick = row.value !== null && row.value !== undefined && row.value !== '';
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;">' + row.label + '</td>' +
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;text-align:right;">' + fmtRate(row.value) + '</td>' +
+                        '<td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;text-align:right;">' +
+                        '<button type="button" class="small-btn rate-pick-btn" data-rate="' + (canPick ? row.value : '') + '"' + (canPick ? '' : ' disabled style="opacity:0.4;cursor:not-allowed;"') + '>Seç</button>' +
+                        '</td>';
+                    bodyEl.appendChild(tr);
+                });
+            }
+
+            function loadAndShow(targetInput, currencyCode, tarih) {
+                currentTargetInput = targetInput;
+                clearError();
+
+                if (metaEl) {
+                    metaEl.textContent = (currencyCode || '') + ' - ' + (tarih || '');
+                }
+                if (bodyEl) {
+                    bodyEl.innerHTML = '<tr><td colspan="3" style="padding:0.75rem;color:#6b7280;">Yükleniyor...</td></tr>';
+                }
+
+                openModal();
+
+                fetchRatesForDate(currencyCode, tarih)
+                    .then(function (data) {
+                        if (metaEl) {
+                            metaEl.textContent = (data.currency_code || currencyCode) + ' - ' + (data.tarih || tarih);
+                        }
+                        buildRows(data);
+                    })
+                    .catch(function (err) {
+                        var msg = (err && err.message) ? err.message : 'Kur verisi alınamadı.';
+                        showError(msg);
+                        if (bodyEl) bodyEl.innerHTML = '';
+                    });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    closeModal();
+                });
+            }
+
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) closeModal();
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('.rate-search-btn') : null;
+                if (!btn) return;
+
+                e.preventDefault();
+
+                var target = btn.getAttribute('data-rate-target') || 'line';
+                var tarihEl = document.getElementById('tarih');
+                var tarih = tarihEl ? (tarihEl.value || '') : '';
+
+                if (!tarih) {
+                    alert('Sipariş/Fatura tarihi seçiniz.');
+                    return;
+                }
+
+                var currencyCode = 'TL';
+                var input = null;
+
+                if (target === 'header') {
+                    currencyCode = (document.getElementById('offer_currency')?.value || 'TL').toString();
+                    input = document.getElementById('offer_rate');
+                } else {
+                    var tr = btn.closest('tr');
+                    currencyCode = (tr?.querySelector('.doviz')?.value || 'TL').toString();
+                    input = tr ? tr.querySelector('.kur') : null;
+                }
+
+                if (!input) return;
+
+                loadAndShow(input, currencyCode, tarih);
+            });
+
+            document.addEventListener('click', function (e) {
+                var pickBtn = e.target && e.target.closest ? e.target.closest('.rate-pick-btn') : null;
+                if (!pickBtn) return;
+
+                e.preventDefault();
+                if (!currentTargetInput) return;
+
+                var rateVal = pickBtn.getAttribute('data-rate') || '';
+                if (rateVal === '') return;
+
+                setKurValue(currentTargetInput, rateVal);
+                closeModal();
+            });
+        })();
 
         function applyCurrencyBehavior(tr, initializeDefault) {
             var currencySelect = tr.querySelector('.doviz');
@@ -1406,12 +2057,22 @@
             var rowHtml =
                 '<td class="stok-kod-cell"><input class="line-input stok-kod"><input type="hidden" class="line-input urun-id"></td>' +
                 '<td class="stok-aciklama-cell"><input class="line-input stok-aciklama"></td>' +
+                '<td class="proje-kodu-cell"><input class="line-input proje-kodu"></td>' +
                 '<td class="durum-cell"><select class="line-input durum"><option value="A" selected>A</option><option value="K">K</option></select></td>' +
                 '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input birim-fiyat"></td>' +
                 '<td class="miktar-cell"><input type="number" step="0.001" class="line-input miktar"></td>' +
                 (isInvoicePage ? '' : '<td class="gelen-cell"><input type="number" step="0.001" class="line-input gelen" readonly></td>') +
                 '<td class="doviz-cell"><select class="line-input doviz"><option value="TL" selected>TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></td>' +
-                '<td class="kur-cell"><input type="number" step="0.0001" class="line-input kur"></td>' +
+                '<td class="kur-cell">' +
+                '<div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">' +
+                '<input type="number" step="0.0001" class="line-input kur" style="width: 96px;">' +
+                '<button type="button" class="small-btn rate-search-btn" data-rate-target="line" title="Kur Seç">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                '<path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+                '</svg>' +
+                '</button>' +
+                '</div>' +
+                '</td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk1"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk2"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk3"></td>' +
@@ -1482,8 +2143,16 @@
                 '<input type="hidden" class="fatura-detay-id">' +
                 '<input type="hidden" class="satir-aciklama-hidden">' +
                 '<input type="hidden" class="line-input satis-detay-ids">' +
-                '<input type="hidden" class="sales-links-json">';
+                '<input type="hidden" class="line-input sales-links-json">';
             tr.innerHTML = rowHtml;
+
+            if (isPurchaseOrder) {
+                var headerProjeKod = ((document.getElementById('proje_kod') || {}).value || '').toString().trim();
+                var lineProjeKodInput = tr.querySelector('.proje-kodu');
+                if (lineProjeKodInput && headerProjeKod && !lineProjeKodInput.value.toString().trim()) {
+                    lineProjeKodInput.value = headerProjeKod;
+                }
+            }
 
             if (isInvoicePage) {
                 var detailCell = tr.querySelector('.detay-cell');
@@ -1671,6 +2340,7 @@
                 if (input.classList.contains('stok-kod')) base = 'stok_kod';
                 else if (input.classList.contains('urun-id')) base = 'urun_id';
                 else if (input.classList.contains('stok-aciklama')) base = 'stok_aciklama';
+                else if (input.classList.contains('proje-kodu')) base = 'proje_kodu';
                 else if (input.classList.contains('durum')) base = 'durum';
                 else if (input.classList.contains('birim-fiyat')) base = 'birim_fiyat';
                 else if (input.classList.contains('miktar')) base = 'miktar';
@@ -1689,6 +2359,7 @@
                 else if (input.classList.contains('satir-tutar')) base = 'satir_toplam';
                 else if (input.classList.contains('satir-aciklama-hidden')) base = 'satir_aciklama';
                 else if (input.classList.contains('satis-detay-ids')) base = 'satis_detay_ids';
+                else if (input.classList.contains('sales-links-json')) base = 'sales_links';
                 else if (input.classList.contains('siparis-detay-id')) base = 'siparis_detay_id';
 
                 if (base) {
@@ -1725,6 +2396,13 @@
 
             if (linesBody) {
                 linesBody.appendChild(tr);
+                if (orderLineColumns) {
+                    orderLineColumns.forEach(function (col) {
+                        var td = getRowCellByKey(tr, col.key);
+                        if (td) tr.appendChild(td);
+                    });
+                }
+                applyColumnsToRow(tr);
                 lineIndex++;
             }
         }
@@ -1736,6 +2414,9 @@
         // baï¿½langï¿½ï¿½ta bir satï¿½r olsun
         if (linesBody) {
             addLineRow();
+            fetchOrderLineColumns()
+                .then(function () { applyColumnsToTable(); })
+                .catch(function () { });
         }
 
         if (linesBody && Array.isArray(initialLines) && initialLines.length > 0) {
@@ -1749,6 +2430,7 @@
 
                 var kodInput = tr.querySelector('.stok-kod');
                 var aciklamaInput = tr.querySelector('.stok-aciklama');
+                var projeKoduInput = tr.querySelector('.proje-kodu');
                 var durumInput = tr.querySelector('.durum');
                 var fiyatInput = tr.querySelector('.birim-fiyat');
                 var miktarInput = tr.querySelector('.miktar');
@@ -1785,6 +2467,9 @@
                 }
                 if (satirAciklamaHidden && lineDesc) {
                     satirAciklamaHidden.value = lineDesc;
+                }
+                if (projeKoduInput && line.proje_kodu) {
+                    projeKoduInput.value = (line.proje_kodu || '').toString().trim();
                 }
                 if (durumInput) {
                     durumInput.value = (line.durum || 'A').toString().trim().toUpperCase() === 'K' ? 'K' : 'A';
@@ -1823,7 +2508,7 @@
                     faturaDetayIdHidden.value = line.id;
                 }
 
-                applyCurrencyBehavior(tr, false);
+                applyCurrencyBehavior(tr, true);
 
                 var trigger = tr.querySelector('.birim-fiyat') || tr.querySelector('.miktar');
                 if (trigger) {
@@ -1831,7 +2516,41 @@
                     trigger.dispatchEvent(ev);
                 }
             });
+
+            fetchOrderLineColumns()
+                .then(function () { applyColumnsToTable(); })
+                .catch(function () { });
         }
+
+        (function autoSavePurchaseFromPlanning() {
+            if (!autoSaveToken) return;
+            if (isEditPage) return;
+            if (!isPurchaseOrder) return;
+            if (isInvoicePage) return;
+            if (!Array.isArray(initialLines) || initialLines.length === 0) return;
+
+            var storageKey = 'planning_auto_save_' + String(autoSaveToken);
+            try {
+                if (sessionStorage.getItem(storageKey) === '1') return;
+                sessionStorage.setItem(storageKey, '1');
+            } catch (e) {
+            }
+
+            var form = document.getElementById('orderForm');
+            if (!form) return;
+
+            setTimeout(function () {
+                try {
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                } catch (e) {
+                    try { form.submit(); } catch (e2) {}
+                }
+            }, 0);
+        })();
 
         var offerRateInput = document.getElementById('offer_rate');
         if (offerRateInput) {
@@ -1844,6 +2563,8 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         var isInvoice = {{ ($resource ?? 'orders') === 'invoices' ? 'true' : 'false' }};
+        var siparisTuruInput = document.querySelector('input[name="siparis_turu"]');
+        var isPurchaseOrder = (siparisTuruInput && siparisTuruInput.value ? siparisTuruInput.value : '').toString().trim().toLowerCase() === 'alim';
         var carikodInput = document.getElementById('carikod');
         var cariaciklamaInput = document.getElementById('cariaciklama');
         var firmaKodLabel = document.getElementById('firma_kod_label');
@@ -1925,6 +2646,97 @@
             isk5: {{ isset($selectedFirm) && $selectedFirm->iskonto5 !== null ? (float)$selectedFirm->iskonto5 : 0 }},
             isk6: {{ isset($selectedFirm) && $selectedFirm->iskonto6 !== null ? (float)$selectedFirm->iskonto6 : 0 }}
         };
+        var currentProjectDiscounts = { isk1: 0, isk2: 0 };
+
+        function applyHeaderProjectToEmptyLines() {
+            if (!isPurchaseOrder) return;
+            if (!linesBody) return;
+            var kod = (projeKodInput && projeKodInput.value ? projeKodInput.value : '').toString().trim();
+            if (!kod) return;
+
+            Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (tr) {
+                var input = tr.querySelector('.proje-kodu');
+                if (!input) return;
+                if (!input.value.toString().trim()) {
+                    input.value = kod;
+                }
+            });
+        }
+
+        var priceListLookupUrl = @json(route('price-lists.lookup-price'));
+
+        function getOrderTur() {
+            var turInput = document.querySelector('input[name="siparis_turu"]');
+            return (turInput && turInput.value ? turInput.value : '').toString().trim().toLowerCase();
+        }
+
+        function syncProjectDiscountsFromHeader() {
+            var id = (projeIdInput && projeIdInput.value ? projeIdInput.value : '').toString().trim();
+            if (!id) {
+                currentProjectDiscounts = { isk1: 0, isk2: 0 };
+                return;
+            }
+
+            var found = false;
+            document.querySelectorAll('.project-row').forEach(function (row) {
+                if (found) return;
+                if (String(row.dataset.id || '') !== String(id)) return;
+                var isk1 = parseFloat(row.dataset.isk1 || '0') || 0;
+                var isk2 = parseFloat(row.dataset.isk2 || '0') || 0;
+                currentProjectDiscounts = { isk1: isk1, isk2: isk2 };
+                found = true;
+            });
+
+            if (!found) {
+                currentProjectDiscounts = { isk1: 0, isk2: 0 };
+            }
+        }
+
+        function tryApplyPurchasePriceFromPriceList(rowEl, urunId, stokKod) {
+            if (!rowEl) return Promise.resolve(false);
+            if (getOrderTur() !== 'alim') return Promise.resolve(false);
+
+            var carikod = (carikodInput && carikodInput.value ? carikodInput.value : '').toString().trim();
+            if (!carikod) return Promise.resolve(false);
+
+            var tarihEl = document.getElementById('tarih');
+            var tarih = tarihEl ? (tarihEl.value || '').toString().trim() : '';
+            if (!tarih) return Promise.resolve(false);
+
+            var url = priceListLookupUrl +
+                '?carikod=' + encodeURIComponent(carikod) +
+                '&tarih=' + encodeURIComponent(tarih);
+
+            if (urunId) url += '&urun_id=' + encodeURIComponent(String(urunId));
+            if (stokKod) url += '&stok_kod=' + encodeURIComponent(String(stokKod));
+
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (payload) {
+                    if (!payload || !payload.ok || !payload.found) return false;
+
+                    var fiyat = parseFloat(payload.birim_fiyat || '0') || 0;
+                    var doviz = (payload.doviz || 'TL').toString().trim().toUpperCase();
+
+                    var fiyatInput = rowEl.querySelector('input.birim-fiyat') || rowEl.querySelector('td.birim-fiyat-cell input');
+                    if (fiyatInput) fiyatInput.value = String(fiyat);
+
+                    var dovizSelect = rowEl.querySelector('select.doviz') || rowEl.querySelector('td.doviz-cell select');
+                    if (dovizSelect && (doviz === 'TL' || doviz === 'USD' || doviz === 'EUR')) {
+                        var oldVal = (dovizSelect.value || '').toString().trim().toUpperCase();
+                        dovizSelect.value = doviz;
+                        if (oldVal !== doviz) {
+                            try {
+                                dovizSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            } catch (e) {
+                            }
+                        }
+                    }
+
+                    return true;
+                })
+                .catch(function () { return false; });
+        }
 
         function findEmptyInvoiceLineRow() {
             if (!linesBody) return null;
@@ -1990,6 +2802,7 @@
                         tr.dataset.urunId = row.urun_id != null ? String(row.urun_id) : '';
                         tr.dataset.stokKod = row.stok_kod != null ? String(row.stok_kod) : '';
                         tr.dataset.stokAciklama = row.stok_aciklama != null ? String(row.stok_aciklama) : '';
+                        tr.dataset.projeKodu = row.proje_kodu != null ? String(row.proje_kodu) : '';
                         tr.dataset.birim = row.birim != null ? String(row.birim) : '';
                         tr.dataset.birimFiyat = row.birim_fiyat != null ? String(row.birim_fiyat) : '';
                         tr.dataset.doviz = row.doviz != null ? String(row.doviz) : 'TL';
@@ -2038,6 +2851,7 @@
                     var urunId = tr.dataset.urunId || '';
                     var stokKod = tr.dataset.stokKod || '';
                     var stokAciklama = tr.dataset.stokAciklama || '';
+                    var projeKodu = tr.dataset.projeKodu || '';
                     var birimFiyat = tr.dataset.birimFiyat || '';
                     var doviz = tr.dataset.doviz || 'TL';
                     var kur = tr.dataset.kur || '';
@@ -2053,6 +2867,7 @@
 
                     var kodInput = targetRow.querySelector('.stok-kod');
                     var aciklamaInput = targetRow.querySelector('.stok-aciklama');
+                    var projeKoduInput = targetRow.querySelector('.proje-kodu');
                     var urunIdInput = targetRow.querySelector('.urun-id');
                     var fiyatInput = targetRow.querySelector('.birim-fiyat');
                     var miktarInput = targetRow.querySelector('.miktar');
@@ -2064,6 +2879,7 @@
                     if (kodInput) kodInput.value = stokKod;
                     if (aciklamaInput) aciklamaInput.value = stokAciklama;
                     if (satirAciklamaHidden) satirAciklamaHidden.value = stokAciklama;
+                    if (projeKoduInput && projeKodu && !projeKoduInput.value.toString().trim()) projeKoduInput.value = projeKodu;
                     if (urunIdInput) urunIdInput.value = urunId;
                     if (fiyatInput && birimFiyat !== '') fiyatInput.value = birimFiyat;
                     if (miktarInput) miktarInput.value = String(qty);
@@ -2219,8 +3035,8 @@
                         tr2.innerHTML =
                             '<td>' + ((row.siparis_no || '').toString()) + '</td>' +
                             '<td>' + formatDateTr(row.siparis_tarih || '') + '</td>' +
-                            '<td>' + ((row.stok_kod || '').toString()) + '</td>' +
-                            '<td>' + ((row.stok_aciklama || '').toString()) + '</td>' +
+                            '<td>' + ((row.proje_kodu || '').toString()) + '</td>' +
+                            '<td>' + ((row.islem_tipi || '').toString()) + '</td>' +
                             '<td style=\"text-align:right;\">' + (row.siparis_miktar != null ? row.siparis_miktar : '') + '</td>' +
                             '<td style=\"text-align:right;\">' + (row.aktarim_miktar != null ? row.aktarim_miktar : '') + '</td>';
                         invoiceLinksTbody.appendChild(tr2);
@@ -2273,18 +3089,24 @@
                 if (salesLinksTbody) {
                     salesLinksTbody.innerHTML = '';
                     if (!Array.isArray(links) || links.length === 0) {
-                        salesLinksTbody.innerHTML = '<tr><td colspan=\"4\" style=\"padding:12px; text-align:center; color:#6b7280;\">Eşleşen satış satırı bulunamadı.</td></tr>';
+                        salesLinksTbody.innerHTML = '<tr><td colspan=\"7\" style=\"padding:12px; text-align:center; color:#6b7280;\">Eşleşen satış satırı bulunamadı.</td></tr>';
                     } else {
                         links.forEach(function (l) {
                             var row = document.createElement('tr');
                             var carikod = (l.carikod || '').toString();
                             var siparisNo = (l.siparis_no || '').toString();
                             var tarih = formatDateTr(l.tarih || '');
+                            var eslesenMiktar = (l.eslesen_miktar != null ? l.eslesen_miktar : (l.plan_miktar != null ? l.plan_miktar : (l.miktar != null ? l.miktar : ''))).toString();
+                            var islemTuru = (l.islem_turu || '').toString();
+                            var proje = (l.proje || '').toString();
                             var miktar = (l.miktar != null ? l.miktar : '').toString();
                             row.innerHTML =
                                 '<td>' + carikod + '</td>' +
                                 '<td>' + siparisNo + '</td>' +
                                 '<td>' + tarih + '</td>' +
+                                '<td style=\"text-align:right;\">' + eslesenMiktar + '</td>' +
+                                '<td>' + islemTuru + '</td>' +
+                                '<td>' + proje + '</td>' +
                                 '<td style=\"text-align:right;\">' + miktar + '</td>';
                             salesLinksTbody.appendChild(row);
                         });
@@ -2361,52 +3183,6 @@
                     if (depoKodInput) depoKodInput.value = kod;
 
                     closeModal(depoModal);
-                });
-            });
-        }
-
-        if (linesBody && productModal) {
-            linesBody.addEventListener('dblclick', function (e) {
-                var target = e.target;
-                if (!target || !target.classList) return;
-                if (!target.classList.contains('stok-kod') &&
-                    !target.classList.contains('stok-aciklama')) {
-                    return;
-                }
-                currentProductRow = target.closest('tr');
-                if (currentProductRow) {
-                    openModal(productModal);
-                }
-            });
-
-            productModal.addEventListener('click', function (e) {
-                if (e.target === productModal) {
-                    closeModal(productModal);
-                }
-            });
-
-            document.querySelectorAll('.product-row').forEach(function (row) {
-                row.addEventListener('click', function () {
-                    if (!currentProductRow) return;
-
-                    var kod = this.dataset.kod || '';
-                    var aciklama = this.dataset.aciklama || '';
-                    var fiyat = this.dataset.fiyat || '';
-                    var urunId = this.dataset.id || '';
-
-                    var kodInput = currentProductRow.querySelector('.stok-kod');
-                    var aciklamaInput = currentProductRow.querySelector('.stok-aciklama');
-                    var fiyatInput = currentProductRow.querySelector('.birim-fiyat');
-                    var urunIdInput = currentProductRow.querySelector('.urun-id');
-                    var satirAciklamaHidden = currentProductRow.querySelector('.satir-aciklama-hidden');
-
-                    if (kodInput) kodInput.value = kod;
-                    if (aciklamaInput) aciklamaInput.value = aciklama;
-                    if (fiyatInput) fiyatInput.value = fiyat;
-                    if (urunIdInput) urunIdInput.value = urunId;
-                    if (satirAciklamaHidden) satirAciklamaHidden.value = aciklama;
-
-                    closeModal(productModal);
                 });
             });
         }
@@ -2519,13 +3295,20 @@
                 row.addEventListener('click', function () {
                     var id = this.dataset.id || '';
                     var kod = this.dataset.kod || '';
+                    var isk1 = parseFloat(this.dataset.isk1 || '0') || 0;
+                    var isk2 = parseFloat(this.dataset.isk2 || '0') || 0;
 
                     if (projeIdInput) projeIdInput.value = id;
                     if (projeKodInput) projeKodInput.value = kod;
+                    currentProjectDiscounts = { isk1: isk1, isk2: isk2 };
+                    applyHeaderProjectToEmptyLines();
 
                     closeModal(projeModal);
                 });
             });
+
+            syncProjectDiscountsFromHeader();
+            applyHeaderProjectToEmptyLines();
         }
 
         // ï¿½rï¿½n seï¿½imi - stok kodu veya aï¿½ï¿½klamaya ï¿½ift tï¿½k
@@ -2558,15 +3341,20 @@
                     var kod = this.dataset.kod || '';
                     var aciklama = this.dataset.aciklama || '';
                     var fiyat = this.dataset.fiyat || '';
+                    var urunId = this.dataset.id || '';
 
                     var kodInput = currentProductRow.querySelector('.stok-kod');
                     var aciklamaInput = currentProductRow.querySelector('.stok-aciklama');
-                    var fiyatInput = currentProductRow.querySelector('.birim-fiyat');
-                    var miktarInput = currentProductRow.querySelector('.miktar');
+                    var fiyatInput = currentProductRow.querySelector('td.birim-fiyat-cell input') || currentProductRow.querySelector('input.birim-fiyat');
+                    var miktarInput = currentProductRow.querySelector('td.miktar-cell input') || currentProductRow.querySelector('input.miktar');
+                    var urunIdInput = currentProductRow.querySelector('.urun-id');
+                    var satirAciklamaHidden = currentProductRow.querySelector('.satir-aciklama-hidden');
 
                     if (kodInput) kodInput.value = kod;
                     if (aciklamaInput) aciklamaInput.value = aciklama;
-                    if (fiyatInput) fiyatInput.value = fiyat;
+                    if (fiyatInput) fiyatInput.value = isPurchaseOrder ? '0' : fiyat;
+                    if (urunIdInput) urunIdInput.value = urunId;
+                    if (satirAciklamaHidden) satirAciklamaHidden.value = aciklama;
 
                     // Ürün seçildiğinde miktar 1 olsun (boşsa)
                     if (miktarInput && !miktarInput.value) {
@@ -2574,14 +3362,21 @@
                     }
 
                     // Seçili carinin iskonto oranlarını satıra uygula
-                    if (currentFirmDiscounts) {
-                        var d1 = currentProductRow.querySelector('.isk1');
-                        var d2 = currentProductRow.querySelector('.isk2');
-                        var d3 = currentProductRow.querySelector('.isk3');
-                        var d4 = currentProductRow.querySelector('.isk4');
-                        var d5 = currentProductRow.querySelector('.isk5');
-                        var d6 = currentProductRow.querySelector('.isk6');
+                    var d1 = currentProductRow.querySelector('.isk1');
+                    var d2 = currentProductRow.querySelector('.isk2');
+                    var d3 = currentProductRow.querySelector('.isk3');
+                    var d4 = currentProductRow.querySelector('.isk4');
+                    var d5 = currentProductRow.querySelector('.isk5');
+                    var d6 = currentProductRow.querySelector('.isk6');
 
+                    if (isPurchaseOrder) {
+                        var p1 = currentProjectDiscounts ? (parseFloat(currentProjectDiscounts.isk1 || '0') || 0) : 0;
+                        var p2 = currentProjectDiscounts ? (parseFloat(currentProjectDiscounts.isk2 || '0') || 0) : 0;
+                        if (p1 > 0 || p2 > 0) {
+                            if (d1) d1.value = String(p1);
+                            if (d2) d2.value = String(p2);
+                        }
+                    } else if (currentFirmDiscounts) {
                         if (d1) d1.value = currentFirmDiscounts.isk1;
                         if (d2) d2.value = currentFirmDiscounts.isk2;
                         if (d3) d3.value = currentFirmDiscounts.isk3;
@@ -2591,11 +3386,16 @@
                     }
 
                     // Ürün seçildiğinde satır hesaplamasını tetikle
-                    var triggerInput = currentProductRow.querySelector('.birim-fiyat') || currentProductRow.querySelector('.miktar');
-                    if (triggerInput) {
-                        var ev = new Event('input', { bubbles: true });
-                        triggerInput.dispatchEvent(ev);
-                    }
+                    tryApplyPurchasePriceFromPriceList(currentProductRow, urunId, kod).then(function (applied) {
+                        if (!applied && isPurchaseOrder && fiyatInput) {
+                            fiyatInput.value = '0';
+                        }
+                        var triggerInput = (currentProductRow.querySelector('td.birim-fiyat-cell input') || currentProductRow.querySelector('td.miktar-cell input'));
+                        if (triggerInput) {
+                            var ev = new Event('input', { bubbles: true });
+                            triggerInput.dispatchEvent(ev);
+                        }
+                    });
 
                     closeModal(productModal);
                 });

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projeler - NomaEnerji</title>
+    <title>Ürün Detay Grup - NomaEnerji</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
 </head>
 <body>
 <div class="dashboard-container">
-    @include('partials.sidebar', ['active' => 'projects'])
+    @include('partials.sidebar', ['active' => 'product-detail-groups'])
 
     <main class="main-content">
         <header class="top-bar">
@@ -26,7 +26,7 @@
                         <path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                Projeler
+                Ürün Detay Grup
             </div>
             <div class="user-profile" style="display:flex;align-items:center;gap:1rem;">
                 <div class="user-avatar">
@@ -48,39 +48,49 @@
 
         <section class="content-section" style="padding:2rem;">
             <div class="form-page-card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-                    <h1 style="font-size:1.4rem;font-weight:600;">Projeler</h1>
-                    <button type="button" id="addProjectRow" class="form-header-btn save" style="padding:0.4rem 1rem;font-size:0.9rem;">Yeni</button>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <h1 style="font-size:1.4rem;font-weight:600;margin:0;">Ürün Detay Grup</h1>
+                        <select id="productGroupSelect" style="min-width:220px;">
+                            @foreach($groups as $group)
+                                <option value="{{ $group->id }}" {{ (int)$selectedGroupId === (int)$group->id ? 'selected' : '' }}>
+                                    {{ $group->ad }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <select id="productSubGroupSelect" style="min-width:220px;">
+                            @foreach($subGroups as $subGroup)
+                                <option value="{{ $subGroup->id }}" {{ (int)$selectedSubGroupId === (int)$subGroup->id ? 'selected' : '' }}>
+                                    {{ $subGroup->ad }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="button" id="addProductDetailGroupRow" class="form-header-btn save" style="padding:0.4rem 1rem;font-size:0.9rem;">Yeni</button>
                 </div>
 
-                <form method="POST" action="{{ route('definitions.projects.save') }}">
+                @error('group_id')<div class="form-error" style="margin-bottom:0.5rem;">{{ $message }}</div>@enderror
+                @error('sub_group_id')<div class="form-error" style="margin-bottom:0.75rem;">{{ $message }}</div>@enderror
+
+                <form method="POST" action="{{ route('definitions.product-detail-groups.save') }}">
                     @csrf
+                    <input type="hidden" name="group_id" value="{{ $selectedGroupId }}">
+                    <input type="hidden" name="sub_group_id" value="{{ $selectedSubGroupId }}">
+
                     <div class="products-table-wrapper" style="overflow-x:auto;">
                         <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
                             <thead>
                             <tr>
-                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Proje Kodu</th>
-                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İskonto 1</th>
-                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İskonto 2</th>
-                                <th style="text-align:center;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Pasif</th>
+                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Ad</th>
                                 <th style="text-align:right;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İşlem</th>
                             </tr>
                             </thead>
-                            <tbody id="projectsTableBody">
-                            @forelse($projects as $index => $project)
+                            <tbody id="productDetailGroupsTableBody">
+                            @forelse($detailGroups as $index => $detailGroup)
                                 <tr>
                                     <td style="padding:0.5rem 0.5rem;">
-                                        <input type="hidden" name="projects[{{ $index }}][id]" value="{{ $project->id }}">
-                                        <input type="text" name="projects[{{ $index }}][kod]" value="{{ $project->kod }}" style="width:100%;">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;">
-                                        <input type="number" step="0.0001" name="projects[{{ $index }}][iskonto1]" value="{{ $project->iskonto1 ?? 0 }}" style="width:100%;text-align:right;">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;">
-                                        <input type="number" step="0.0001" name="projects[{{ $index }}][iskonto2]" value="{{ $project->iskonto2 ?? 0 }}" style="width:100%;text-align:right;">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;text-align:center;">
-                                        <input type="checkbox" name="projects[{{ $index }}][pasif]" value="1" {{ $project->pasif ? 'checked' : '' }}>
+                                        <input type="hidden" name="items[{{ $index }}][id]" value="{{ $detailGroup->id }}">
+                                        <input type="text" name="items[{{ $index }}][name]" value="{{ $detailGroup->ad }}" style="width:100%;">
                                     </td>
                                     <td style="padding:0.5rem 0.5rem;text-align:right;">
                                         <button type="button" class="row-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
@@ -89,17 +99,8 @@
                             @empty
                                 <tr>
                                     <td style="padding:0.5rem 0.5rem;">
-                                        <input type="hidden" name="projects[0][id]" value="">
-                                        <input type="text" name="projects[0][kod]" value="" style="width:100%;" placeholder="Proje kodu">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;">
-                                        <input type="number" step="0.0001" name="projects[0][iskonto1]" value="0" style="width:100%;text-align:right;">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;">
-                                        <input type="number" step="0.0001" name="projects[0][iskonto2]" value="0" style="width:100%;text-align:right;">
-                                    </td>
-                                    <td style="padding:0.5rem 0.5rem;text-align:center;">
-                                        <input type="checkbox" name="projects[0][pasif]" value="1">
+                                        <input type="hidden" name="items[0][id]" value="">
+                                        <input type="text" name="items[0][name]" value="" style="width:100%;" placeholder="Yeni detay grup adı">
                                     </td>
                                     <td style="padding:0.5rem 0.5rem;text-align:right;">
                                         <button type="button" class="row-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
@@ -121,8 +122,52 @@
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script>
     (function () {
-        var addButton = document.getElementById('addProjectRow');
-        var tbody = document.getElementById('projectsTableBody');
+        var baseUrl = @json(route('definitions.product-detail-groups'));
+        var subGroupsByGroup = @json($subGroupsByGroup);
+
+        var groupSelect = document.getElementById('productGroupSelect');
+        var subGroupSelect = document.getElementById('productSubGroupSelect');
+        var addButton = document.getElementById('addProductDetailGroupRow');
+        var tbody = document.getElementById('productDetailGroupsTableBody');
+
+        function buildUrl(groupId, subGroupId) {
+            var qs = [];
+            if (groupId) qs.push('group_id=' + encodeURIComponent(groupId));
+            if (subGroupId) qs.push('sub_group_id=' + encodeURIComponent(subGroupId));
+            return baseUrl + (qs.length ? ('?' + qs.join('&')) : '');
+        }
+
+        function refreshSubGroupOptions() {
+            if (!groupSelect || !subGroupSelect) return;
+            var groupId = groupSelect.value || '';
+            var items = subGroupsByGroup[groupId] || [];
+            var current = subGroupSelect.value || '';
+
+            subGroupSelect.innerHTML = '';
+            items.forEach(function (it) {
+                var opt = document.createElement('option');
+                opt.value = String(it.id);
+                opt.textContent = it.ad;
+                subGroupSelect.appendChild(opt);
+            });
+
+            if (items.some(function (it) { return String(it.id) === String(current); })) {
+                subGroupSelect.value = current;
+            } else if (items.length) {
+                subGroupSelect.value = String(items[0].id);
+            }
+        }
+
+        if (groupSelect && subGroupSelect) {
+            groupSelect.addEventListener('change', function () {
+                refreshSubGroupOptions();
+                window.location.href = buildUrl(groupSelect.value || '', subGroupSelect.value || '');
+            });
+
+            subGroupSelect.addEventListener('change', function () {
+                window.location.href = buildUrl(groupSelect.value || '', subGroupSelect.value || '');
+            });
+        }
 
         if (!addButton || !tbody) {
             return;
@@ -134,17 +179,8 @@
             var tr = document.createElement('tr');
             tr.innerHTML =
                 '<td style="padding:0.5rem 0.5rem;">' +
-                '<input type="hidden" name="projects[' + index + '][id]" value="">' +
-                '<input type="text" name="projects[' + index + '][kod]" value="" style="width:100%;" placeholder="Proje kodu">' +
-                '</td>' +
-                '<td style="padding:0.5rem 0.5rem;">' +
-                '<input type="number" step="0.0001" name="projects[' + index + '][iskonto1]" value="0" style="width:100%;text-align:right;">' +
-                '</td>' +
-                '<td style="padding:0.5rem 0.5rem;">' +
-                '<input type="number" step="0.0001" name="projects[' + index + '][iskonto2]" value="0" style="width:100%;text-align:right;">' +
-                '</td>' +
-                '<td style="padding:0.5rem 0.5rem;text-align:center;">' +
-                '<input type="checkbox" name="projects[' + index + '][pasif]" value="1">' +
+                '<input type="hidden" name="items[' + index + '][id]" value="">' +
+                '<input type="text" name="items[' + index + '][name]" value="" style="width:100%;" placeholder="Yeni detay grup adı">' +
                 '</td>' +
                 '<td style="padding:0.5rem 0.5rem;text-align:right;">' +
                 '<button type="button" class="row-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>' +
@@ -156,7 +192,7 @@
         tbody.addEventListener('click', function (e) {
             if (e.target && e.target.classList.contains('row-delete-btn')) {
                 var row = e.target.closest('tr');
-                if (row && confirm('Bu projeyi silmek istiyor musunuz?')) {
+                if (row && confirm('Bu satırı silmek istiyor musunuz?')) {
                     row.remove();
                 }
             }
@@ -165,3 +201,4 @@
 </script>
 </body>
 </html>
+

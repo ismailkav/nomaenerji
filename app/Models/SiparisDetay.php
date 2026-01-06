@@ -14,6 +14,7 @@ class SiparisDetay extends Model
     protected $fillable = [
         'siparis_id',
         'urun_id',
+        'proje_kodu',
         'satir_aciklama',
         'durum',
         'miktar',

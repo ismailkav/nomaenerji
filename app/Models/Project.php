@@ -14,10 +14,13 @@ class Project extends Model
     protected $fillable = [
         'kod',
         'pasif',
+        'iskonto1',
+        'iskonto2',
     ];
 
     protected $casts = [
         'pasif' => 'boolean',
+        'iskonto1' => 'decimal:4',
+        'iskonto2' => 'decimal:4',
     ];
 }
-

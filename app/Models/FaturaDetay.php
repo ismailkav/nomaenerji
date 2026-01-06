@@ -14,6 +14,7 @@ class FaturaDetay extends Model
     protected $fillable = [
         'fatura_id',
         'urun_id',
+        'proje_kodu',
         'stokkod',
         'siparis_detay_id',
         'satir_aciklama',

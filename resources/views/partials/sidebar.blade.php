@@ -195,7 +195,7 @@
         </a>
 
         <a href="#" id="definitionsToggle"
-           class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','islem-turleri','projects','depots']) ? 'active' : '' }}">
+           class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','product-sub-groups','product-detail-groups','islem-turleri','projects','depots','price-lists']) ? 'active' : '' }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h16v4H4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -204,6 +204,32 @@
             </svg>
             <span class="nav-text">Tanımlamalar</span>
         </a>
+
+        <a href="#" id="reportsToggle"
+           class="nav-item {{ in_array(($active ?? ''), ['reports','reports-project']) ? 'active' : '' }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 19V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 19V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M16 19v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M20 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span class="nav-text">Raporlar</span>
+        </a>
+
+        <div id="reportsSubmenu" style="display:none;">
+            <a href="{{ route('reports.index') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'reports' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Genel</span>
+            </a>
+            <a href="{{ route('reports.project') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'reports-project' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Proje</span>
+            </a>
+        </div>
 
         <div id="definitionsSubmenu" style="display:none;">
             <a href="{{ route('definitions.cari-groups') }}"
@@ -215,6 +241,16 @@
                class="nav-item nav-sub-item {{ ($active ?? '') === 'product-groups' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Ürün Grup</span>
+            </a>
+            <a href="{{ route('definitions.product-sub-groups') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'product-sub-groups' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Ürün Alt Grup</span>
+            </a>
+            <a href="{{ route('definitions.product-detail-groups') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'product-detail-groups' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Ürün Detay Grup</span>
             </a>
             <a href="{{ route('definitions.islem-turleri') }}"
                class="nav-item nav-sub-item {{ ($active ?? '') === 'islem-turleri' ? 'active' : '' }}"
@@ -230,6 +266,11 @@
                class="nav-item nav-sub-item {{ ($active ?? '') === 'depots' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Depo</span>
+            </a>
+            <a href="{{ route('price-lists.index') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'price-lists' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Fiyat Listesi</span>
             </a>
         </div>
     </nav>
@@ -322,6 +363,24 @@
                     invoicesSubmenu.style.display = 'block';
                 } else {
                     invoicesSubmenu.style.display = 'none';
+                }
+            });
+        }
+
+        var reportsToggle = document.getElementById('reportsToggle');
+        var reportsSubmenu = document.getElementById('reportsSubmenu');
+
+        if (reportsToggle && reportsSubmenu) {
+            if (reportsToggle.classList.contains('active')) {
+                reportsSubmenu.style.display = 'block';
+            }
+
+            reportsToggle.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (reportsSubmenu.style.display === 'none' || reportsSubmenu.style.display === '') {
+                    reportsSubmenu.style.display = 'block';
+                } else {
+                    reportsSubmenu.style.display = 'none';
                 }
             });
         }

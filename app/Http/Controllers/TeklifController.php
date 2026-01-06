@@ -33,7 +33,13 @@ class TeklifController extends Controller
             $query->where(function ($q2) use ($search) {
                 $q2->where('teklif_no', 'like', '%' . $search . '%')
                     ->orWhere('carikod', 'like', '%' . $search . '%')
-                    ->orWhere('cariaciklama', 'like', '%' . $search . '%');
+                    ->orWhere('cariaciklama', 'like', '%' . $search . '%')
+                    ->orWhereHas('proje', function ($q3) use ($search) {
+                        $q3->where('kod', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('islemTuru', function ($q3) use ($search) {
+                        $q3->where('ad', 'like', '%' . $search . '%');
+                    });
             });
         }
 
