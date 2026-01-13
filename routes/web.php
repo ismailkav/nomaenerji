@@ -17,6 +17,9 @@ use App\Http\Controllers\FiyatListesiController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/login', function () {
+    return redirect()->route('login');
+})->name('login.get');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -39,6 +42,9 @@ Route::middleware(['auth'])->group(function () {
         ->name('offer-list-columns.index');
     Route::post('teklifler/liste-sutunlar', [OfferLineColumnController::class, 'offerListStore'])
         ->name('offer-list-columns.store');
+
+    Route::match(['GET', 'POST'], 'teklifler/image-base64', [TeklifController::class, 'productImageBase64'])
+        ->name('offers.image-base64');
 
     Route::get('siparisler/sutunlar', [OfferLineColumnController::class, 'orderIndex'])
         ->name('order-line-columns.index');
@@ -105,6 +111,16 @@ Route::middleware(['auth'])->group(function () {
         ->parameters(['teklifler' => 'teklif'])
         ->names('offers');
 
+    Route::get('teklifler/satirlar/{detay}/takim-detaylari', [TeklifController::class, 'teamLineDetails'])
+        ->name('offers.lines.team-details');
+    Route::post('teklifler/satirlar/{detay}/takim-detaylari', [TeklifController::class, 'saveTeamLineDetails'])
+        ->name('offers.lines.team-details.save');
+
+    Route::get('teklifler/satirlar/{detay}/montaj-detaylari', [TeklifController::class, 'montajLineDetails'])
+        ->name('offers.lines.montaj-details');
+    Route::post('teklifler/satirlar/{detay}/montaj-detaylari', [TeklifController::class, 'saveMontajLineDetails'])
+        ->name('offers.lines.montaj-details.save');
+
     Route::resource('fiyat-listeleri', FiyatListesiController::class)
         ->parameters(['fiyat-listeleri' => 'fiyatListesi'])
         ->names('price-lists')
@@ -143,6 +159,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('teklifler/{teklif}/pdf', [TeklifController::class, 'pdf'])
         ->name('offers.pdf');
 
+    Route::post('teklifler/json-to-pdf', [TeklifController::class, 'jsonToPdf'])
+        ->name('offers.json-to-pdf');
+
     Route::post('teklifler/{teklif}/siparis-olustur', [TeklifController::class, 'createSalesOrder'])
         ->name('offers.create-sales-order');
 
@@ -170,6 +189,23 @@ Route::middleware(['auth'])->group(function () {
     Route::post('urun-detay-gruplar', [DefinitionController::class, 'saveProductDetailGroups'])
         ->name('definitions.product-detail-groups.save');
 
+    Route::get('montaj-gruplar', [DefinitionController::class, 'montajGroups'])
+        ->name('definitions.montaj-groups');
+    Route::post('montaj-gruplar', [DefinitionController::class, 'saveMontajGroups'])
+        ->name('definitions.montaj-groups.save');
+    Route::get('montaj-gruplar/detay-gruplar', [DefinitionController::class, 'montajDetailGroups'])
+        ->name('definitions.montaj-groups.detail-groups');
+
+    Route::get('montaj-urunler', [DefinitionController::class, 'montajProducts'])
+        ->name('definitions.montaj-products');
+    Route::post('montaj-urunler', [DefinitionController::class, 'saveMontajProducts'])
+        ->name('definitions.montaj-products.save');
+
+    Route::get('montaj-urun-gruplar', [DefinitionController::class, 'montajProductGroups'])
+        ->name('definitions.montaj-product-groups');
+    Route::post('montaj-urun-gruplar', [DefinitionController::class, 'saveMontajProductGroups'])
+        ->name('definitions.montaj-product-groups.save');
+
     Route::get('islem-turleri', [DefinitionController::class, 'islemTurleri'])
         ->name('definitions.islem-turleri');
     Route::post('islem-turleri', [DefinitionController::class, 'saveIslemTurleri'])
@@ -184,6 +220,11 @@ Route::middleware(['auth'])->group(function () {
         ->name('definitions.depots');
     Route::post('depolar', [DefinitionController::class, 'saveDepots'])
         ->name('definitions.depots.save');
+
+    Route::get('parametreler', [DefinitionController::class, 'parameters'])
+        ->name('definitions.parameters');
+    Route::post('parametreler', [DefinitionController::class, 'saveParameters'])
+        ->name('definitions.parameters.save');
 
     Route::prefix('stok')->group(function () {
         Route::get('konsinye-giris', [ConsignmentController::class, 'indexIn'])

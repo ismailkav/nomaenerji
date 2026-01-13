@@ -353,6 +353,8 @@
         <div class="modal">
             <div class="modal-header">
                 <div class="modal-title">Firma Seç</div>
+                <input id="firmModalSearch" type="text" placeholder="Ara (Cari Kod / Açıklama)"
+                       style="margin-left:auto;min-width:260px;border-radius:999px;border:1px solid #e5e7eb;padding:0.35rem 0.75rem;font-size:0.9rem;outline:none;">
                 <button type="button" class="small-btn" data-modal-close="firmModal">X</button>
             </div>
             <div class="modal-body">
@@ -386,6 +388,8 @@
         <div class="modal">
             <div class="modal-header">
                 <div class="modal-title">Ürün Seç</div>
+                <input id="productModalSearch" type="text" placeholder="Ara (Stok Kod / Aciklama)"
+                       style="margin-left:auto;min-width:260px;border-radius:999px;border:1px solid #e5e7eb;padding:0.35rem 0.75rem;font-size:0.9rem;outline:none;">
                 <button type="button" class="small-btn" data-modal-close="productModal">X</button>
             </div>
             <div class="modal-body">
@@ -395,18 +399,33 @@
                         <th>Stok Kod</th>
                         <th>Stok Açıklama</th>
                         <th>Birim Fiyat</th>
+                        <th>Doviz</th>
+                        <th class="num">Stok Miktar</th>
+                        <th class="num">Rezerve Miktar</th>
+                        <th class="num">Kullanılabilir</th>
                     </tr>
                     </thead>
                     <tbody>
                     @foreach($products as $product)
+                        @php($stokMiktar = (float) ($product->envanter_stok_miktar ?? 0))
+                        @php($rezerveMiktar = (float) ($product->rezerve_miktar ?? 0))
+                        @php($kullanilabilir = $stokMiktar - $rezerveMiktar)
                         <tr class="product-row"
                             data-id="{{ $product->id }}"
                             data-kod="{{ $product->kod }}"
                             data-aciklama="{{ $product->aciklama }}"
-                            data-fiyat="{{ $product->satis_fiyat }}">
+                            data-fiyat="{{ $product->satis_fiyat }}"
+                            data-doviz="{{ $product->satis_doviz ?? 'TL' }}"
+                            data-stokmiktar="{{ (int) round($stokMiktar) }}"
+                            data-rezervemiktar="{{ (int) round($rezerveMiktar) }}"
+                            data-kullanilabilirmiktar="{{ (int) round($kullanilabilir) }}">
                             <td>{{ $product->kod }}</td>
                             <td>{{ $product->aciklama }}</td>
                             <td style="text-align:right;">{{ number_format((float) $product->satis_fiyat, 2, ',', '.') }}</td>
+                            <td>{{ $product->satis_doviz ?? 'TL' }}</td>
+                            <td class="num" style="text-align:right;">{{ number_format((float) $stokMiktar, 0, ',', '.') }}</td>
+                            <td class="num" style="text-align:right;">{{ number_format((float) $rezerveMiktar, 0, ',', '.') }}</td>
+                            <td class="num" style="text-align:right;">{{ number_format((float) $kullanilabilir, 0, ',', '.') }}</td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -459,6 +478,20 @@
         if (firmModal) {
             firmModal.addEventListener('click', function (e) {
                 if (e.target === firmModal) closeModal(firmModal);
+            });
+        }
+
+        var firmSearchInput = document.getElementById('firmModalSearch');
+        if (firmSearchInput && !firmSearchInput.dataset.bound) {
+            firmSearchInput.dataset.bound = '1';
+            firmSearchInput.addEventListener('input', function () {
+                var q = (firmSearchInput.value || '').toString().trim().toLowerCase();
+                document.querySelectorAll('#firmModal .firm-row').forEach(function (row) {
+                    var kod = (row.dataset.carikod || '').toString().toLowerCase();
+                    var aciklama = (row.dataset.cariaciklama || '').toString().toLowerCase();
+                    var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
+                    row.style.display = ok ? '' : 'none';
+                });
             });
         }
 
@@ -550,22 +583,43 @@
             });
         }
 
+        var productSearchInput = document.getElementById('productModalSearch');
+        if (productSearchInput && !productSearchInput.dataset.bound) {
+            productSearchInput.dataset.bound = '1';
+            productSearchInput.addEventListener('input', function () {
+                var q = (productSearchInput.value || '').toString().trim().toLowerCase();
+                document.querySelectorAll('#productModal .product-row').forEach(function (row) {
+                    var kod = (row.dataset.kod || '').toString().toLowerCase();
+                    var aciklama = (row.dataset.aciklama || '').toString().toLowerCase();
+                    var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
+                    row.style.display = ok ? '' : 'none';
+                });
+            });
+        }
+
         document.querySelectorAll('.product-row').forEach(function (row) {
             row.addEventListener('click', function () {
                 if (!currentProductRow) return;
 
                 var kod = this.dataset.kod || '';
                 var aciklama = this.dataset.aciklama || '';
+                var doviz = this.dataset.doviz || 'TL';
                 var urunId = this.dataset.id || '';
 
                 var kodInput = currentProductRow.querySelector('.stok-kod');
                 var aciklamaInput = currentProductRow.querySelector('.stok-aciklama');
                 var fiyatInput = currentProductRow.querySelector('.birim-fiyat');
+                var dovizSelect = currentProductRow.querySelector('.doviz');
                 var urunIdInput = currentProductRow.querySelector('.urun-id');
 
                 if (kodInput) kodInput.value = kod;
                 if (aciklamaInput) aciklamaInput.value = aciklama;
                 if (fiyatInput) fiyatInput.value = '0';
+                if (dovizSelect) {
+                    var val = (doviz || 'TL').toString().trim().toUpperCase();
+                    if (val !== 'TL' && val !== 'USD' && val !== 'EUR') val = 'TL';
+                    dovizSelect.value = val;
+                }
                 if (urunIdInput) urunIdInput.value = urunId;
 
                 closeModal(productModal);
@@ -580,4 +634,3 @@
 </script>
 </body>
 </html>
-

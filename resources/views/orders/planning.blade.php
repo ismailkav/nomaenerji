@@ -358,10 +358,10 @@
                             <th>Stok Açıklama</th>
                             <th class="num">Miktar</th>
                             <th class="num">Sipariş Miktar</th>
-                            <th class="num">Siparis Revize</th>
-                            <th class="num">Revize Miktar</th>
+                            <th class="num">Sipariş Rezerve</th>
+                            <th class="num">Rezerve Miktar</th>
                             <th class="num">Stok Miktar</th>
-                            <th class="num">Revize Edilen</th>
+                            <th class="num">Rezerve Edilen</th>
                             <th class="num">Gerçek Stok</th>
                             <th class="num">Sipariş Verilen</th>
                             <th class="num">Sipariş Kalan</th>
@@ -410,7 +410,7 @@
                                 <td class="num siparis-revize-cell">
                                     <div style="display:flex; justify-content:flex-end; align-items:center; gap: 4px; flex-wrap: wrap;">
                                         <span class="siparis-revize-value">{{ number_format((float)($row->revize_satir_miktar ?? 0), 0, ',', '.') }}</span>
-                                        <button type="button" class="small-btn revize-list-btn" title="Revize Listesi">
+                                        <button type="button" class="small-btn revize-list-btn" title="Rezerve Listesi">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                             </svg>
@@ -420,7 +420,7 @@
                                 <td class="num">
                                     <div style="display:flex; justify-content:flex-end; align-items:center; gap: 4px; flex-wrap: wrap;">
                                         <span class="revize-action-value">0</span>
-                                        <button type="button" class="small-btn revize-open-btn" title="Revize Aktar">
+                                        <button type="button" class="small-btn revize-open-btn" title="Rezerve Aktar">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                             </svg>
@@ -597,7 +597,7 @@
                 });
             }).catch(function () {
                 closeModal(revisionDepotModal);
-                alert('Revize verileri alınamadı.');
+                alert('Rezerve verileri alınamadı.');
             });
         }
 
@@ -701,7 +701,7 @@
                 });
             }).catch(function () {
                 closeModal(revisionListModal);
-                alert('Revize listesi alınamadı.');
+                alert('Rezerve listesi alınamadı.');
             });
         }
 
@@ -922,6 +922,19 @@
             });
         }
 
+        var firmSearchInput = document.getElementById('firmModalSearch');
+        if (firmSearchInput && firmTbody) {
+            firmSearchInput.addEventListener('input', function () {
+                var q = (firmSearchInput.value || '').toString().trim().toLowerCase();
+                firmTbody.querySelectorAll('tr[data-carikod]').forEach(function (row) {
+                    var kod = (row.getAttribute('data-carikod') || '').toString().toLowerCase();
+                    var aciklama = (row.getAttribute('data-cariaciklama') || '').toString().toLowerCase();
+                    var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
+                    row.style.display = ok ? '' : 'none';
+                });
+            });
+        }
+
         if (firmTbody && createPurchaseForm && selectedCariInput) {
             firmTbody.querySelectorAll('tr[data-carikod]').forEach(function (row) {
                 row.addEventListener('click', function () {
@@ -1082,6 +1095,8 @@
     <div class="modal">
         <div class="modal-header">
             <div class="modal-title">Cari Seç</div>
+            <input id="firmModalSearch" type="text" placeholder="Ara (Cari Kod / Açıklama)"
+                   style="margin-left:auto;min-width:260px;border-radius:999px;border:1px solid #e5e7eb;padding:0.35rem 0.75rem;font-size:0.9rem;outline:none;">
             <button type="button" id="firmModalClose" class="small-btn">X</button>
         </div>
         <div class="modal-body">
@@ -1094,7 +1109,7 @@
                 </thead>
                 <tbody id="firmTbody">
                 @foreach(($firms ?? []) as $firm)
-                    <tr data-carikod="{{ $firm->carikod }}">
+                    <tr data-carikod="{{ $firm->carikod }}" data-cariaciklama="{{ $firm->cariaciklama }}">
                         <td>{{ $firm->carikod }}</td>
                         <td>{{ $firm->cariaciklama }}</td>
                     </tr>
@@ -1108,7 +1123,7 @@
 <div id="revisionDepotModal" class="modal-overlay">
     <div class="modal" style="max-width: 980px;">
         <div class="modal-header">
-            <div class="modal-title">Revize Aktarım</div>
+            <div class="modal-title">Rezerve Aktarım</div>
             <button type="button" id="revisionDepotClose" class="small-btn">X</button>
         </div>
         <div class="modal-body">
@@ -1123,7 +1138,7 @@
                     <th>Depo</th>
                     <th>Stok Kod</th>
                     <th class="num">Stok Miktar</th>
-                    <th class="num">Revize Miktar</th>
+                    <th class="num">Rezerve Miktar</th>
                     <th class="num">Kullanılabilir Stok</th>
                     <th class="num">Aktarım Miktar</th>
                 </tr>
@@ -1142,7 +1157,7 @@
 <div id="revisionListModal" class="modal-overlay">
     <div class="modal" style="max-width: 900px;">
         <div class="modal-header">
-            <div class="modal-title">Sipariş Revize</div>
+            <div class="modal-title">Sipariş Rezerve</div>
             <button type="button" id="revisionListClose" class="small-btn">X</button>
         </div>
         <div class="modal-body">
@@ -1155,7 +1170,7 @@
                 <thead>
                 <tr>
                     <th>Depo Kodu</th>
-                    <th class="num">Revize Miktarı</th>
+                    <th class="num">Rezerve Miktarı</th>
                     <th>Ekleme Tarihi</th>
                     <th class="num"></th>
                 </tr>

@@ -772,5 +772,19 @@ body.sidebar-collapsed .desktop-sidebar-toggle svg {
     pointer-events: none;
 }
 
+/* Ensure modals are above sidebar */
+.modal-overlay {
+    z-index: 2000 !important;
+}
+
+/* Nested modal order */
+#productModal {
+    z-index: 2100 !important;
+}
+
+#rateModal {
+    z-index: 2200 !important;
+}
+
 
 

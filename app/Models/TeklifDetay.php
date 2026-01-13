@@ -42,4 +42,9 @@ class TeklifDetay extends Model
     {
         return $this->belongsTo(Product::class, 'urun_id');
     }
+
+    public function takimDetaylari()
+    {
+        return $this->hasMany(TeklifSatirTakimDetay::class, 'teklif_detay_id');
+    }
 }

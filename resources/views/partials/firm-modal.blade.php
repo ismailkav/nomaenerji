@@ -2,6 +2,8 @@
     <div class="modal">
         <div class="modal-header">
             <div class="modal-title">Cari Seç</div>
+            <input id="firmModalSearch" type="text" placeholder="Ara (Cari Kod / Açıklama)"
+                   style="margin-left:auto;min-width:260px;border-radius:999px;border:1px solid #e5e7eb;padding:0.35rem 0.75rem;font-size:0.9rem;outline:none;">
             <button type="button" class="small-btn" data-modal-close="firmModal">✕</button>
         </div>
         <div class="modal-body">

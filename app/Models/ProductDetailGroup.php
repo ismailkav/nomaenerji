@@ -15,6 +15,11 @@ class ProductDetailGroup extends Model
         'urun_grup_id',
         'urun_alt_grup_id',
         'ad',
+        'montaj_grubu',
+    ];
+
+    protected $casts = [
+        'montaj_grubu' => 'boolean',
     ];
 
     public function group()
@@ -27,4 +32,3 @@ class ProductDetailGroup extends Model
         return $this->belongsTo(ProductSubGroup::class, 'urun_alt_grup_id');
     }
 }
-

@@ -121,7 +121,23 @@ class InvoiceController extends Controller
             ->orderBy('carikod')
             ->get();
 
-        $products = Product::where('pasif', false)
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
             ->orderBy('kod')
             ->get();
 
@@ -384,7 +400,23 @@ class InvoiceController extends Controller
             ->orderBy('carikod')
             ->get();
 
-        $products = Product::where('pasif', false)
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
             ->orderBy('kod')
             ->get();
 

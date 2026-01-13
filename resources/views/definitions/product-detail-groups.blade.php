@@ -82,6 +82,7 @@
                             <thead>
                             <tr>
                                 <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Ad</th>
+                                <th style="text-align:center;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Montaj Grubu</th>
                                 <th style="text-align:right;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İşlem</th>
                             </tr>
                             </thead>
@@ -91,6 +92,9 @@
                                     <td style="padding:0.5rem 0.5rem;">
                                         <input type="hidden" name="items[{{ $index }}][id]" value="{{ $detailGroup->id }}">
                                         <input type="text" name="items[{{ $index }}][name]" value="{{ $detailGroup->ad }}" style="width:100%;">
+                                    </td>
+                                    <td style="padding:0.5rem 0.5rem;text-align:center;">
+                                        <input type="checkbox" name="items[{{ $index }}][montaj_grubu]" value="1" {{ !empty($detailGroup->montaj_grubu) ? 'checked' : '' }}>
                                     </td>
                                     <td style="padding:0.5rem 0.5rem;text-align:right;">
                                         <button type="button" class="row-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
@@ -175,12 +179,29 @@
 
         var index = tbody.querySelectorAll('tr').length;
 
+        (function ensureMontajColumnForInitialRow() {
+            var firstRow = tbody.querySelector('tr');
+            if (!firstRow) return;
+            if (firstRow.querySelector('input[type=\"checkbox\"][name*=\"[montaj_grubu]\"]')) return;
+            var actionCell = firstRow.querySelector('td[style*=\"text-align:right\"]');
+            if (!actionCell) return;
+
+            var td = document.createElement('td');
+            td.style.padding = '0.5rem 0.5rem';
+            td.style.textAlign = 'center';
+            td.innerHTML = '<input type=\"checkbox\" name=\"items[0][montaj_grubu]\" value=\"1\">';
+            firstRow.insertBefore(td, actionCell);
+        })();
+
         addButton.addEventListener('click', function () {
             var tr = document.createElement('tr');
             tr.innerHTML =
                 '<td style="padding:0.5rem 0.5rem;">' +
                 '<input type="hidden" name="items[' + index + '][id]" value="">' +
                 '<input type="text" name="items[' + index + '][name]" value="" style="width:100%;" placeholder="Yeni detay grup adı">' +
+                '</td>' +
+                '<td style="padding:0.5rem 0.5rem;text-align:center;">' +
+                '<input type="checkbox" name="items[' + index + '][montaj_grubu]" value="1">' +
                 '</td>' +
                 '<td style="padding:0.5rem 0.5rem;text-align:right;">' +
                 '<button type="button" class="row-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>' +
@@ -201,4 +222,3 @@
 </script>
 </body>
 </html>
-

@@ -38,6 +38,20 @@
             });
         }
 
+        var firmSearchInput = document.getElementById('firmModalSearch');
+        if (firmSearchInput && !firmSearchInput.dataset.bound) {
+            firmSearchInput.dataset.bound = '1';
+            firmSearchInput.addEventListener('input', function () {
+                var q = (firmSearchInput.value || '').toString().trim().toLowerCase();
+                document.querySelectorAll('#firmModal .firm-row').forEach(function (row) {
+                    var kod = (row.dataset.carikod || '').toString().toLowerCase();
+                    var aciklama = (row.dataset.cariaciklama || '').toString().toLowerCase();
+                    var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
+                    row.style.display = ok ? '' : 'none';
+                });
+            });
+        }
+
         document.querySelectorAll('.firm-row').forEach(function (row) {
             row.addEventListener('click', function () {
                 var carikod = this.dataset.carikod || '';
@@ -53,4 +67,3 @@
         });
     });
 </script>
-

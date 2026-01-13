@@ -10,18 +10,223 @@ use App\Models\IslemTuru;
 use App\Models\Project;
 use App\Models\Siparis;
 use App\Models\SiparisDetay;
+use App\Models\TeklifSatirTakimDetay;
+use App\Models\TeklifSatirMontajDetay;
+use App\Models\MontajGroup;
+use App\Models\MontajProduct;
+use App\Models\MontajProductGroup;
+use App\Models\Parameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class TeklifController extends Controller
 {
+    public function productImageBase64(Request $request)
+    {
+        $src = trim((string) $request->input('src', ''));
+        if ($src === '') {
+            return response()->json(['ok' => true, 'image' => null]);
+        }
+
+        $path = parse_url($src, PHP_URL_PATH);
+        $baseName = basename((string) ($path !== null ? $path : $src));
+        $baseName = preg_replace('/[?#].*$/', '', $baseName);
+        $baseName = trim((string) $baseName);
+
+        if ($baseName === '' || $baseName === '.' || $baseName === '..') {
+            return response()->json(['ok' => false, 'message' => 'Gecersiz dosya adi.'], 422);
+        }
+
+        // Prevent path traversal / odd characters
+        if (!preg_match('/^[A-Za-z0-9._-]+$/', $baseName)) {
+            return response()->json(['ok' => false, 'message' => 'Gecersiz dosya adi.'], 422);
+        }
+
+        $candidates = [
+            'products/' . $baseName,
+            'uploads/products/' . $baseName,
+        ];
+
+        $fullPath = null;
+        foreach ($candidates as $cand) {
+            if (Storage::disk('public')->exists($cand)) {
+                $fullPath = Storage::disk('public')->path($cand);
+                break;
+            }
+        }
+
+        if ($fullPath === null) {
+            $publicCandidates = [
+                public_path('storage/products/' . $baseName),
+                public_path('storage/uploads/products/' . $baseName),
+                public_path('uploads/products/' . $baseName),
+            ];
+
+            foreach ($publicCandidates as $cand) {
+                if (is_file($cand)) {
+                    $fullPath = $cand;
+                    break;
+                }
+            }
+        }
+
+        if ($fullPath === null) {
+            return response()->json(['ok' => false, 'message' => 'Resim bulunamadi.'], 404);
+        }
+
+        $raw = @file_get_contents($fullPath);
+        if ($raw === false || $raw === '') {
+            return response()->json(['ok' => false, 'message' => 'Resim okunamadi.'], 500);
+        }
+
+        $mime = @mime_content_type($fullPath) ?: 'image/jpeg';
+        $maxDim = 320;
+
+        $outData = $raw;
+        $outMime = $mime === 'image/png' ? 'image/png' : 'image/jpeg';
+        $w = 0;
+        $h = 0;
+        $tw = 0;
+        $th = 0;
+
+        $info = @getimagesizefromstring($raw);
+        if (is_array($info)) {
+            $w = (int) ($info[0] ?? 0);
+            $h = (int) ($info[1] ?? 0);
+        }
+
+        $tw = $w;
+        $th = $h;
+
+        if ($w > 0 && $h > 0 && function_exists('imagecreatefromstring')) {
+            $scale = min(1, $maxDim / max($w, $h));
+            $tw = max(1, (int) round($w * $scale));
+            $th = max(1, (int) round($h * $scale));
+
+            try {
+                $srcImg = @imagecreatefromstring($raw);
+                if ($srcImg) {
+                    $dstImg = imagecreatetruecolor($tw, $th);
+                    if ($outMime === 'image/png') {
+                        imagealphablending($dstImg, false);
+                        imagesavealpha($dstImg, true);
+                        $transparent = imagecolorallocatealpha($dstImg, 0, 0, 0, 127);
+                        imagefilledrectangle($dstImg, 0, 0, $tw, $th, $transparent);
+                    } else {
+                        $white = imagecolorallocate($dstImg, 255, 255, 255);
+                        imagefilledrectangle($dstImg, 0, 0, $tw, $th, $white);
+                    }
+
+                    imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $tw, $th, $w, $h);
+
+                    ob_start();
+                    if ($outMime === 'image/png') {
+                        imagepng($dstImg);
+                    } else {
+                        imagejpeg($dstImg, null, 70);
+                    }
+                    $buf = ob_get_clean();
+                    if (is_string($buf) && $buf !== '') {
+                        $outData = $buf;
+                    }
+
+                    imagedestroy($dstImg);
+                    imagedestroy($srcImg);
+                }
+            } catch (\Throwable $e) {
+                // fall back to raw
+            }
+        }
+
+        return response()->json([
+            'ok' => true,
+            'image' => [
+                'baslik' => $baseName,
+                'mime' => $outMime,
+                'base64' => base64_encode($outData),
+                'width' => $tw ?: null,
+                'height' => $th ?: null,
+            ],
+        ]);
+    }
+
+    public function jsonToPdf(Request $request)
+    {
+        $payload = $request->all();
+
+        $params = Parameter::query()
+            ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje'])
+            ->get(['anahtar', 'deger'])
+            ->keyBy('anahtar');
+
+        $ip = trim((string) ($params['tomcat_ip']->deger ?? 'localhost'));
+        $port = trim((string) ($params['tomcat_port']->deger ?? '8080'));
+        $project = trim((string) ($params['tomcat_proje']->deger ?? ''));
+
+        $base = $ip !== '' ? $ip : 'localhost';
+        if (!str_starts_with($base, 'http://') && !str_starts_with($base, 'https://')) {
+            $base = 'http://' . $base;
+        }
+        $base = rtrim($base, '/');
+        if (!preg_match('/:[0-9]+$/', $base)) {
+            $base .= ':' . ($port !== '' ? $port : '8080');
+        }
+
+        $path = '';
+        if ($project !== '') {
+            $project = trim($project, '/');
+            if ($project !== '') {
+                $path .= '/' . $project;
+            }
+        }
+        $path .= '/json-to-pdf';
+
+        $url = $base . $path;
+
+        try {
+            $resp = Http::timeout(60)
+                ->accept('application/pdf')
+                ->asJson()
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tomcat servisine baglanilamadi.',
+            ], 502);
+        }
+
+        if (!$resp->successful()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tomcat hata dondu.',
+                'status' => $resp->status(),
+                'body' => (string) $resp->body(),
+            ], 502);
+        }
+
+        return response($resp->body(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="teklif.pdf"',
+        ]);
+    }
+
     public function index(Request $request)
     {
+        $tur = strtolower(trim((string) $request->input('tur', 'satis')));
+        if ($tur !== 'alim' && $tur !== 'satis') {
+            $tur = 'satis';
+        }
+        $prefix = $tur === 'alim' ? '2' : '1';
+
         $query = Teklif::query()
             ->with(['islemTuru', 'proje'])
+            ->where('teklif_no', 'like', $prefix . '%')
             ->whereIn('id', function ($sub) {
                 $sub->from('teklifler')
                     ->selectRaw('MAX(id)')
@@ -77,18 +282,50 @@ class TeklifController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
 
-        return view('offers.index', compact('teklifler', 'durumlar', 'islemTurleri', 'projects'));
+        return view('offers.index', compact('teklifler', 'durumlar', 'islemTurleri', 'projects', 'tur') + [
+            'offerTur' => $tur,
+        ]);
     }
 
     public function create()
     {
+        $tur = strtolower(trim((string) request()->input('tur', 'satis')));
+        if ($tur !== 'alim' && $tur !== 'satis') {
+            $tur = 'satis';
+        }
+        $prefix = $tur === 'alim' ? '2' : '1';
+
+        $params = Parameter::query()
+            ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje'])
+            ->get(['anahtar', 'deger'])
+            ->keyBy('anahtar');
+        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? 'localhost');
+        $tomcatPort = (string) ($params['tomcat_port']->deger ?? '8080');
+        $tomcatProje = (string) ($params['tomcat_proje']->deger ?? '');
+
         $durumlar = $this->durumlar();
 
         $firms = Firm::with('authorities')
             ->orderBy('carikod')
             ->get();
 
-        $products = Product::where('pasif', false)
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
             ->orderBy('kod')
             ->get();
 
@@ -96,6 +333,7 @@ class TeklifController extends Controller
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
 
         $maxTeklifNo = Teklif::query()
+            ->where('teklif_no', 'like', $prefix . '%')
             ->select('teklif_no')
             ->get()
             ->pluck('teklif_no')
@@ -103,7 +341,8 @@ class TeklifController extends Controller
             ->map(fn ($v) => (int) $v)
             ->max();
 
-        $nextTeklifNo = $maxTeklifNo ? (string) ($maxTeklifNo + 1) : '10000001';
+        $base = ((int) $prefix) * 10000000 + 1;
+        $nextTeklifNo = $maxTeklifNo ? (string) ($maxTeklifNo + 1) : (string) $base;
 
         $initialRevizeNo = '1';
 
@@ -116,6 +355,10 @@ class TeklifController extends Controller
             'nextTeklifNo'    => $nextTeklifNo,
             'initialRevizeNo' => $initialRevizeNo,
             'revizyonlar'     => collect(),
+            'offerTur'        => $tur,
+            'tomcatIp'        => $tomcatIp,
+            'tomcatPort'      => $tomcatPort,
+            'tomcatProje'     => $tomcatProje,
         ]);
     }
 
@@ -258,11 +501,35 @@ class TeklifController extends Controller
     {
         $durumlar = $this->durumlar();
 
+        $params = Parameter::query()
+            ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje'])
+            ->get(['anahtar', 'deger'])
+            ->keyBy('anahtar');
+        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? 'localhost');
+        $tomcatPort = (string) ($params['tomcat_port']->deger ?? '8080');
+        $tomcatProje = (string) ($params['tomcat_proje']->deger ?? '');
+
         $firms = Firm::with('authorities')
             ->orderBy('carikod')
             ->get();
 
-        $products = Product::where('pasif', false)
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
             ->orderBy('kod')
             ->get();
 
@@ -283,6 +550,8 @@ class TeklifController extends Controller
             ->sortBy(fn ($t) => (int) ($t->revize_no ?? 0))
             ->values();
 
+        $offerTur = str_starts_with((string) ($teklif->teklif_no ?? ''), '2') ? 'alim' : 'satis';
+
         return view('offers.create', [
             'durumlar'        => $durumlar,
             'firms'           => $firms,
@@ -294,6 +563,10 @@ class TeklifController extends Controller
             'teklif'          => $teklif,
             'selectedFirm'    => $selectedFirm,
             'revizyonlar'     => $revizyonlar,
+            'offerTur'        => $offerTur,
+            'tomcatIp'        => $tomcatIp,
+            'tomcatPort'      => $tomcatPort,
+            'tomcatProje'     => $tomcatProje,
         ]);
     }
 
@@ -374,7 +647,8 @@ class TeklifController extends Controller
         DB::transaction(function () use ($data, $lines, $teklif) {
             $teklif->update($data);
 
-            $teklif->detaylar()->delete();
+            $existingDetails = $teklif->detaylar()->get()->keyBy('id');
+            $keptIds = [];
 
             $toplam = 0;
             $iskontoToplam = 0;
@@ -383,6 +657,7 @@ class TeklifController extends Controller
             $headerKur = (float) ($data['teklif_kur'] ?? 0);
 
             foreach ($lines as $line) {
+                $lineId = isset($line['id']) && is_numeric($line['id']) ? (int) $line['id'] : null;
                 $satirAciklama = trim($line['satir_aciklama'] ?? '');
                 $urunId = $line['urun_id'] ?? null;
                 $miktar = (float)($line['miktar'] ?? 0);
@@ -445,7 +720,7 @@ class TeklifController extends Controller
                     $satirToplam = $net;
                 }
 
-                TeklifDetay::create([
+                $payload = [
                     'teklif_id'      => $teklif->id,
                     'urun_id'        => $urunId,
                     'satir_aciklama' => $satirAciklama,
@@ -464,11 +739,27 @@ class TeklifController extends Controller
                     'kdv_orani'      => $kdvOrani,
                     'kdv_tutar'      => $kdvTutar,
                     'satir_toplam'   => $satirToplam,
-                ]);
+                ];
+
+                if ($lineId && $existingDetails->has($lineId)) {
+                    $detail = $existingDetails->get($lineId);
+                    $detail->update($payload);
+                    $keptIds[] = $detail->id;
+                } else {
+                    $detail = TeklifDetay::create($payload);
+                    $keptIds[] = $detail->id;
+                }
 
                 $toplam += $brut;
                 $iskontoToplam += $iskontoTutar;
                 $kdvToplam += $kdvTutar;
+            }
+
+            $deleteIds = $existingDetails->keys()->diff($keptIds)->values()->all();
+            if (!empty($deleteIds)) {
+                TeklifDetay::where('teklif_id', $teklif->id)
+                    ->whereIn('id', $deleteIds)
+                    ->delete();
             }
 
             $genelToplam = $toplam - $iskontoToplam + $kdvToplam;
@@ -618,9 +909,331 @@ class TeklifController extends Controller
         return $pdf->download($filename . '.pdf');
     }
 
+    public function teamLineDetails(TeklifDetay $detay)
+    {
+        $items = TeklifSatirTakimDetay::query()
+            ->where('teklif_detay_id', $detay->id)
+            ->orderBy('id')
+            ->get([
+                'id',
+                'urun_id',
+                'stokkod',
+                'stok_aciklama',
+                'miktar',
+                'birim_fiyat',
+                'iskonto1',
+                'iskonto2',
+                'doviz',
+                'kur',
+                'satir_tutar',
+            ]);
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
+
+    public function saveTeamLineDetails(Request $request, TeklifDetay $detay)
+    {
+        $validated = $request->validate([
+            'items' => ['array'],
+            'items.*.urun_id' => ['nullable', 'integer'],
+            'items.*.stokkod' => ['nullable', 'string', 'max:50'],
+            'items.*.stok_aciklama' => ['nullable', 'string', 'max:255'],
+            'items.*.miktar' => ['nullable', 'numeric', 'min:0'],
+            'items.*.birim_fiyat' => ['nullable', 'numeric', 'min:0'],
+            'items.*.iskonto1' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.iskonto2' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.doviz' => ['nullable', 'in:TL,USD,EUR'],
+            'items.*.kur' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $items = $validated['items'] ?? [];
+
+        DB::transaction(function () use ($detay, $items) {
+            TeklifSatirTakimDetay::where('teklif_detay_id', $detay->id)->delete();
+
+            foreach ($items as $item) {
+                $qty = (float) ($item['miktar'] ?? 0);
+                $price = (float) ($item['birim_fiyat'] ?? 0);
+                $isk1 = (float) ($item['iskonto1'] ?? 0);
+                $isk2 = (float) ($item['iskonto2'] ?? 0);
+                $doviz = (string) ($item['doviz'] ?? 'TL');
+                $kur = (float) ($item['kur'] ?? 1);
+
+                $rate = $doviz === 'TL' ? 1 : $kur;
+                if ($rate < 0) {
+                    $rate = 0;
+                }
+
+                $base = ($qty * $price) * $rate;
+                $d1 = max(0, min(100, $isk1));
+                $d2 = max(0, min(100, $isk2));
+                $net = $base;
+                $net = $net * (1 - ($d1 / 100));
+                $net = $net * (1 - ($d2 / 100));
+                $satirTutar = round($net, 2);
+
+                TeklifSatirTakimDetay::create([
+                    'teklif_detay_id' => $detay->id,
+                    'urun_id' => $item['urun_id'] ?? null,
+                    'stokkod' => $item['stokkod'] ?? null,
+                    'stok_aciklama' => $item['stok_aciklama'] ?? null,
+                    'miktar' => $qty,
+                    'birim_fiyat' => $price,
+                    'iskonto1' => $d1,
+                    'iskonto2' => $d2,
+                    'doviz' => $doviz ?: 'TL',
+                    'kur' => $kur,
+                    'satir_tutar' => $satirTutar,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function montajLineDetails(TeklifDetay $detay)
+    {
+        $saved = TeklifSatirMontajDetay::query()
+            ->where('teklif_detay_id', $detay->id)
+            ->orderBy('sirano')
+            ->get([
+                'id',
+                'montaj_grup_id',
+                'urun_id',
+                'urun_kod',
+                'birim',
+                'miktar',
+                'birim_fiyat',
+                'doviz',
+                'satir_tutar',
+                'sirano',
+            ]);
+
+        $groups = MontajGroup::query()
+            ->orderBy('sirano')
+            ->orderBy('kod')
+            ->get(['id', 'kod', 'sirano', 'urun_detay_grup_id']);
+
+        $montajProducts = MontajProduct::query()
+            ->whereIn('montaj_grup_id', $groups->pluck('id')->all())
+            ->get(['id', 'montaj_grup_id', 'urun_id', 'urun_kod']);
+
+        $montajProductIdByGroupUrunId = [];
+        $montajProductIdByGroupKod = [];
+        foreach ($montajProducts as $mp) {
+            if (!empty($mp->urun_id)) {
+                $montajProductIdByGroupUrunId[$mp->montaj_grup_id . ':' . $mp->urun_id] = $mp->id;
+            }
+            $kod = trim((string) ($mp->urun_kod ?? ''));
+            if ($kod !== '') {
+                $montajProductIdByGroupKod[$mp->montaj_grup_id . ':' . $kod] = $mp->id;
+            }
+        }
+
+        $product = $detay->urun_id ? Product::find($detay->urun_id) : null;
+        $stokKod = $detay->stokkod ?: ($product->kod ?? '');
+        $stokAciklama = $detay->stok_aciklama ?: ($product->aciklama ?? '');
+
+        if ($saved->isNotEmpty()) {
+            $byGroup = $saved->groupBy('montaj_grup_id');
+            $montajUrunIds = [];
+            $payloadGroups = $groups->map(function (MontajGroup $g) use ($byGroup, $montajProductIdByGroupUrunId, $montajProductIdByGroupKod, &$montajUrunIds) {
+                $items = ($byGroup->get($g->id) ?? collect())->map(function (TeklifSatirMontajDetay $row) use ($g, $montajProductIdByGroupUrunId, $montajProductIdByGroupKod, &$montajUrunIds) {
+                    $urunKod = trim((string) ($row->urun_kod ?? ''));
+                    $montajUrunId = null;
+                    if (!empty($row->urun_id)) {
+                        $montajUrunId = $montajProductIdByGroupUrunId[$g->id . ':' . $row->urun_id] ?? null;
+                    }
+                    if (!$montajUrunId && $urunKod !== '') {
+                        $montajUrunId = $montajProductIdByGroupKod[$g->id . ':' . $urunKod] ?? null;
+                    }
+                    if ($montajUrunId) {
+                        $montajUrunIds[] = $montajUrunId;
+                    }
+
+                    return [
+                        'id' => $row->id,
+                        'montaj_grup_id' => $row->montaj_grup_id,
+                        'montaj_urun_id' => $montajUrunId,
+                        'urun_id' => $row->urun_id,
+                        'urun_kod' => $urunKod,
+                        'birim' => $row->birim ?? 'Adet',
+                        'miktar' => (float) ($row->miktar ?? 0),
+                        'birim_fiyat' => (float) ($row->birim_fiyat ?? 0),
+                        'doviz' => $row->doviz ?? 'TL',
+                        'satir_tutar' => (float) ($row->satir_tutar ?? 0),
+                        'sirano' => (int) ($row->sirano ?? 0),
+                        'urun_detay_grup_ids' => [],
+                    ];
+                })->values();
+
+                return [
+                    'id' => $g->id,
+                    'kod' => $g->kod,
+                    'sirano' => $g->sirano,
+                    'urun_detay_grup_id' => $g->urun_detay_grup_id,
+                    'items' => $items,
+                ];
+            })->values();
+
+            $detailGroupIdsByMontajUrunId = MontajProductGroup::query()
+                ->whereIn('montaj_urun_id', array_values(array_unique(array_filter($montajUrunIds))))
+                ->get(['montaj_urun_id', 'urun_detay_grup_id'])
+                ->groupBy('montaj_urun_id')
+                ->map(function ($rows) {
+                    return $rows->pluck('urun_detay_grup_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
+                })
+                ->all();
+
+            $payloadGroups = $payloadGroups->map(function ($g) use ($detailGroupIdsByMontajUrunId) {
+                $g['items'] = collect($g['items'])->map(function ($it) use ($detailGroupIdsByMontajUrunId) {
+                    $mid = $it['montaj_urun_id'] ?? null;
+                    if ($mid) {
+                        $it['urun_detay_grup_ids'] = $detailGroupIdsByMontajUrunId[$mid] ?? [];
+                    }
+                    return $it;
+                })->values()->all();
+                return $g;
+            })->values();
+
+            return response()->json([
+                'ok' => true,
+                'line' => [
+                    'teklif_detay_id' => $detay->id,
+                    'stok_kod' => $stokKod,
+                    'stok_aciklama' => $stokAciklama,
+                ],
+                    'groups' => $payloadGroups,
+            ]);
+        }
+
+        $productsByGroup = MontajProduct::query()
+            ->orderBy('sirano')
+            ->get([
+                'id',
+                'montaj_grup_id',
+                'urun_id',
+                'urun_kod',
+                'birim',
+                'birim_fiyat',
+                'doviz',
+                'sirano',
+            ])
+            ->groupBy('montaj_grup_id');
+
+        $montajUrunIds = [];
+        $payloadGroups = $groups->map(function (MontajGroup $g) use ($productsByGroup, &$montajUrunIds) {
+            $rows = $productsByGroup->get($g->id) ?? collect();
+            $items = $rows->map(function (MontajProduct $row) {
+                return [
+                    'id' => null,
+                    'montaj_grup_id' => $row->montaj_grup_id,
+                    'montaj_urun_id' => $row->id,
+                    'urun_id' => $row->urun_id,
+                    'urun_kod' => $row->urun_kod,
+                    'birim' => $row->birim ?? 'Adet',
+                    'miktar' => 1,
+                    'birim_fiyat' => $row->birim_fiyat ?? 0,
+                    'doviz' => $row->doviz ?? 'TL',
+                    'satir_tutar' => 0,
+                    'sirano' => $row->sirano ?? 0,
+                    'urun_detay_grup_ids' => [],
+                ];
+            })->values();
+
+            $rows->each(function (MontajProduct $row) use (&$montajUrunIds) {
+                $montajUrunIds[] = $row->id;
+            });
+
+            return [
+                'id' => $g->id,
+                'kod' => $g->kod,
+                'sirano' => $g->sirano,
+                'urun_detay_grup_id' => $g->urun_detay_grup_id,
+                'items' => $items,
+            ];
+        })->values();
+
+        $detailGroupIdsByMontajUrunId = MontajProductGroup::query()
+            ->whereIn('montaj_urun_id', array_values(array_unique(array_filter($montajUrunIds))))
+            ->get(['montaj_urun_id', 'urun_detay_grup_id'])
+            ->groupBy('montaj_urun_id')
+            ->map(function ($rows) {
+                return $rows->pluck('urun_detay_grup_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
+            })
+            ->all();
+
+        $payloadGroups = $payloadGroups->map(function ($g) use ($detailGroupIdsByMontajUrunId) {
+            $g['items'] = collect($g['items'])->map(function ($it) use ($detailGroupIdsByMontajUrunId) {
+                $mid = $it['montaj_urun_id'] ?? null;
+                if ($mid) {
+                    $it['urun_detay_grup_ids'] = $detailGroupIdsByMontajUrunId[$mid] ?? [];
+                }
+                return $it;
+            })->values()->all();
+            return $g;
+        })->values();
+
+        return response()->json([
+            'ok' => true,
+            'line' => [
+                'teklif_detay_id' => $detay->id,
+                'stok_kod' => $stokKod,
+                'stok_aciklama' => $stokAciklama,
+            ],
+            'groups' => $payloadGroups,
+        ]);
+    }
+
+    public function saveMontajLineDetails(Request $request, TeklifDetay $detay)
+    {
+        $validated = $request->validate([
+            'items' => ['array'],
+            'items.*.montaj_grup_id' => ['nullable', 'integer'],
+            'items.*.urun_id' => ['nullable', 'integer'],
+            'items.*.urun_kod' => ['nullable', 'string', 'max:50'],
+            'items.*.birim' => ['nullable', 'in:Adet,Metre,Kilo'],
+            'items.*.miktar' => ['nullable', 'numeric', 'min:0'],
+            'items.*.birim_fiyat' => ['nullable', 'numeric', 'min:0'],
+            'items.*.doviz' => ['nullable', 'in:TL,USD,EUR'],
+            'items.*.sirano' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $items = $validated['items'] ?? [];
+
+        DB::transaction(function () use ($detay, $items) {
+            TeklifSatirMontajDetay::where('teklif_detay_id', $detay->id)->delete();
+
+            $sirano = 0;
+            foreach ($items as $item) {
+                $sirano++;
+                $qty = (float) ($item['miktar'] ?? 0);
+                $price = (float) ($item['birim_fiyat'] ?? 0);
+                $satirTutar = round($qty * $price, 2);
+
+                TeklifSatirMontajDetay::create([
+                    'teklif_detay_id' => $detay->id,
+                    'montaj_grup_id' => $item['montaj_grup_id'] ?? null,
+                    'urun_id' => $item['urun_id'] ?? null,
+                    'urun_kod' => $item['urun_kod'] ?? null,
+                    'birim' => $item['birim'] ?? 'Adet',
+                    'miktar' => $qty,
+                    'birim_fiyat' => $price,
+                    'doviz' => $item['doviz'] ?? 'TL',
+                    'satir_tutar' => $satirTutar,
+                    'sirano' => $sirano,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
     protected function validatedHeader(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'carikod'           => ['required', 'string', 'max:50'],
             'cariaciklama'      => ['required', 'string', 'max:255'],
             'tarih'             => ['required', 'date'],
@@ -639,6 +1252,19 @@ class TeklifController extends Controller
             'teklif_doviz'      => ['nullable', 'string', 'max:3', 'in:TL,USD,EUR'],
             'teklif_kur'        => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $tur = strtolower(trim((string) $request->input('tur', '')));
+        if ($tur === 'alim' || $tur === 'satis') {
+            $prefix = $tur === 'alim' ? '2' : '1';
+            $no = (string) ($validated['teklif_no'] ?? '');
+            if (!str_starts_with($no, $prefix)) {
+                throw ValidationException::withMessages([
+                    'teklif_no' => ['Teklif no ilk rakam ' . $prefix . ' ile baŸlamal.'],
+                ]);
+            }
+        }
+
+        return $validated;
     }
 
     protected function durumlar(): array

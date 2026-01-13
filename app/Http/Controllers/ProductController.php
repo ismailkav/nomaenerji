@@ -126,7 +126,9 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'kod'         => ['required', 'string', 'max:50', $uniqueRule],
             'aciklama'    => ['required', 'string', 'max:255'],
+            'marka'      => ['nullable', 'string', 'max:150'],
             'satis_fiyat' => ['required', 'numeric', 'min:0'],
+            'satis_doviz' => ['nullable', 'string', 'in:TL,USD,EUR'],
             'kdv_oran'    => ['required', 'integer', 'min:0', 'max:100'],
             'kategori_id' => ['nullable', 'integer', 'exists:urun_kategorileri,id'],
             'urun_alt_grup_id' => ['nullable', 'integer', 'exists:urun_alt_gruplari,id'],
@@ -138,12 +140,19 @@ class ProductController extends Controller
             'fatura_kodu' => ['nullable', 'string', 'max:50'],
             'resim'       => ['nullable', 'image', 'max:2048'],
             'pasif'       => ['sometimes', 'boolean'],
+            'multi'       => ['sometimes', 'boolean'],
+            'montaj'      => ['sometimes', 'boolean'],
         ]);
 
         $validator->after(function ($validator) use ($request) {
             $groupId = (int) ($request->input('kategori_id') ?? 0);
             $subGroupId = (int) ($request->input('urun_alt_grup_id') ?? 0);
             $detailGroupId = (int) ($request->input('urun_detay_grup_id') ?? 0);
+
+            if ($request->boolean('multi') && $request->boolean('montaj')) {
+                $validator->errors()->add('multi', 'Multi ve Montaj aynı anda seçilemez.');
+                $validator->errors()->add('montaj', 'Multi ve Montaj aynı anda seçilemez.');
+            }
 
             if ($subGroupId > 0 && $groupId > 0) {
                 $ok = ProductSubGroup::whereKey($subGroupId)->where('urun_grup_id', $groupId)->exists();
@@ -169,7 +178,10 @@ class ProductController extends Controller
             }
         });
 
-        return $validator->validate();
+        $data = $validator->validate();
+        $data['satis_doviz'] = strtoupper(trim((string) ($data['satis_doviz'] ?? 'TL')));
+
+        return $data;
     }
 
     protected function storeProductImage(Request $request): string

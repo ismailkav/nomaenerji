@@ -335,7 +335,11 @@
 </head>
 <body>
 <div class="dashboard-container">
-    @include('partials.sidebar', ['active' => 'offers'])
+    @php
+        $offerTur = $offerTur ?? request('tur', 'satis');
+        $offerTur = in_array($offerTur, ['alim', 'satis'], true) ? $offerTur : 'satis';
+    @endphp
+    @include('partials.sidebar', ['active' => $offerTur === 'alim' ? 'offers-purchase' : 'offers-sales'])
 
     <main class="main-content">
         <header class="top-bar">
@@ -367,6 +371,7 @@
                     </div>
                 </div>
                 <form method="GET" action="{{ route('offers.index') }}">
+                    <input type="hidden" name="tur" value="{{ $offerTur }}">
                     <div class="offers-filter-row">
                         <div class="filter-group">
                             <label for="q">Arama (Teklif No / Cari)</label>
@@ -438,7 +443,7 @@
                     <div class="offers-filter-footer">
                         <div class="offers-filter-actions">
                             <button type="submit" class="offers-filter-button">Filtrele</button>
-                            <a href="{{ route('offers.index') }}" class="offers-filter-reset">Temizle</a>
+                            <a href="{{ route('offers.index', ['tur' => $offerTur]) }}" class="offers-filter-reset">Temizle</a>
                             <button type="button" id="btnOfferListSettings" class="small-btn" title="Tablo Düzenle" aria-label="Tablo Düzenle">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
@@ -447,7 +452,7 @@
                             </button>
                         </div>
 
-                        <a href="{{ route('offers.create') }}" class="offers-new-button">
+                        <a href="{{ route('offers.create', ['tur' => $offerTur]) }}" class="offers-new-button">
                             Yeni Teklif
                         </a>
                     </div>
@@ -497,8 +502,8 @@
                                 <td data-col-key="gecen_sure">
                                     @php
                                         $gecenSure = null;
-                                        if ($teklif->tarih && $teklif->gecerlilik_tarihi) {
-                                            $gecenSure = $teklif->tarih->diffInDays($teklif->gecerlilik_tarihi) + 1;
+                                        if ($teklif->tarih) {
+                                            $gecenSure = max(0, $teklif->tarih->startOfDay()->diffInDays(now()->startOfDay(), false));
                                         }
                                     @endphp
                                     {{ $gecenSure !== null ? ($gecenSure . ' gün') : '' }}

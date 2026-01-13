@@ -114,7 +114,7 @@
                                 <td style="padding:0.75rem 0.5rem;font-weight:500;">{{ $product->kod }}</td>
                                 <td style="padding:0.75rem 0.5rem;">{{ $product->aciklama }}</td>
                                 <td style="padding:0.75rem 0.5rem;">{{ optional($product->category)->ad ?? '-' }}</td>
-                                <td style="padding:0.75rem 0.5rem;">₺ {{ number_format($product->satis_fiyat, 2, ',', '.') }}</td>
+                                <td style="padding:0.75rem 0.5rem;">{{ $product->satis_doviz ?? 'TL' }} {{ number_format($product->satis_fiyat, 2, ',', '.') }}</td>
                                 <td style="padding:0.75rem 0.5rem;">% {{ $product->kdv_oran }}</td>
                                 <td style="padding:0.75rem 0.5rem;">
                                     <div class="toggle" style="position:relative;width:44px;height:24px;border-radius:999px;background-color:{{ $product->pasif ? '#111827' : '#e5e7eb' }};transition:background-color 0.2s;">
@@ -164,7 +164,7 @@
                                 </div>
                                 <div style="display:flex;align-items:center;justify-content:space-between;">
                                     <div style="font-size:1.2rem;font-weight:600;">
-                                        ₺ {{ number_format($product->satis_fiyat, 2, ',', '.') }}
+                                        {{ $product->satis_doviz ?? 'TL' }} {{ number_format($product->satis_fiyat, 2, ',', '.') }}
                                     </div>
                                     <div>
                                         <a href="{{ route('products.edit', $product) }}" style="display:inline-flex;align-items:center;justify-content:center;padding:0.45rem 0.95rem;border-radius:999px;border:1px solid #e5e7eb;background-color:#fff;font-size:0.85rem;color:#111827;text-decoration:none;margin-right:0.4rem;">Düzenle</a>

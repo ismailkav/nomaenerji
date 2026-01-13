@@ -14,8 +14,10 @@ class Product extends Model
     protected $fillable = [
         'kod',
         'aciklama',
+        'marka',
         'stok_miktar',
         'satis_fiyat',
+        'satis_doviz',
         'kdv_oran',
         'kategori_id',
         'urun_alt_grup_id',
@@ -27,11 +29,16 @@ class Product extends Model
         'fatura_kodu',
         'resim_yolu',
         'pasif',
+        'multi',
+        'montaj',
     ];
 
     protected $casts = [
         'stok_miktar' => 'decimal:3',
         'satis_fiyat' => 'decimal:2',
+        'pasif' => 'boolean',
+        'multi' => 'boolean',
+        'montaj' => 'boolean',
     ];
 
     public function category()

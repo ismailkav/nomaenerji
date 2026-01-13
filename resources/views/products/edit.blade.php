@@ -99,8 +99,17 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="satis_fiyat">Satış Fiyatı</label>
-                                <input type="text" id="satis_fiyat" name="satis_fiyat" value="{{ old('satis_fiyat', $product->satis_fiyat) }}" required>
+                                <div style="display:flex;gap:0.5rem;align-items:center;">
+                                    <input type="text" id="satis_fiyat" name="satis_fiyat" value="{{ old('satis_fiyat', $product->satis_fiyat) }}" required style="flex:1 1 auto;width:auto;">
+                                    @php($satisDoviz = old('satis_doviz', $product->satis_doviz ?? 'TL'))
+                                    <select id="satis_doviz" name="satis_doviz" aria-label="Döviz" style="flex:0 0 90px;min-width:90px;width:90px;">
+                                        <option value="TL" @selected($satisDoviz === 'TL')>TL</option>
+                                        <option value="USD" @selected($satisDoviz === 'USD')>USD</option>
+                                        <option value="EUR" @selected($satisDoviz === 'EUR')>EUR</option>
+                                    </select>
+                                </div>
                                 @error('satis_fiyat')<div class="form-error">{{ $message }}</div>@enderror
+                                @error('satis_doviz')<div class="form-error">{{ $message }}</div>@enderror
                             </div>
 
                             <div class="form-group">
@@ -112,6 +121,16 @@
                             <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;margin-top:1.6rem;">
                                 <label for="pasif">Pasif</label>
                                 <input type="checkbox" id="pasif" name="pasif" value="1" {{ old('pasif', $product->pasif) ? 'checked' : '' }}>
+                            </div>
+
+                            <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;margin-top:1.6rem;">
+                                <label for="multi">Takım</label>
+                                <input type="checkbox" id="multi" name="multi" value="1" {{ old('multi', $product->multi) ? 'checked' : '' }}>
+                            </div>
+
+                            <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;margin-top:1.6rem;">
+                                <label for="montaj">Montaj</label>
+                                <input type="checkbox" id="montaj" name="montaj" value="1" {{ old('montaj', $product->montaj) ? 'checked' : '' }}>
                             </div>
                         </div>
 
@@ -143,10 +162,18 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="fatura_kodu">Fatura Kodu</label>
-                            <input type="text" id="fatura_kodu" name="fatura_kodu" value="{{ old('fatura_kodu', $product->fatura_kodu) }}">
-                            @error('fatura_kodu')<div class="form-error">{{ $message }}</div>@enderror
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fatura_kodu">Fatura Kodu</label>
+                                <input type="text" id="fatura_kodu" name="fatura_kodu" value="{{ old('fatura_kodu', $product->fatura_kodu) }}">
+                                @error('fatura_kodu')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="marka">Marka</label>
+                                <input type="text" id="marka" name="marka" value="{{ old('marka', $product->marka) }}">
+                                @error('marka')<div class="form-error">{{ $message }}</div>@enderror
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -291,6 +318,25 @@
 
             if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
                 fileInput.files = e.dataTransfer.files;
+            }
+        });
+    })();
+
+    (function () {
+        var multi = document.getElementById('multi');
+        var montaj = document.getElementById('montaj');
+
+        if (!multi || !montaj) return;
+
+        multi.addEventListener('change', function () {
+            if (multi.checked) {
+                montaj.checked = false;
+            }
+        });
+
+        montaj.addEventListener('change', function () {
+            if (montaj.checked) {
+                multi.checked = false;
             }
         });
     })();

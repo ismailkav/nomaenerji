@@ -27,7 +27,25 @@ class FiyatListesiController extends Controller
     public function create()
     {
         $firms = Firm::orderBy('carikod')->get();
-        $products = Product::where('pasif', false)->orderBy('kod')->get();
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
+            ->orderBy('kod')
+            ->get();
 
         $hazirlayan = null;
         if (Auth::check()) {
@@ -44,7 +62,25 @@ class FiyatListesiController extends Controller
         $fiyatListesi->load(['firm', 'detaylar.urun']);
 
         $firms = Firm::orderBy('carikod')->get();
-        $products = Product::where('pasif', false)->orderBy('kod')->get();
+        $openDurumlar = ['A', 'Açık', 'AÇIK', 'ACIK'];
+        $products = Product::query()
+            ->where('pasif', false)
+            ->select('urunler.*')
+            ->selectSub(
+                DB::table('stokenvanter as se')
+                    ->selectRaw('COALESCE(SUM(se.stokmiktar),0)')
+                    ->whereColumn('se.stokkod', 'urunler.kod'),
+                'envanter_stok_miktar'
+            )
+            ->selectSub(
+                DB::table('stokrevize as sr')
+                    ->selectRaw('COALESCE(SUM(sr.miktar),0)')
+                    ->whereColumn('sr.stokkod', 'urunler.kod')
+                    ->whereIn('sr.durum', $openDurumlar),
+                'rezerve_miktar'
+            )
+            ->orderBy('kod')
+            ->get();
 
         return view('price-lists.edit', compact('fiyatListesi', 'firms', 'products'));
     }

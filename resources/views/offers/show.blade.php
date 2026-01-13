@@ -75,7 +75,10 @@
 </head>
 <body>
 <div class="dashboard-container">
-    @include('partials.sidebar', ['active' => 'offers'])
+    @php
+        $offerTur = str_starts_with((string) ($teklif->teklif_no ?? ''), '2') ? 'alim' : 'satis';
+    @endphp
+    @include('partials.sidebar', ['active' => $offerTur === 'alim' ? 'offers-purchase' : 'offers-sales'])
 
     <main class="main-content">
         <header class="top-bar">
@@ -213,4 +216,3 @@
 <script src="{{ asset('js/dashboard.js') }}"></script>
 </body>
 </html>
-

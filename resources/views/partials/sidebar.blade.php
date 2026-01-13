@@ -21,8 +21,8 @@
             <span class="nav-text">Gösterge Paneli</span>
         </a>
 
-        <a href="{{ route('offers.index') }}"
-           class="nav-item {{ ($active ?? '') === 'offers' ? 'active' : '' }}">
+        <a href="#" id="offersToggle"
+           class="nav-item {{ in_array(($active ?? ''), ['offers-sales','offers-purchase']) ? 'active' : '' }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h16v4H4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -31,6 +31,19 @@
             </svg>
             <span class="nav-text">Teklifler</span>
         </a>
+
+        <div id="offersSubmenu" style="display:none;">
+            <a href="{{ route('offers.index', ['tur' => 'alim']) }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'offers-purchase' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Alım Teklifleri</span>
+            </a>
+            <a href="{{ route('offers.index', ['tur' => 'satis']) }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'offers-sales' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Satış Teklifleri</span>
+            </a>
+        </div>
 
         <a href="#" id="ordersToggle"
            class="nav-item {{ in_array(($active ?? ''), ['orders','purchase-orders','sales-orders','order-planning']) ? 'active' : '' }}">
@@ -195,7 +208,7 @@
         </a>
 
         <a href="#" id="definitionsToggle"
-           class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','product-sub-groups','product-detail-groups','islem-turleri','projects','depots','price-lists']) ? 'active' : '' }}">
+           class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','product-sub-groups','product-detail-groups','montaj-groups','montaj-products','montaj-product-groups','islem-turleri','projects','depots','price-lists','parameters']) ? 'active' : '' }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h16v4H4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -252,6 +265,21 @@
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Ürün Detay Grup</span>
             </a>
+            <a href="{{ route('definitions.montaj-groups') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'montaj-groups' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Montaj Grup</span>
+            </a>
+            <a href="{{ route('definitions.montaj-products') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'montaj-products' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Montaj Ürün</span>
+            </a>
+            <a href="{{ route('definitions.montaj-product-groups') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'montaj-product-groups' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Montaj Urun Grup</span>
+            </a>
             <a href="{{ route('definitions.islem-turleri') }}"
                class="nav-item nav-sub-item {{ ($active ?? '') === 'islem-turleri' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
@@ -266,6 +294,11 @@
                class="nav-item nav-sub-item {{ ($active ?? '') === 'depots' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Depo</span>
+            </a>
+            <a href="{{ route('definitions.parameters') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'parameters' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Parametreler</span>
             </a>
             <a href="{{ route('price-lists.index') }}"
                class="nav-item nav-sub-item {{ ($active ?? '') === 'price-lists' ? 'active' : '' }}"
@@ -302,6 +335,13 @@
 
         if (!toggle || !submenu) {
             return;
+        }
+
+        var reportsToggleLink = document.getElementById('reportsToggle');
+        if (reportsToggleLink && reportsToggleLink.parentNode === toggle.parentNode) {
+            toggle.parentNode.insertBefore(submenu, reportsToggleLink);
+        } else if (toggle.nextElementSibling !== submenu) {
+            toggle.insertAdjacentElement('afterend', submenu);
         }
 
         function moveToDefinitionsSubmenu(link) {
@@ -345,6 +385,24 @@
                     ordersSubmenu.style.display = 'block';
                 } else {
                     ordersSubmenu.style.display = 'none';
+                }
+            });
+        }
+
+        var offersToggle = document.getElementById('offersToggle');
+        var offersSubmenu = document.getElementById('offersSubmenu');
+
+        if (offersToggle && offersSubmenu) {
+            if (offersToggle.classList.contains('active')) {
+                offersSubmenu.style.display = 'block';
+            }
+
+            offersToggle.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (offersSubmenu.style.display === 'none' || offersSubmenu.style.display === '') {
+                    offersSubmenu.style.display = 'block';
+                } else {
+                    offersSubmenu.style.display = 'none';
                 }
             });
         }
