@@ -14,7 +14,7 @@ class MontajProductGroup extends Model
     protected $fillable = [
         'montaj_grup_id',
         'montaj_urun_id',
-        'urun_detay_grup_id',
+        'urun_id',
         'sirano',
     ];
 
@@ -32,8 +32,8 @@ class MontajProductGroup extends Model
         return $this->belongsTo(MontajProduct::class, 'montaj_urun_id');
     }
 
-    public function urunDetayGrup()
+    public function urun()
     {
-        return $this->belongsTo(ProductDetailGroup::class, 'urun_detay_grup_id');
+        return $this->belongsTo(Product::class, 'urun_id');
     }
 }

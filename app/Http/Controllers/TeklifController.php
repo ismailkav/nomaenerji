@@ -15,6 +15,7 @@ use App\Models\TeklifSatirMontajDetay;
 use App\Models\MontajGroup;
 use App\Models\MontajProduct;
 use App\Models\MontajProductGroup;
+use App\Models\ProductRecipe;
 use App\Models\Parameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -450,6 +451,12 @@ class TeklifController extends Controller
                     $satirToplam = $net;
                 }
 
+                // UI ile tutarlılık: Satır Tutar (TL), Satır Tutar Döviz (2 hane) * kur olacak şekilde normalize edilir.
+                if ($lineRate > 0) {
+                    $satirToplamFxRounded = round($satirToplam / $lineRate, 2);
+                    $satirToplam = round($satirToplamFxRounded * $lineRate, 2);
+                }
+
                 TeklifDetay::create([
                     'teklif_id'      => $teklif->id,
                     'urun_id'        => $urunId,
@@ -720,6 +727,12 @@ class TeklifController extends Controller
                     $satirToplam = $net;
                 }
 
+                // UI ile tutarlılık: Satır Tutar (TL), Satır Tutar Döviz (2 hane) * kur olacak şekilde normalize edilir.
+                if ($lineRate > 0) {
+                    $satirToplamFxRounded = round($satirToplam / $lineRate, 2);
+                    $satirToplam = round($satirToplamFxRounded * $lineRate, 2);
+                }
+
                 $payload = [
                     'teklif_id'      => $teklif->id,
                     'urun_id'        => $urunId,
@@ -928,8 +941,37 @@ class TeklifController extends Controller
                 'satir_tutar',
             ]);
 
+        $recipeItems = [];
+        if ($items->isEmpty() && !empty($detay->urun_id)) {
+            $product = Product::query()->whereKey($detay->urun_id)->first(['id', 'multi']);
+            if ($product && !empty($product->multi)) {
+                $recipeItems = ProductRecipe::query()
+                    ->with('stokUrun:id,kod,aciklama')
+                    ->where('urun_id', $product->id)
+                    ->orderBy('sirano')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(function (ProductRecipe $r) {
+                        return [
+                            'urun_id' => (int) $r->stok_urun_id,
+                            'stokkod' => (string) (optional($r->stokUrun)->kod ?? ''),
+                            'stok_aciklama' => (string) (optional($r->stokUrun)->aciklama ?? ''),
+                            'miktar' => (float) ($r->miktar ?? 0),
+                            'birim_fiyat' => 0,
+                            'iskonto1' => 0,
+                            'iskonto2' => 0,
+                            'doviz' => 'TL',
+                            'kur' => 1,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            }
+        }
+
         return response()->json([
             'items' => $items,
+            'recipe_items' => $recipeItems,
         ]);
     }
 
@@ -1065,7 +1107,7 @@ class TeklifController extends Controller
                         'doviz' => $row->doviz ?? 'TL',
                         'satir_tutar' => (float) ($row->satir_tutar ?? 0),
                         'sirano' => (int) ($row->sirano ?? 0),
-                        'urun_detay_grup_ids' => [],
+                        'urun_ids' => [],
                     ];
                 })->values();
 
@@ -1078,20 +1120,20 @@ class TeklifController extends Controller
                 ];
             })->values();
 
-            $detailGroupIdsByMontajUrunId = MontajProductGroup::query()
+            $urunIdsByMontajUrunId = MontajProductGroup::query()
                 ->whereIn('montaj_urun_id', array_values(array_unique(array_filter($montajUrunIds))))
-                ->get(['montaj_urun_id', 'urun_detay_grup_id'])
+                ->get(['montaj_urun_id', 'urun_id'])
                 ->groupBy('montaj_urun_id')
                 ->map(function ($rows) {
-                    return $rows->pluck('urun_detay_grup_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
+                    return $rows->pluck('urun_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
                 })
                 ->all();
 
-            $payloadGroups = $payloadGroups->map(function ($g) use ($detailGroupIdsByMontajUrunId) {
-                $g['items'] = collect($g['items'])->map(function ($it) use ($detailGroupIdsByMontajUrunId) {
+            $payloadGroups = $payloadGroups->map(function ($g) use ($urunIdsByMontajUrunId) {
+                $g['items'] = collect($g['items'])->map(function ($it) use ($urunIdsByMontajUrunId) {
                     $mid = $it['montaj_urun_id'] ?? null;
                     if ($mid) {
-                        $it['urun_detay_grup_ids'] = $detailGroupIdsByMontajUrunId[$mid] ?? [];
+                        $it['urun_ids'] = $urunIdsByMontajUrunId[$mid] ?? [];
                     }
                     return $it;
                 })->values()->all();
@@ -1139,7 +1181,7 @@ class TeklifController extends Controller
                     'doviz' => $row->doviz ?? 'TL',
                     'satir_tutar' => 0,
                     'sirano' => $row->sirano ?? 0,
-                    'urun_detay_grup_ids' => [],
+                    'urun_ids' => [],
                 ];
             })->values();
 
@@ -1156,20 +1198,20 @@ class TeklifController extends Controller
             ];
         })->values();
 
-        $detailGroupIdsByMontajUrunId = MontajProductGroup::query()
+        $urunIdsByMontajUrunId = MontajProductGroup::query()
             ->whereIn('montaj_urun_id', array_values(array_unique(array_filter($montajUrunIds))))
-            ->get(['montaj_urun_id', 'urun_detay_grup_id'])
+            ->get(['montaj_urun_id', 'urun_id'])
             ->groupBy('montaj_urun_id')
             ->map(function ($rows) {
-                return $rows->pluck('urun_detay_grup_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
+                return $rows->pluck('urun_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
             })
             ->all();
 
-        $payloadGroups = $payloadGroups->map(function ($g) use ($detailGroupIdsByMontajUrunId) {
-            $g['items'] = collect($g['items'])->map(function ($it) use ($detailGroupIdsByMontajUrunId) {
+        $payloadGroups = $payloadGroups->map(function ($g) use ($urunIdsByMontajUrunId) {
+            $g['items'] = collect($g['items'])->map(function ($it) use ($urunIdsByMontajUrunId) {
                 $mid = $it['montaj_urun_id'] ?? null;
                 if ($mid) {
-                    $it['urun_detay_grup_ids'] = $detailGroupIdsByMontajUrunId[$mid] ?? [];
+                    $it['urun_ids'] = $urunIdsByMontajUrunId[$mid] ?? [];
                 }
                 return $it;
             })->values()->all();

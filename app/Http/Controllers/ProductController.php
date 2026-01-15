@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductDetailGroup;
+use App\Models\ProductRecipe;
 use App\Models\ProductSubGroup;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -55,18 +58,24 @@ class ProductController extends Controller
             return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
         });
 
-        return view('products.create', compact('categories', 'subGroupsByGroup', 'detailGroupsBySubGroup'));
+        $stockCards = Product::query()->orderBy('kod')->get(['id', 'kod', 'aciklama']);
+
+        return view('products.create', compact('categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockCards'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validatedData($request);
+        $recipeItems = $this->validatedRecipeItems($request, null);
 
         if ($request->hasFile('resim')) {
             $data['resim_yolu'] = $this->storeProductImage($request);
         }
 
-        Product::create($data);
+        DB::transaction(function () use ($data, $recipeItems) {
+            $product = Product::create($data);
+            $this->persistRecipeItems($product, $recipeItems);
+        });
 
         return redirect()->route('products.index')
             ->with('status', 'Ürün başarıyla oluşturuldu.');
@@ -84,12 +93,34 @@ class ProductController extends Controller
             return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
         });
 
-        return view('products.edit', compact('product', 'categories', 'subGroupsByGroup', 'detailGroupsBySubGroup'));
+        $stockCards = Product::query()
+            ->where('id', '!=', $product->id)
+            ->orderBy('kod')
+            ->get(['id', 'kod', 'aciklama']);
+
+        $recipeItems = ProductRecipe::query()
+            ->with('stokUrun:id,kod,aciklama')
+            ->where('urun_id', $product->id)
+            ->orderBy('sirano')
+            ->orderBy('id')
+            ->get()
+            ->map(function (ProductRecipe $r) {
+                return [
+                    'stok_urun_id' => (int) $r->stok_urun_id,
+                    'kod' => (string) (optional($r->stokUrun)->kod ?? ''),
+                    'aciklama' => (string) (optional($r->stokUrun)->aciklama ?? ''),
+                    'miktar' => (string) ($r->miktar ?? '0'),
+                ];
+            })
+            ->values();
+
+        return view('products.edit', compact('product', 'categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockCards', 'recipeItems'));
     }
 
     public function update(Request $request, Product $product)
     {
         $data = $this->validatedData($request, $product->id);
+        $recipeItems = $this->validatedRecipeItems($request, $product->id);
 
         if ($request->hasFile('resim')) {
             if ($product->resim_yolu && str_starts_with($product->resim_yolu, 'uploads/products/')) {
@@ -102,7 +133,10 @@ class ProductController extends Controller
             $data['resim_yolu'] = $this->storeProductImage($request);
         }
 
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $recipeItems) {
+            $product->update($data);
+            $this->persistRecipeItems($product, $recipeItems);
+        });
 
         return redirect()->route('products.index')
             ->with('status', 'Ürün güncellendi.');
@@ -142,6 +176,9 @@ class ProductController extends Controller
             'pasif'       => ['sometimes', 'boolean'],
             'multi'       => ['sometimes', 'boolean'],
             'montaj'      => ['sometimes', 'boolean'],
+            'recipe' => ['sometimes', 'array'],
+            'recipe.*.stok_urun_id' => ['nullable', 'integer', 'exists:urunler,id'],
+            'recipe.*.miktar' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -182,6 +219,77 @@ class ProductController extends Controller
         $data['satis_doviz'] = strtoupper(trim((string) ($data['satis_doviz'] ?? 'TL')));
 
         return $data;
+    }
+
+    protected function validatedRecipeItems(Request $request, ?int $productId): array
+    {
+        if (!$request->boolean('multi')) {
+            return [];
+        }
+
+        $items = $request->input('recipe', []);
+        if (!is_array($items)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($items as $it) {
+            $stokId = isset($it['stok_urun_id']) && is_numeric($it['stok_urun_id']) ? (int) $it['stok_urun_id'] : 0;
+            $miktar = isset($it['miktar']) && is_numeric($it['miktar']) ? (float) $it['miktar'] : null;
+
+            if ($stokId <= 0) {
+                continue;
+            }
+
+            if ($productId && $stokId === (int) $productId) {
+                throw ValidationException::withMessages([
+                    'recipe' => ['Reçeteye ürünün kendisi eklenemez.'],
+                ]);
+            }
+
+            if ($miktar === null) {
+                $miktar = 0;
+            }
+
+            if ($miktar < 0) {
+                $miktar = 0;
+            }
+
+            $clean[] = ['stok_urun_id' => $stokId, 'miktar' => $miktar];
+        }
+
+        $unique = [];
+        $deduped = [];
+        foreach ($clean as $row) {
+            $key = (string) $row['stok_urun_id'];
+            if (isset($unique[$key])) {
+                continue;
+            }
+            $unique[$key] = true;
+            $deduped[] = $row;
+        }
+
+        return $deduped;
+    }
+
+    protected function persistRecipeItems(Product $product, array $items): void
+    {
+        ProductRecipe::where('urun_id', $product->id)->delete();
+
+        if (!$product->multi) {
+            return;
+        }
+
+        $sirano = 0;
+        foreach ($items as $row) {
+            $sirano++;
+            ProductRecipe::create([
+                'urun_id' => $product->id,
+                'stok_urun_id' => $row['stok_urun_id'],
+                'miktar' => $row['miktar'],
+                'sirano' => $sirano,
+            ]);
+        }
     }
 
     protected function storeProductImage(Request $request): string

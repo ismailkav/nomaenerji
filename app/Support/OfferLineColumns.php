@@ -27,8 +27,8 @@ final class OfferLineColumns
             ['key' => 'isk_tutar', 'label' => 'İsk. Tutar'],
             ['key' => 'kdv_orani', 'label' => 'KDV %'],
             ['key' => 'kdv_durum', 'label' => 'KDV Durum'],
+            ['key' => 'satir_tutar_doviz', 'label' => 'Satır Tutar Döviz'],
             ['key' => 'satir_tutar', 'label' => 'Satır Tutar'],
         ];
     }
 }
-

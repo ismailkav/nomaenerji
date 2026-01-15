@@ -125,7 +125,8 @@
                             <thead>
                             <tr>
                                 <th style="width:80px;text-align:center;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Sira</th>
-                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Detay Grup</th>
+                                <th style="width:220px;text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Stok Kod</th>
+                                <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Stok Aciklama</th>
                                 <th style="width:120px;text-align:right;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Islem</th>
                             </tr>
                             </thead>
@@ -133,12 +134,14 @@
                             @forelse($items as $i => $row)
                                 <tr>
                                     <td class="sirano-cell" style="padding:0.5rem 0.5rem;text-align:center;color:#6b7280;">{{ (int) ($row->sirano ?? 0) > 0 ? (int) $row->sirano : ($i + 1) }}</td>
-                                    <td style="padding:0.5rem 0.5rem;">
+                                    <td style="padding:0.5rem 0.5rem;font-weight:600;">
                                         <input type="hidden" name="items[{{ $i }}][id]" value="{{ $row->id }}">
                                         <input type="hidden" class="sirano-input" name="items[{{ $i }}][sirano]" value="{{ (int) ($row->sirano ?? 0) > 0 ? (int) $row->sirano : ($i + 1) }}">
-                                        <input type="hidden" class="detail-id-input" name="items[{{ $i }}][urun_detay_grup_id]" value="{{ $row->urun_detay_grup_id }}">
-                                        <div style="font-weight:600;">{{ optional($row->urunDetayGrup)->ad }}</div>
-                                        <div style="color:#6b7280;font-size:0.8rem;">ID: {{ $row->urun_detay_grup_id }}</div>
+                                        <input type="hidden" class="urun-id-input" name="items[{{ $i }}][urun_id]" value="{{ $row->urun_id }}">
+                                        {{ optional($row->urun)->kod }}
+                                    </td>
+                                    <td style="padding:0.5rem 0.5rem;">
+                                        {{ optional($row->urun)->aciklama }}
                                     </td>
                                     <td style="padding:0.5rem 0.5rem;text-align:right;white-space:nowrap;">
                                         <button type="button" class="row-delete-btn" title="Sil" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
@@ -150,8 +153,10 @@
                                     <td style="padding:0.5rem 0.5rem;">
                                         <input type="hidden" name="items[0][id]" value="">
                                         <input type="hidden" class="sirano-input" name="items[0][sirano]" value="1">
-                                        <input type="hidden" class="detail-id-input" name="items[0][urun_detay_grup_id]" value="">
-                                        <div style="color:#9ca3af;">Detay grup seciniz.</div>
+                                        <input type="hidden" class="urun-id-input" name="items[0][urun_id]" value="">
+                                        <div style="color:#9ca3af;">Stok kart seciniz.</div>
+                                    </td>
+                                    <td style="padding:0.5rem 0.5rem;color:#9ca3af;">
                                     </td>
                                     <td style="padding:0.5rem 0.5rem;text-align:right;white-space:nowrap;">
                                         <button type="button" class="row-delete-btn" title="Sil" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
@@ -171,30 +176,39 @@
     </main>
 </div>
 
-<div id="detailGroupModal" class="modal-overlay">
+<div id="stockCardModal" class="modal-overlay">
     <div class="modal">
-        <div class="modal-header">
-            <div class="modal-title">Detay Grup Sec</div>
-            <div style="display:flex;gap:0.5rem;align-items:center;">
-                <input id="detailSearch" type="text" placeholder="Ara..." style="padding:0.35rem 0.5rem;font-size:0.9rem;">
-                <button type="button" class="small-btn" id="detailModalClose">X</button>
+        <div class="modal-header" style="flex-wrap:wrap;">
+            <div class="modal-title">Stok Kart Sec</div>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-left:auto;">
+                <button type="button" class="small-btn" id="stockModalOk">Tamam</button>
+                <button type="button" class="small-btn" id="stockModalCancel">Vazgec</button>
+                <button type="button" class="small-btn" id="stockModalClose">X</button>
+            </div>
+            <div style="width:100%;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.6rem;">
+                <select id="stockGroupFilter" style="min-width:200px;">
+                    <option value="">Stok Ana Grup (Hepsi)</option>
+                </select>
+                <select id="stockSubGroupFilter" style="min-width:220px;">
+                    <option value="">Stok Alt Grup (Hepsi)</option>
+                </select>
+                <select id="stockDetailGroupFilter" style="min-width:240px;">
+                    <option value="">Stok Detay Grup (Hepsi)</option>
+                </select>
+                <input id="stockSearch" type="text" placeholder="Ara (Stok Kod / Aciklama)..." style="margin-left:auto;padding:0.35rem 0.5rem;font-size:0.9rem;min-width:260px;">
             </div>
         </div>
         <div class="modal-body">
-            <table class="modal-table" id="detailGroupTable">
+            <table class="modal-table" id="stockCardTable">
                 <thead>
                 <tr>
                     <th style="width:50px;">Sec</th>
-                    <th>Detay Grup</th>
-                    <th style="width:90px;">ID</th>
+                    <th style="width:200px;">Stok Kod</th>
+                    <th>Stok Aciklama</th>
                 </tr>
                 </thead>
                 <tbody></tbody>
             </table>
-            <div style="margin-top:0.75rem;display:flex;justify-content:flex-end;gap:0.5rem;">
-                <button type="button" class="small-btn" id="detailModalOk">Tamam</button>
-                <button type="button" class="small-btn" id="detailModalCancel">Vazgec</button>
-            </div>
         </div>
     </div>
 </div>
@@ -203,7 +217,10 @@
     <script>
     (function () {
         var productsByGroup = @json($productsByGroup);
-        var detailGroups = @json($detailGroups);
+        var stockCards = @json($stockCards);
+        var stockGroups = @json($stockGroups);
+        var stockSubGroups = @json($stockSubGroups);
+        var stockDetailGroups = @json($stockDetailGroups);
 
         var groupSelect = document.getElementById('montajGroupSelect');
         var productSelect = document.getElementById('montajProductSelect');
@@ -212,12 +229,15 @@
         var addRowsBtn = document.getElementById('addRowsBtn');
         var tbody = document.getElementById('montajProductGroupsBody');
 
-        var modal = document.getElementById('detailGroupModal');
-        var modalTableBody = document.querySelector('#detailGroupTable tbody');
-        var modalClose = document.getElementById('detailModalClose');
-        var modalCancel = document.getElementById('detailModalCancel');
-        var modalOk = document.getElementById('detailModalOk');
-        var modalSearch = document.getElementById('detailSearch');
+        var modal = document.getElementById('stockCardModal');
+        var modalTableBody = document.querySelector('#stockCardTable tbody');
+        var modalClose = document.getElementById('stockModalClose');
+        var modalCancel = document.getElementById('stockModalCancel');
+        var modalOk = document.getElementById('stockModalOk');
+        var modalSearch = document.getElementById('stockSearch');
+        var groupFilter = document.getElementById('stockGroupFilter');
+        var subGroupFilter = document.getElementById('stockSubGroupFilter');
+        var detailGroupFilter = document.getElementById('stockDetailGroupFilter');
 
         function renumberRows() {
             var rows = tbody ? Array.prototype.slice.call(tbody.querySelectorAll('tr')) : [];
@@ -230,10 +250,10 @@
             });
         }
 
-        function existingDetailIds() {
+        function existingUrunIds() {
             var ids = new Set();
             if (!tbody) return ids;
-            var inputs = tbody.querySelectorAll('.detail-id-input');
+            var inputs = tbody.querySelectorAll('.urun-id-input');
             inputs.forEach(function (input) {
                 if (input.value) ids.add(String(input.value));
             });
@@ -296,26 +316,96 @@
 
         function renderModalRows() {
             if (!modalTableBody) return;
-            var keyword = modalSearch.value.toLowerCase();
+            var keyword = ((modalSearch && modalSearch.value) ? modalSearch.value : '').toString().trim().toLowerCase();
+            var selectedGroupId = groupFilter && groupFilter.value ? String(groupFilter.value) : '';
+            var selectedSubId = subGroupFilter && subGroupFilter.value ? String(subGroupFilter.value) : '';
+            var selectedDetailId = detailGroupFilter && detailGroupFilter.value ? String(detailGroupFilter.value) : '';
             modalTableBody.innerHTML = '';
-            detailGroups.forEach(function (dg) {
-                if (keyword && dg.ad.toLowerCase().indexOf(keyword) === -1) {
+            (Array.isArray(stockCards) ? stockCards : []).forEach(function (p) {
+                var kod = (p && p.kod != null) ? String(p.kod) : '';
+                var aciklama = (p && p.aciklama != null) ? String(p.aciklama) : '';
+                var kategoriId = (p && p.kategori_id != null) ? String(p.kategori_id) : '';
+                var altGrupId = (p && p.urun_alt_grup_id != null) ? String(p.urun_alt_grup_id) : '';
+                var detayGrupId = (p && p.urun_detay_grup_id != null) ? String(p.urun_detay_grup_id) : '';
+
+                if (selectedGroupId && kategoriId !== selectedGroupId) return;
+                if (selectedSubId && altGrupId !== selectedSubId) return;
+                if (selectedDetailId && detayGrupId !== selectedDetailId) return;
+
+                if (keyword) {
+                    var k = kod.toLowerCase();
+                    var a = aciklama.toLowerCase();
+                    if (k.indexOf(keyword) === -1 && a.indexOf(keyword) === -1) {
+                        return;
+                    }
+                }
+                if (!kod && !aciklama) {
                     return;
                 }
                 var tr = document.createElement('tr');
                 tr.innerHTML =
-                    '<td style=\"width:50px;text-align:center;\"><input type=\"checkbox\" data-id=\"' + dg.id + '\"></td>' +
-                    '<td>' + dg.ad + '</td>' +
-                    '<td style=\"color:#6b7280;\">' + dg.id + '</td>';
+                    '<td style=\"width:50px;text-align:center;\"><input type=\"checkbox\" data-id=\"' + p.id + '\"></td>' +
+                    '<td style=\"font-weight:600;\">' + kod + '</td>' +
+                    '<td>' + aciklama + '</td>';
                 modalTableBody.appendChild(tr);
             });
+        }
+
+        function setSelectOptions(select, options, selectedValue) {
+            if (!select) return;
+            var current = selectedValue != null ? String(selectedValue) : (select.value ? String(select.value) : '');
+            select.innerHTML = '';
+            (Array.isArray(options) ? options : []).forEach(function (opt) {
+                var o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                select.appendChild(o);
+            });
+            if (current && Array.prototype.some.call(select.options, function (o) { return String(o.value) === current; })) {
+                select.value = current;
+            } else {
+                select.value = (select.options.length ? select.options[0].value : '');
+            }
+        }
+
+        function rebuildFilterOptions() {
+            var gid = groupFilter && groupFilter.value ? String(groupFilter.value) : '';
+            var sid = subGroupFilter && subGroupFilter.value ? String(subGroupFilter.value) : '';
+
+            setSelectOptions(groupFilter, [{ value: '', label: 'Stok Ana Grup (Hepsi)' }].concat(
+                (Array.isArray(stockGroups) ? stockGroups : []).map(function (g) {
+                    return { value: String(g.id), label: String(g.ad || '') };
+                })
+            ));
+
+            var subOptions = (Array.isArray(stockSubGroups) ? stockSubGroups : []).filter(function (sg) {
+                if (!gid) return true;
+                return String(sg.urun_grup_id) === gid;
+            }).map(function (sg) {
+                return { value: String(sg.id), label: String(sg.ad || '') };
+            });
+            setSelectOptions(subGroupFilter, [{ value: '', label: 'Stok Alt Grup (Hepsi)' }].concat(subOptions), sid);
+
+            sid = subGroupFilter && subGroupFilter.value ? String(subGroupFilter.value) : '';
+            var detailOptions = (Array.isArray(stockDetailGroups) ? stockDetailGroups : []).filter(function (dg) {
+                if (gid && String(dg.urun_grup_id) !== gid) return false;
+                if (sid && String(dg.urun_alt_grup_id) !== sid) return false;
+                return true;
+            }).map(function (dg) {
+                return { value: String(dg.id), label: String(dg.ad || '') };
+            });
+            setSelectOptions(detailGroupFilter, [{ value: '', label: 'Stok Detay Grup (Hepsi)' }].concat(detailOptions));
         }
 
         function toggleModal(show) {
             if (!modal) return;
             modal.style.display = show ? 'flex' : 'none';
             if (show) {
-                modalSearch.value = '';
+                if (modalSearch) modalSearch.value = '';
+                if (groupFilter) groupFilter.value = '';
+                if (subGroupFilter) subGroupFilter.value = '';
+                if (detailGroupFilter) detailGroupFilter.value = '';
+                rebuildFilterOptions();
                 renderModalRows();
             }
         }
@@ -329,6 +419,9 @@
         if (modalClose) modalClose.addEventListener('click', function () { toggleModal(false); });
         if (modalCancel) modalCancel.addEventListener('click', function () { toggleModal(false); });
         if (modalSearch) modalSearch.addEventListener('input', renderModalRows);
+        if (groupFilter) groupFilter.addEventListener('change', function () { rebuildFilterOptions(); renderModalRows(); });
+        if (subGroupFilter) subGroupFilter.addEventListener('change', function () { rebuildFilterOptions(); renderModalRows(); });
+        if (detailGroupFilter) detailGroupFilter.addEventListener('change', renderModalRows);
 
         if (modalOk) {
             modalOk.addEventListener('click', function () {
@@ -344,29 +437,31 @@
                 }
                 if (tbody) {
                     Array.prototype.slice.call(tbody.querySelectorAll('tr')).forEach(function (tr) {
-                        var input = tr.querySelector('.detail-id-input');
+                        var input = tr.querySelector('.urun-id-input');
                         if (input && !input.value) {
                             tr.parentNode.removeChild(tr);
                         }
                     });
                 }
-                var existing = existingDetailIds();
+                var existing = existingUrunIds();
                 var idx = tbody ? tbody.querySelectorAll('tr').length : 0;
                 selected.forEach(function (id) {
                     if (existing.has(String(id))) {
                         return;
                     }
-                    var dg = detailGroups.find(function (d) { return String(d.id) === String(id); });
+                    var p = (Array.isArray(stockCards) ? stockCards : []).find(function (d) { return String(d.id) === String(id); });
+                    var kod = p && p.kod != null ? String(p.kod) : ('#' + String(id));
+                    var aciklama = p && p.aciklama != null ? String(p.aciklama) : '';
                     var tr = document.createElement('tr');
                     tr.innerHTML =
                         '<td class=\"sirano-cell\" style=\"padding:0.5rem 0.5rem;text-align:center;color:#6b7280;\"></td>' +
-                        '<td style=\"padding:0.5rem 0.5rem;\">' +
+                        '<td style=\"padding:0.5rem 0.5rem;font-weight:600;\">' +
                         '<input type=\"hidden\" name=\"items[' + idx + '][id]\" value=\"\">' +
                         '<input type=\"hidden\" class=\"sirano-input\" name=\"items[' + idx + '][sirano]\" value=\"0\">' +
-                        '<input type=\"hidden\" class=\"detail-id-input\" name=\"items[' + idx + '][urun_detay_grup_id]\" value=\"' + id + '\">' +
-                        '<div style=\"font-weight:600;\">' + (dg ? dg.ad : ('Detay #' + id)) + '</div>' +
-                        '<div style=\"color:#6b7280;font-size:0.8rem;\">ID: ' + id + '</div>' +
+                        '<input type=\"hidden\" class=\"urun-id-input\" name=\"items[' + idx + '][urun_id]\" value=\"' + String(id).replace(/\"/g, '&quot;') + '\">' +
+                        kod +
                         '</td>' +
+                        '<td style=\"padding:0.5rem 0.5rem;\">' + aciklama + '</td>' +
                         '<td style=\"padding:0.5rem 0.5rem;text-align:right;white-space:nowrap;\">' +
                         '<button type=\"button\" class=\"row-delete-btn\" title=\"Sil\" style=\"background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;\">Sil</button>' +
                         '</td>';
@@ -396,7 +491,6 @@
         }
 
         bindRowDeletes();
-        renderModalRows();
         toggleAddButton();
     })();
 </script>

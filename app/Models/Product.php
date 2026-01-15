@@ -55,4 +55,9 @@ class Product extends Model
     {
         return $this->belongsTo(ProductDetailGroup::class, 'urun_detay_grup_id');
     }
+
+    public function receteKalemleri()
+    {
+        return $this->hasMany(ProductRecipe::class, 'urun_id');
+    }
 }

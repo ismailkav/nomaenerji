@@ -202,8 +202,10 @@
         .offer-lines td.kdv-cell { width: 6%; }
         .offer-lines th.kdv-durum,
         .offer-lines td.kdv-durum-cell { width: 6%; }
+        .offer-lines th.satir-tutar-doviz,
+        .offer-lines td.satir-tutar-doviz-cell { width: 8%; }
         .offer-lines th.satir-tutar,
-        .offer-lines td.satir-tutar-cell { width: 16%; }
+        .offer-lines td.satir-tutar-cell { width: 8%; }
         #montajDetailTable th:nth-child(1),
         #montajDetailTable td:nth-child(1) { width: 40%; }
         #montajDetailTable th:nth-child(2),
@@ -211,13 +213,19 @@
         #montajDetailTable th:nth-child(6),
         #montajDetailTable td:nth-child(6) { width: 10%; }
         .offer-lines input,
-        .offer-lines select {
+        .offer-lines select,
+        .offer-lines textarea {
             width: 100%;
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
             font-size: 0.75rem;
             outline: none;
+        }
+        .offer-lines textarea {
+            resize: none;
+            overflow: hidden;
+            line-height: 1.15rem;
         }
         .offer-lines input[type="number"] {
             text-align: right;
@@ -751,6 +759,7 @@
                             <th>İsk. Tutar</th>
                             <th class="kdv">KDV %</th>
                             <th class="kdv-durum">KDV Durum</th>
+                            <th class="satir-tutar-doviz">Satır Tutar Döviz</th>
                             <th>Satır Tutar</th>
                         </tr>
                         </thead>
@@ -1120,7 +1129,7 @@
 
  <!-- Sütun ayarları modal -->
 <div id="montajDetailModal" class="modal-overlay">
-    <div class="modal" style="max-width:none;width:calc(100vw - 32px);">
+    <div class="modal" style="max-width:80vw;width:80vw;">
         <div class="modal-header">
             <div class="modal-title">Montaj Detay</div>
             <button type="button" class="small-btn" data-modal-close="montajDetailModal">X</button>
@@ -1333,6 +1342,7 @@
             else if (key === 'isk_tutar') selector = '.isk-tutar';
             else if (key === 'kdv_orani') selector = '.kdv-oran';
             else if (key === 'kdv_durum') selector = '.kdv-durum';
+            else if (key === 'satir_tutar_doviz') selector = '.satir-tutar-doviz';
             else if (key === 'satir_tutar') selector = '.satir-tutar';
 
             if (!selector) return null;
@@ -1342,15 +1352,34 @@
 
         function ensureOfferLineHeaderMap() {
             if (offerLineThByKey) return;
-            if (!offerLinesTable || !offerLineColumns) return;
+            if (!offerLinesTable) return;
             var headerRow = offerLinesTable.querySelector('thead tr');
             if (!headerRow) return;
             var ths = Array.prototype.slice.call(headerRow.querySelectorAll('th'));
-            if (ths.length < offerLineColumns.length) return;
+            var keyOrder = [
+                'stok_kod',
+                'stok_aciklama',
+                'birim_fiyat',
+                'miktar',
+                'doviz',
+                'kur',
+                'isk1',
+                'isk2',
+                'isk3',
+                'isk4',
+                'isk5',
+                'isk6',
+                'isk_tutar',
+                'kdv_orani',
+                'kdv_durum',
+                'satir_tutar_doviz',
+                'satir_tutar',
+            ];
+            if (ths.length < keyOrder.length) return;
 
             offerLineThByKey = {};
-            offerLineColumns.forEach(function (col, idx) {
-                offerLineThByKey[col.key] = ths[idx];
+            keyOrder.forEach(function (key, idx) {
+                offerLineThByKey[key] = ths[idx];
             });
         }
 
@@ -1769,12 +1798,24 @@
             btn.style.display = visible ? '' : 'none';
         };
 
+        function autoGrowTextarea(el) {
+            if (!el || !el.style || String(el.tagName || '').toUpperCase() !== 'TEXTAREA') return;
+            el.style.height = 'auto';
+            el.style.height = String(el.scrollHeight || 0) + 'px';
+        }
+
+        function autoGrowTextareasInRow(tr) {
+            if (!tr) return;
+            autoGrowTextarea(tr.querySelector('.stok-kod'));
+            autoGrowTextarea(tr.querySelector('.stok-aciklama'));
+        }
+
         function addLineRow() {
             var tr = document.createElement('tr');
             tr.innerHTML =
                 '<td class="stok-kod-cell">' +
                 '<div style="display:flex; align-items:center; gap:6px;">' +
-                '<input class="line-input stok-kod" style="flex:1 1 auto; width:auto;">' +
+                '<textarea class="line-input stok-kod auto-grow" rows="1" style="flex:1 1 auto; width:auto;"></textarea>' +
                 '<input type="hidden" class="line-input urun-id">' +
                 '<input type="hidden" class="line-input teklif-detay-id">' +
                 '<button type="button" class="small-btn stok-detay-btn" style="display:none;" title="Detay">' +
@@ -1784,7 +1825,7 @@
                 '</button>' +
                 '</div>' +
                 '</td>' +
-                '<td class="stok-aciklama-cell"><input class="line-input stok-aciklama"></td>' +
+                '<td class="stok-aciklama-cell"><textarea class="line-input stok-aciklama auto-grow" rows="1"></textarea></td>' +
                 '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input birim-fiyat"></td>' +
                 '<td class="miktar-cell"><input type="number" step="0.001" class="line-input miktar"></td>' +
                 '<td class="doviz-cell"><select class="line-input doviz"><option value="TL" selected>TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></td>' +
@@ -1807,6 +1848,7 @@
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk-tutar" readonly></td>' +
                 '<td class="kdv-cell"><input type="number" step="0.01" class="line-input kdv-oran"></td>' +
                 '<td class="kdv-durum-cell"><select class="line-input kdv-durum"><option value="D">D</option><option value="H">H</option></select></td>' +
+                '<td class="satir-tutar-doviz-cell"><input type="number" step="0.01" class="line-input satir-tutar-doviz" readonly></td>' +
                 '<td class="satir-tutar-cell"><input type="number" step="0.01" class="line-input satir-tutar" readonly></td>' +
                 '<input type="hidden" class="satir-aciklama-hidden">';
 
@@ -1857,7 +1899,7 @@
                 var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
                 var lineRate = doviz === 'TL' ? 1 : kur;
                 if (lineRate <= 0) lineRate = 0;
-                var baseAmount = (price * qty) * lineRate;
+                var baseAmountFx = (price * qty);
 
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
@@ -1866,19 +1908,20 @@
                     discounts.push(val);
                 });
 
-                var remaining = baseAmount;
-                var totalDiscount = 0;
+                var remainingFx = baseAmountFx;
+                var totalDiscountFx = 0;
 
                 discounts.forEach(function (rate) {
                     if (!rate) return;
-                    var d = remaining * (rate / 100);
-                    totalDiscount += d;
-                    remaining -= d;
+                    var d = remainingFx * (rate / 100);
+                    totalDiscountFx += d;
+                    remainingFx -= d;
                 });
 
                 var iskField = tr.querySelector('.isk-tutar');
                 if (iskField) {
-                    iskField.value = totalDiscount ? totalDiscount.toFixed(2) : '0';
+                    var totalDiscountTl = totalDiscountFx * lineRate;
+                    iskField.value = totalDiscountTl ? totalDiscountTl.toFixed(2) : '0';
                 }
             }
 
@@ -1913,10 +1956,26 @@
                 var net = baseAmount - totalDiscount;
                 if (net < 0) net = 0;
 
+                // FX net (kur carpilmadan) hesaplama
+                var baseAmountFx = (price * qty);
+                var remainingFx = baseAmountFx;
+                var totalDiscountFx = 0;
+
+                discounts.forEach(function (rate) {
+                    if (!rate) return;
+                    var d = remainingFx * (rate / 100);
+                    totalDiscountFx += d;
+                    remainingFx -= d;
+                });
+
+                var netFx = baseAmountFx - totalDiscountFx;
+                if (netFx < 0) netFx = 0;
+
                 // İskonto tutarı alanı
                 var iskField = tr.querySelector('.isk-tutar');
                 if (iskField) {
-                    iskField.value = totalDiscount ? totalDiscount.toFixed(2) : '0';
+                    var totalDiscountTl = totalDiscountFx * lineRate;
+                    iskField.value = totalDiscountTl ? totalDiscountTl.toFixed(2) : '0';
                 }
 
                 // KDV oranı ve durumu
@@ -1945,9 +2004,33 @@
                 }
 
                 // Satır tutar alanı (Satır Tutar sütununda görünen veri)
+                var kdvFx = 0;
+                var lineTotalFx = netFx;
+
+                if (kdvOran > 0 && netFx > 0) {
+                    if (kdvDurum === 'H') {
+                        kdvFx = netFx * (kdvOran / 100);
+                        lineTotalFx = netFx + kdvFx;
+                    } else if (kdvDurum === 'E' || kdvDurum === 'D') {
+                        var oranFx = kdvOran / 100;
+                        lineTotalFx = netFx;
+                        kdvFx = netFx - (netFx / (1 + oranFx));
+                    } else {
+                        lineTotalFx = netFx;
+                        kdvFx = 0;
+                    }
+                }
+
+                var satirDovizField = tr.querySelector('.satir-tutar-doviz');
+                var lineTotalFxRounded = Math.round((lineTotalFx || 0) * 100) / 100;
+                if (satirDovizField) {
+                    satirDovizField.value = lineTotalFxRounded ? lineTotalFxRounded.toFixed(2) : '0';
+                }
+
                 var satirField = tr.querySelector('.satir-tutar');
                 if (satirField) {
-                    satirField.value = lineTotal ? lineTotal.toFixed(2) : '0';
+                    var lineTotalTl = lineTotalFxRounded * lineRate;
+                    satirField.value = lineTotalTl ? lineTotalTl.toFixed(2) : '0';
                 }
 
                 recalcTotals();
@@ -2007,6 +2090,7 @@
 
             // Başlangıçta da iskonto tutarını hesapla
             recalcDiscount();
+            autoGrowTextareasInRow(tr);
 
             if (linesBody) {
                 tr.dataset.multi = '0';
@@ -2019,6 +2103,24 @@
 
         if (btnAddLine && linesBody) {
             btnAddLine.addEventListener('click', addLineRow);
+        }
+
+        if (linesBody && !linesBody.dataset.autoGrowBound) {
+            linesBody.dataset.autoGrowBound = '1';
+            linesBody.addEventListener('input', function (e) {
+                var t = e.target;
+                if (!t || !t.classList) return;
+                if (t.classList.contains('stok-kod') || t.classList.contains('stok-aciklama')) {
+                    autoGrowTextarea(t);
+                }
+            });
+            linesBody.addEventListener('keydown', function (e) {
+                var t = e.target;
+                if (!t || !t.classList) return;
+                if (e.key === 'Enter' && (t.classList.contains('stok-kod') || t.classList.contains('stok-aciklama'))) {
+                    e.preventDefault();
+                }
+            });
         }
 
         // baï¿½langï¿½ï¿½ta bir satï¿½r olsun
@@ -2282,6 +2384,7 @@
                 if (satirAciklamaHidden && lineDesc) {
                     satirAciklamaHidden.value = lineDesc;
                 }
+                autoGrowTextareasInRow(tr);
                 if (fiyatInput && line.birim_fiyat != null) fiyatInput.value = line.birim_fiyat;
                 if (miktarInput && line.miktar != null) miktarInput.value = line.miktar;
                 if (dovizInput && line.doviz) dovizInput.value = line.doviz;
@@ -2549,12 +2652,14 @@
             var kurInput = row.querySelector('.team-kur');
             var tutarInput = row.querySelector('.team-satir-tutar');
 
-            var qty = parseInt(qtyInput && qtyInput.value ? qtyInput.value : '0', 10) || 0;
+            var qty = parseFloat(qtyInput && qtyInput.value ? qtyInput.value : '0') || 0;
             var price = parseFloat(priceInput && priceInput.value ? priceInput.value : '0') || 0;
             var isk1 = parseFloat(isk1Input && isk1Input.value ? isk1Input.value : '0') || 0;
             var isk2 = parseFloat(isk2Input && isk2Input.value ? isk2Input.value : '0') || 0;
             var doviz = (dovizSelect && dovizSelect.value ? dovizSelect.value : 'TL').toString().trim().toUpperCase();
             var kur = parseFloat(kurInput && kurInput.value ? kurInput.value : '0') || 0;
+
+            if (qty < 0) qty = 0;
 
             if (doviz === 'TL') {
                 if (kurInput) {
@@ -2589,9 +2694,9 @@
         function createTeamDetailRow(item) {
             var tr = document.createElement('tr');
             tr.innerHTML =
-                '<td class="stok-kod-cell"><input class="line-input team-kod"></td>' +
+                '<td class="stok-kod-cell"><input type="hidden" class="team-urun-id"><input class="line-input team-kod"></td>' +
                 '<td class="stok-aciklama-cell"><input class="line-input team-aciklama"></td>' +
-                '<td class="miktar-cell"><input type="number" step="1" min="0" class="line-input team-miktar"></td>' +
+                '<td class="miktar-cell"><input type="number" step="0.001" min="0" class="line-input team-miktar" style="text-align:right;"></td>' +
                 '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input team-birim-fiyat"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input team-isk1"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input team-isk2"></td>' +
@@ -2600,6 +2705,7 @@
                 '<td class="satir-tutar-cell"><input type="number" step="0.01" class="line-input team-satir-tutar" readonly></td>' +
                 '<td style="text-align:right;"><button type="button" class="small-btn team-remove-row" title="Sil">X</button></td>';
 
+            var urunIdInput = tr.querySelector('.team-urun-id');
             var kodInput = tr.querySelector('.team-kod');
             var aciklamaInput = tr.querySelector('.team-aciklama');
             var qtyInput = tr.querySelector('.team-miktar');
@@ -2609,6 +2715,7 @@
             var dovizSelect = tr.querySelector('.team-doviz');
             var kurInput = tr.querySelector('.team-kur');
 
+            if (urunIdInput) urunIdInput.value = (item && item.urun_id != null ? item.urun_id : '') || '';
             if (kodInput) kodInput.value = (item && item.stokkod != null ? item.stokkod : '') || '';
             if (aciklamaInput) aciklamaInput.value = (item && item.stok_aciklama != null ? item.stok_aciklama : '') || '';
             if (qtyInput) qtyInput.value = (item && item.miktar != null ? item.miktar : '1') || '1';
@@ -2647,7 +2754,14 @@
                 .then(function (data) {
                     var items = (data && Array.isArray(data.items)) ? data.items : [];
                     if (!items.length) {
-                        teamDetailBody.appendChild(createTeamDetailRow({ doviz: 'TL', kur: 1 }));
+                        var recipe = (data && Array.isArray(data.recipe_items)) ? data.recipe_items : [];
+                        if (recipe.length) {
+                            recipe.forEach(function (it) {
+                                teamDetailBody.appendChild(createTeamDetailRow(it));
+                            });
+                        } else {
+                            teamDetailBody.appendChild(createTeamDetailRow({ doviz: 'TL', kur: 1 }));
+                        }
                         recalcTeamDetailTotal();
                         return;
                     }
@@ -2769,7 +2883,9 @@
                 teamDetailBody.querySelectorAll('tr').forEach(function (row) {
                     var stokkod = (row.querySelector('.team-kod') && row.querySelector('.team-kod').value) ? row.querySelector('.team-kod').value.toString().trim() : '';
                     var stokAciklama = (row.querySelector('.team-aciklama') && row.querySelector('.team-aciklama').value) ? row.querySelector('.team-aciklama').value.toString().trim() : '';
-                    var miktar = parseInt(row.querySelector('.team-miktar') && row.querySelector('.team-miktar').value ? row.querySelector('.team-miktar').value : '0', 10) || 0;
+                    var urunIdRaw = (row.querySelector('.team-urun-id') && row.querySelector('.team-urun-id').value) ? row.querySelector('.team-urun-id').value.toString().trim() : '';
+                    var urunId = urunIdRaw ? (parseInt(urunIdRaw, 10) || null) : null;
+                    var miktar = parseFloat(row.querySelector('.team-miktar') && row.querySelector('.team-miktar').value ? row.querySelector('.team-miktar').value : '0') || 0;
                     var birimFiyat = parseFloat(row.querySelector('.team-birim-fiyat') && row.querySelector('.team-birim-fiyat').value ? row.querySelector('.team-birim-fiyat').value : '0') || 0;
                     var isk1 = defaults.isk1;
                     var isk2 = defaults.isk2;
@@ -2779,6 +2895,7 @@
                     if (!stokkod && !stokAciklama && miktar === 0 && birimFiyat === 0) return;
 
                     items.push({
+                        urun_id: urunId,
                         stokkod: stokkod || null,
                         stok_aciklama: stokAciklama || null,
                         miktar: miktar,
@@ -2847,12 +2964,12 @@
             tr.setAttribute('data-montaj-item', '1');
             tr.setAttribute('data-group-id', String(groupId || ''));
 
-            var dgIds = (item && Array.isArray(item.urun_detay_grup_ids)) ? item.urun_detay_grup_ids : [];
-            if (!Array.isArray(dgIds)) dgIds = [];
-            dgIds = dgIds
+            var urunIds = (item && Array.isArray(item.urun_ids)) ? item.urun_ids : [];
+            if (!Array.isArray(urunIds)) urunIds = [];
+            urunIds = urunIds
                 .map(function (v) { return v == null ? '' : String(v).trim(); })
                 .filter(function (v) { return !!v; });
-            tr.setAttribute('data-detail-group-ids', dgIds.join(','));
+            tr.setAttribute('data-urun-ids', urunIds.join(','));
 
             var urunKod = (item && item.urun_kod ? item.urun_kod : '') || '';
             var birim = (item && item.birim ? item.birim : 'Adet') || 'Adet';
@@ -2905,9 +3022,10 @@
             });
         }
 
-        function collectOfferLineQtyByDetailGroup() {
-            var map = {};
-            if (!linesBody) return map;
+        function collectOfferLineQtyAndPresenceByUrunId() {
+            var qtyByUrunId = {};
+            var present = {};
+            if (!linesBody) return { qtyByUrunId: qtyByUrunId, presentUrunIds: present };
 
             var currentLineId = '';
             if (currentMontajDetailLineRow) {
@@ -2922,42 +3040,68 @@
                 var thisLineId = idInp && idInp.value ? String(idInp.value) : '';
                 if (currentLineId && thisLineId && thisLineId === currentLineId) return;
 
-                var dg = (tr.dataset.detaygrup || '').toString().trim();
-                if (!dg) return;
+                var urunIdInp = tr.querySelector('.urun-id');
+                var urunId = (urunIdInp && urunIdInp.value) ? String(urunIdInp.value).trim() : '';
+                if (!urunId) return;
+
+                present[urunId] = true;
 
                 var qty = montajNumber(tr.querySelector('.miktar') && tr.querySelector('.miktar').value ? tr.querySelector('.miktar').value : 0);
-                if (!isFinite(qty) || qty <= 0) return;
+                if (!isFinite(qty) || qty < 0) qty = 0;
 
-                map[dg] = (map[dg] || 0) + qty;
+                qtyByUrunId[urunId] = (qtyByUrunId[urunId] || 0) + qty;
             });
 
-            return map;
+            return { qtyByUrunId: qtyByUrunId, presentUrunIds: present };
         }
 
         function applyOfferLineQuantitiesToMontajRows() {
             if (!montajDetailBody) return;
-            var qtyByDg = collectOfferLineQtyByDetailGroup();
+            var collected = collectOfferLineQtyAndPresenceByUrunId();
+            var qtyByUrunId = collected.qtyByUrunId || {};
+            var presentUrunIds = collected.presentUrunIds || {};
 
             montajDetailBody.querySelectorAll('tr[data-montaj-item=\"1\"]').forEach(function (row) {
-                var idsRaw = (row.getAttribute('data-detail-group-ids') || '').toString().trim();
+                if ((row.dataset.manualQty || '') === '1') return;
+
+                var idsRaw = (row.getAttribute('data-urun-ids') || '').toString().trim();
                 if (!idsRaw) return;
 
                 var sum = 0;
+                var hasAny = false;
                 idsRaw.split(',').forEach(function (id) {
                     id = (id || '').toString().trim();
                     if (!id) return;
-                    sum += (qtyByDg[id] || 0);
+                    if (presentUrunIds[id]) hasAny = true;
+                    sum += (qtyByUrunId[id] || 0);
                 });
 
-                if (!(sum > 0)) return;
+                if (!hasAny) return;
                 sum = Math.round(sum * 1000) / 1000;
 
                 var qtyInput = row.querySelector('.montaj-miktar');
                 if (qtyInput) {
-                    qtyInput.value = String(sum);
-                    recalcMontajDetailRow(row);
+                    var newVal = String(sum);
+                    if (String(qtyInput.value || '') !== newVal) {
+                        qtyInput.value = newVal;
+                        recalcMontajDetailRow(row);
+                    }
                 }
             });
+        }
+
+        function isMontajDetailModalOpen() {
+            return !!(montajDetailModal && montajDetailModal.style && montajDetailModal.style.display === 'flex');
+        }
+
+        var montajDetailSyncTimer = null;
+        function scheduleMontajDetailAutoFill() {
+            if (!isMontajDetailModalOpen()) return;
+            if (montajDetailSyncTimer) clearTimeout(montajDetailSyncTimer);
+            montajDetailSyncTimer = setTimeout(function () {
+                if (!isMontajDetailModalOpen()) return;
+                applyOfferLineQuantitiesToMontajRows();
+            }, 150);
         }
 
         function loadMontajDetailItems(teklifDetayId, lineRow) {
@@ -2992,12 +3136,31 @@
             montajDetailBody.addEventListener('input', function (e) {
                 var row = e.target && e.target.closest ? e.target.closest('tr[data-montaj-item=\"1\"]') : null;
                 if (!row) return;
+                if (e.target && e.target.classList && e.target.classList.contains('montaj-miktar')) {
+                    row.dataset.manualQty = '1';
+                }
                 recalcMontajDetailRow(row);
             });
             montajDetailBody.addEventListener('change', function (e) {
                 var row = e.target && e.target.closest ? e.target.closest('tr[data-montaj-item=\"1\"]') : null;
                 if (!row) return;
+                if (e.target && e.target.classList && e.target.classList.contains('montaj-miktar')) {
+                    row.dataset.manualQty = '1';
+                }
                 recalcMontajDetailRow(row);
+            });
+        }
+
+        if (linesBody && !linesBody.dataset.montajDetailSyncBound) {
+            linesBody.dataset.montajDetailSyncBound = '1';
+            linesBody.addEventListener('input', function (e) {
+                var t = e.target;
+                if (!t || !t.classList) return;
+                if (!t.classList.contains('miktar')) return;
+                scheduleMontajDetailAutoFill();
+            });
+            linesBody.addEventListener('change', function () {
+                scheduleMontajDetailAutoFill();
             });
         }
 
@@ -3127,6 +3290,7 @@
                     var items = (data && Array.isArray(data.items)) ? data.items : [];
                     var payloadItems = items.map(function (it) {
                         return {
+                            urun_id: it.urun_id != null ? it.urun_id : null,
                             stokkod: it.stokkod || null,
                             stok_aciklama: it.stok_aciklama || null,
                             miktar: it.miktar != null ? it.miktar : 0,
@@ -3194,8 +3358,10 @@
                 var kod = picked.dataset.kod || '';
                 var aciklama = picked.dataset.aciklama || '';
                 var fiyat = picked.dataset.fiyat || '';
+                var urunId = picked.dataset.id || '';
                 var defaults = currentTeamDefaults || (currentTeamDetailLineRow ? getOfferLineTeamDefaults(currentTeamDetailLineRow) : { doviz: 'TL', kur: 1, isk1: 0, isk2: 0 });
 
+                var urunIdInput = currentTeamDetailProductRow.querySelector('.team-urun-id');
                 var kodInput = currentTeamDetailProductRow.querySelector('.team-kod');
                 var aciklamaInput = currentTeamDetailProductRow.querySelector('.team-aciklama');
                 var fiyatInput = currentTeamDetailProductRow.querySelector('.team-birim-fiyat');
@@ -3203,6 +3369,7 @@
                 var dovizSelect = currentTeamDetailProductRow.querySelector('.team-doviz');
                 var kurInput = currentTeamDetailProductRow.querySelector('.team-kur');
 
+                if (urunIdInput) urunIdInput.value = urunId;
                 if (kodInput) kodInput.value = kod;
                 if (aciklamaInput) aciklamaInput.value = aciklama;
                 if (fiyatInput) fiyatInput.value = fiyat;
@@ -3389,6 +3556,8 @@
                     currentProductRow.dataset.detaygrup = detayGrupId ? String(detayGrupId) : '';
                     currentProductRow.dataset.resim = resimYolu ? String(resimYolu) : '';
 
+                    autoGrowTextareasInRow(currentProductRow);
+                    scheduleMontajDetailAutoFill();
                     closeModal(productModal);
                 });
             });
@@ -3623,6 +3792,7 @@
                     currentProductRow.dataset.multi = isMulti ? '1' : '0';
                     currentProductRow.dataset.montaj = isMontaj ? '1' : '0';
 
+                    autoGrowTextareasInRow(currentProductRow);
                     closeModal(productModal);
                 });
             });

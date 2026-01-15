@@ -8,6 +8,62 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <style>
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(15, 23, 42, 0.25);
+            max-width: 900px;
+            width: calc(100vw - 32px);
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .modal-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .modal-body {
+            padding: 1rem;
+            overflow: auto;
+        }
+        .modal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .modal-table th,
+        .modal-table td {
+            padding: 0.6rem 0.5rem;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .modal-table th {
+            text-align: left;
+            color: #6b7280;
+            font-weight: 600;
+        }
+        .modal-table tr:hover {
+            background: #f8fafc;
+        }
+    </style>
 </head>
 <body>
 <div class="dashboard-container">
@@ -133,6 +189,49 @@
                             </div>
                         </div>
 
+                        @php($recipe = old('recipe', []))
+                        @php($stockById = ($stockCards ?? collect())->keyBy('id'))
+                        <div id="recipeSection" class="form-group" style="grid-column:1 / -1;display:none;border:1px solid #e5e7eb;border-radius:12px;padding:1rem;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+                                <div style="font-size:1rem;font-weight:600;">Reçete</div>
+                                <button type="button" id="recipeAddBtn" class="form-header-btn save" style="padding:0.35rem 0.9rem;font-size:0.85rem;">Satır Ekle</button>
+                            </div>
+                            @error('recipe')<div class="form-error" style="margin-bottom:0.5rem;">{{ $message }}</div>@enderror
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                                    <thead>
+                                    <tr>
+                                        <th style="width:200px;text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Stok Kod</th>
+                                        <th style="text-align:left;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Stok Açıklama</th>
+                                        <th style="width:140px;text-align:right;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Miktar</th>
+                                        <th style="width:80px;text-align:right;padding:0.6rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İşlem</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="recipeBody">
+                                    @foreach($recipe as $i => $row)
+                                        @php($sid = (int) ($row['stok_urun_id'] ?? 0))
+                                        @php($stok = $stockById->get($sid))
+                                        <tr data-stok-id="{{ $sid }}">
+                                            <td style="padding:0.5rem 0.5rem;font-weight:600;">
+                                                <input type="hidden" class="recipe-stok-id" name="recipe[{{ $i }}][stok_urun_id]" value="{{ $sid }}">
+                                                <span class="recipe-kod">{{ $stok ? $stok->kod : '' }}</span>
+                                            </td>
+                                            <td style="padding:0.5rem 0.5rem;">
+                                                <span class="recipe-aciklama">{{ $stok ? $stok->aciklama : '' }}</span>
+                                            </td>
+                                            <td style="padding:0.5rem 0.5rem;text-align:right;">
+                                                <input type="number" step="0.001" min="0" class="recipe-miktar" name="recipe[{{ $i }}][miktar]" value="{{ $row['miktar'] ?? 0 }}" style="text-align:right;">
+                                            </td>
+                                            <td style="padding:0.5rem 0.5rem;text-align:right;">
+                                                <button type="button" class="recipe-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="prm1">Prm1</label>
@@ -196,6 +295,32 @@
     </main>
 </div>
 <script src="{{ asset('js/dashboard.js') }}"></script>
+
+<div id="recipeProductModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Stok Kart Seç</div>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-left:auto;">
+                <input id="recipeProductSearch" type="text" placeholder="Ara (Stok Kod / Açıklama)" style="padding:0.35rem 0.5rem;font-size:0.9rem;min-width:260px;">
+                <button type="button" class="small-btn" id="recipeProductOk">Tamam</button>
+                <button type="button" class="small-btn" id="recipeProductCancel">Vazgeç</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <table class="modal-table" id="recipeProductTable">
+                <thead>
+                <tr>
+                    <th style="width:50px;">Seç</th>
+                    <th style="width:200px;">Stok Kod</th>
+                    <th>Stok Açıklama</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         var groupSelect = document.getElementById('kategori_id');
@@ -335,6 +460,172 @@
                 multi.checked = false;
             }
         });
+    })();
+
+    (function () {
+        var multi = document.getElementById('multi');
+        var recipeSection = document.getElementById('recipeSection');
+        var recipeBody = document.getElementById('recipeBody');
+        var addBtn = document.getElementById('recipeAddBtn');
+
+        var modal = document.getElementById('recipeProductModal');
+        var modalBody = document.querySelector('#recipeProductTable tbody');
+        var modalSearch = document.getElementById('recipeProductSearch');
+        var modalOk = document.getElementById('recipeProductOk');
+        var modalCancel = document.getElementById('recipeProductCancel');
+
+        var stockCards = @json($stockCards ?? []);
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function recipeSelectedIds() {
+            var ids = new Set();
+            if (!recipeBody) return ids;
+            recipeBody.querySelectorAll('tr[data-stok-id]').forEach(function (tr) {
+                var id = (tr.getAttribute('data-stok-id') || '').toString().trim();
+                if (id) ids.add(id);
+            });
+            return ids;
+        }
+
+        function renumberRecipeRows() {
+            if (!recipeBody) return;
+            var rows = Array.prototype.slice.call(recipeBody.querySelectorAll('tr'));
+            rows.forEach(function (tr, idx) {
+                var idInput = tr.querySelector('.recipe-stok-id');
+                var qtyInput = tr.querySelector('.recipe-miktar');
+                if (idInput) idInput.name = 'recipe[' + idx + '][stok_urun_id]';
+                if (qtyInput) qtyInput.name = 'recipe[' + idx + '][miktar]';
+            });
+        }
+
+        function bindRecipeDeletes() {
+            if (!recipeBody) return;
+            recipeBody.querySelectorAll('.recipe-delete-btn').forEach(function (btn) {
+                btn.onclick = function () {
+                    var tr = btn.closest('tr');
+                    if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
+                    renumberRecipeRows();
+                };
+            });
+        }
+
+        function createRecipeRow(p, qty) {
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-stok-id', String(p.id));
+            tr.innerHTML =
+                '<td style="padding:0.5rem 0.5rem;font-weight:600;">' +
+                '<input type="hidden" class="recipe-stok-id" value="' + esc(p.id) + '">' +
+                '<span class="recipe-kod">' + esc(p.kod) + '</span>' +
+                '</td>' +
+                '<td style="padding:0.5rem 0.5rem;"><span class="recipe-aciklama">' + esc(p.aciklama) + '</span></td>' +
+                '<td style="padding:0.5rem 0.5rem;text-align:right;"><input type="number" step="0.001" min="0" class="recipe-miktar" value="' + esc(qty != null ? qty : 0) + '" style="text-align:right;"></td>' +
+                '<td style="padding:0.5rem 0.5rem;text-align:right;"><button type="button" class="recipe-delete-btn" style="background:none;border:none;color:#ef4444;font-size:0.85rem;cursor:pointer;">Sil</button></td>';
+            return tr;
+        }
+
+        function renderModalRows() {
+            if (!modalBody) return;
+            var q = ((modalSearch && modalSearch.value) ? modalSearch.value : '').toString().trim().toLowerCase();
+            var selected = recipeSelectedIds();
+            modalBody.innerHTML = '';
+
+            (Array.isArray(stockCards) ? stockCards : []).forEach(function (p) {
+                var id = p && p.id != null ? String(p.id) : '';
+                var kod = p && p.kod != null ? String(p.kod) : '';
+                var aciklama = p && p.aciklama != null ? String(p.aciklama) : '';
+                if (!id) return;
+                if (selected.has(id)) return;
+                if (q) {
+                    var k = kod.toLowerCase();
+                    var a = aciklama.toLowerCase();
+                    if (k.indexOf(q) === -1 && a.indexOf(q) === -1) return;
+                }
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td style="width:50px;text-align:center;"><input type="checkbox" data-id="' + esc(id) + '"></td>' +
+                    '<td style="font-weight:600;">' + esc(kod) + '</td>' +
+                    '<td>' + esc(aciklama) + '</td>';
+                modalBody.appendChild(tr);
+            });
+        }
+
+        function toggleModal(show) {
+            if (!modal) return;
+            modal.style.display = show ? 'flex' : 'none';
+            if (show) {
+                if (modalSearch) modalSearch.value = '';
+                renderModalRows();
+            }
+        }
+
+        function setRecipeEnabled(enabled) {
+            if (!recipeSection) return;
+            recipeSection.style.display = enabled ? 'block' : 'none';
+            recipeSection.querySelectorAll('.recipe-stok-id, .recipe-miktar').forEach(function (inp) {
+                inp.disabled = !enabled;
+            });
+            if (addBtn) addBtn.disabled = !enabled;
+        }
+
+        if (multi) {
+            multi.addEventListener('change', function () {
+                setRecipeEnabled(!!multi.checked);
+            });
+            setRecipeEnabled(!!multi.checked);
+        }
+
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                if (!multi || !multi.checked) return;
+                toggleModal(true);
+            });
+        }
+
+        if (modalSearch) modalSearch.addEventListener('input', renderModalRows);
+        if (modalCancel) modalCancel.addEventListener('click', function () { toggleModal(false); });
+
+        if (modalOk) {
+            modalOk.addEventListener('click', function () {
+                if (!recipeBody) {
+                    toggleModal(false);
+                    return;
+                }
+                var pickedIds = [];
+                modalBody.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                    pickedIds.push((cb.getAttribute('data-id') || '').toString());
+                });
+                if (!pickedIds.length) {
+                    toggleModal(false);
+                    return;
+                }
+
+                var byId = {};
+                (Array.isArray(stockCards) ? stockCards : []).forEach(function (p) {
+                    if (p && p.id != null) byId[String(p.id)] = p;
+                });
+
+                pickedIds.forEach(function (id) {
+                    var p = byId[String(id)];
+                    if (!p) return;
+                    recipeBody.appendChild(createRecipeRow(p, 1));
+                });
+
+                bindRecipeDeletes();
+                renumberRecipeRows();
+                toggleModal(false);
+            });
+        }
+
+        bindRecipeDeletes();
+        renumberRecipeRows();
     })();
 </script>
 </body>

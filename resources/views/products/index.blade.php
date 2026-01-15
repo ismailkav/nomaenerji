@@ -92,8 +92,6 @@
                             <th style="text-align:left;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İsim</th>
                             <th style="text-align:left;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Kategori</th>
                             <th style="text-align:left;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Fiyat</th>
-                            <th style="text-align:left;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">KDV Oran</th>
-                            <th style="text-align:left;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">Pasif</th>
                             <th style="text-align:right;padding:0.75rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:500;color:#6b7280;">İşlemler</th>
                         </tr>
                         </thead>
@@ -114,13 +112,7 @@
                                 <td style="padding:0.75rem 0.5rem;font-weight:500;">{{ $product->kod }}</td>
                                 <td style="padding:0.75rem 0.5rem;">{{ $product->aciklama }}</td>
                                 <td style="padding:0.75rem 0.5rem;">{{ optional($product->category)->ad ?? '-' }}</td>
-                                <td style="padding:0.75rem 0.5rem;">{{ $product->satis_doviz ?? 'TL' }} {{ number_format($product->satis_fiyat, 2, ',', '.') }}</td>
-                                <td style="padding:0.75rem 0.5rem;">% {{ $product->kdv_oran }}</td>
-                                <td style="padding:0.75rem 0.5rem;">
-                                    <div class="toggle" style="position:relative;width:44px;height:24px;border-radius:999px;background-color:{{ $product->pasif ? '#111827' : '#e5e7eb' }};transition:background-color 0.2s;">
-                                        <div style="position:absolute;top:2px;left:{{ $product->pasif ? '22px' : '2px' }};width:20px;height:20px;border-radius:999px;background-color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s;"></div>
-                                    </div>
-                                </td>
+                                <td style="padding:0.75rem 0.5rem;">{{ number_format($product->satis_fiyat, 2, ',', '.') }} {{ $product->satis_doviz ?? 'TL' }}</td>
                                 <td style="padding:0.75rem 0.5rem;text-align:right;">
                                     <a href="{{ route('products.edit', $product) }}" style="display:inline-flex;align-items:center;justify-content:center;padding:0.4rem 0.9rem;border-radius:999px;border:1px solid #e5e7eb;background-color:#fff;font-size:0.85rem;color:#111827;text-decoration:none;margin-right:0.4rem;">Düzenle</a>
                                     <form action="{{ route('products.destroy', $product) }}" method="POST" style="display:inline;">
@@ -132,7 +124,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" style="padding:1.25rem 0.5rem;text-align:center;color:#9ca3af;font-size:0.9rem;">
+                                <td colspan="6" style="padding:1.25rem 0.5rem;text-align:center;color:#9ca3af;font-size:0.9rem;">
                                     Henüz ürün eklenmemiş.
                                 </td>
                             </tr>
@@ -164,7 +156,7 @@
                                 </div>
                                 <div style="display:flex;align-items:center;justify-content:space-between;">
                                     <div style="font-size:1.2rem;font-weight:600;">
-                                        {{ $product->satis_doviz ?? 'TL' }} {{ number_format($product->satis_fiyat, 2, ',', '.') }}
+                                        {{ number_format($product->satis_fiyat, 2, ',', '.') }} {{ $product->satis_doviz ?? 'TL' }}
                                     </div>
                                     <div>
                                         <a href="{{ route('products.edit', $product) }}" style="display:inline-flex;align-items:center;justify-content:center;padding:0.45rem 0.95rem;border-radius:999px;border:1px solid #e5e7eb;background-color:#fff;font-size:0.85rem;color:#111827;text-decoration:none;margin-right:0.4rem;">Düzenle</a>

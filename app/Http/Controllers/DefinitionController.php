@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CariCategory;
 use App\Models\Depot;
+use App\Models\Product;
 use App\Models\ProductDetailGroup;
 use App\Models\ProductCategory;
 use App\Models\ProductSubGroup;
@@ -491,7 +492,7 @@ class DefinitionController extends Controller
 
         $items = collect();
         if ($selectedGroupId > 0 && $selectedProductId > 0) {
-            $items = MontajProductGroup::with('urunDetayGrup')
+            $items = MontajProductGroup::with('urun')
                 ->where('montaj_grup_id', $selectedGroupId)
                 ->where('montaj_urun_id', $selectedProductId)
                 ->orderBy('sirano')
@@ -499,7 +500,21 @@ class DefinitionController extends Controller
                 ->get();
         }
 
-        $detailGroups = ProductDetailGroup::orderBy('ad')->get(['id', 'ad', 'urun_grup_id', 'urun_alt_grup_id']);
+        $stockCards = Product::query()
+            ->orderBy('kod')
+            ->get(['id', 'kod', 'aciklama', 'kategori_id', 'urun_alt_grup_id', 'urun_detay_grup_id']);
+
+        $stockGroups = ProductCategory::query()
+            ->orderBy('ad')
+            ->get(['id', 'ad']);
+
+        $stockSubGroups = ProductSubGroup::query()
+            ->orderBy('ad')
+            ->get(['id', 'urun_grup_id', 'ad']);
+
+        $stockDetailGroups = ProductDetailGroup::query()
+            ->orderBy('ad')
+            ->get(['id', 'urun_grup_id', 'urun_alt_grup_id', 'ad']);
 
         return view('definitions.montaj-product-groups', [
             'montajGroups' => $montajGroups,
@@ -507,7 +522,10 @@ class DefinitionController extends Controller
             'selectedGroupId' => $selectedGroupId,
             'selectedProductId' => $selectedProductId,
             'items' => $items,
-            'detailGroups' => $detailGroups,
+            'stockCards' => $stockCards,
+            'stockGroups' => $stockGroups,
+            'stockSubGroups' => $stockSubGroups,
+            'stockDetailGroups' => $stockDetailGroups,
         ]);
     }
 
@@ -531,19 +549,19 @@ class DefinitionController extends Controller
 
         foreach ($items as $item) {
             $id = $item['id'] ?? null;
-            $detailId = isset($item['urun_detay_grup_id']) && is_numeric($item['urun_detay_grup_id'])
-                ? (int) $item['urun_detay_grup_id']
+            $urunId = isset($item['urun_id']) && is_numeric($item['urun_id'])
+                ? (int) $item['urun_id']
                 : 0;
             $sirano = isset($item['sirano']) && is_numeric($item['sirano']) ? (int) $item['sirano'] : 0;
 
-            if ($detailId <= 0) {
+            if ($urunId <= 0 || !Product::whereKey($urunId)->exists()) {
                 continue;
             }
 
             $payload = [
                 'montaj_grup_id' => $groupId,
                 'montaj_urun_id' => $productId,
-                'urun_detay_grup_id' => $detailId,
+                'urun_id' => $urunId,
                 'sirano' => $sirano,
             ];
 
@@ -561,7 +579,7 @@ class DefinitionController extends Controller
                     [
                         'montaj_grup_id' => $groupId,
                         'montaj_urun_id' => $productId,
-                        'urun_detay_grup_id' => $detailId,
+                        'urun_id' => $urunId,
                     ],
                     ['sirano' => $sirano]
                 );
