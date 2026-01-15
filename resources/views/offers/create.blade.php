@@ -4294,7 +4294,8 @@
                     path += '/' + project;
                 }
             }
-            path += '/json-to-pdf';
+            // Tomcat servlet endpoint: /api/json-to-pdf (contextPath + /api/json-to-pdf)
+            path += '/api/json-to-pdf';
 
             return base.replace(/\/+$/, '') + path;
         }
