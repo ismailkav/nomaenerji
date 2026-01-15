@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Data source: JSON array `montaj_satirlari` (flat list).
+  Fields are produced by Laravel payload enrichment in `resources/views/offers/create.blade.php`.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="teklif_montaj_subreport"
+              pageWidth="595"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20"
+              uuid="2c4b2e2b-14e5-4b3d-90f3-4a9c79d3f6f4">
+
+    <field name="line_sira" class="java.lang.Integer"/>
+    <field name="stok_kod" class="java.lang.String"/>
+    <field name="stok_aciklama" class="java.lang.String"/>
+    <field name="montaj_grup_kod" class="java.lang.String"/>
+    <field name="urun_kod" class="java.lang.String"/>
+    <field name="birim" class="java.lang.String"/>
+    <field name="miktar" class="java.lang.Double"/>
+    <field name="birim_fiyat" class="java.lang.Double"/>
+    <field name="doviz" class="java.lang.String"/>
+    <field name="satir_tutar" class="java.lang.Double"/>
+
+    <group name="LineGroup">
+        <groupExpression><![CDATA[$F{line_sira}]]></groupExpression>
+        <groupHeader>
+            <band height="34">
+                <staticText>
+                    <reportElement x="0" y="0" width="555" height="16" uuid="b8e6303c-3d85-4e2b-a1f6-3f7e3a5d48e5"/>
+                    <textElement>
+                        <font size="11" isBold="true"/>
+                    </textElement>
+                    <text><![CDATA[Montaj Detayları]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="0" y="18" width="555" height="16" uuid="e6c2a313-0a3c-4b9c-9e5f-d7bf6e0486cb"/>
+                    <textElement>
+                        <font size="9" isBold="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[
+                        "Satır " + String.valueOf($F{line_sira} == null ? "" : $F{line_sira})
+                        + " - " + ($F{stok_kod} == null ? "" : $F{stok_kod})
+                        + " - " + ($F{stok_aciklama} == null ? "" : $F{stok_aciklama})
+                    ]]></textFieldExpression>
+                </textField>
+            </band>
+        </groupHeader>
+    </group>
+
+    <columnHeader>
+        <band height="16">
+            <staticText>
+                <reportElement x="0" y="0" width="70" height="16" uuid="55c2dfc1-bf6b-43d1-9f5d-2f544cb6dfcc"/>
+                <textElement><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Grup]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="70" y="0" width="95" height="16" uuid="1b49a4a1-2bbd-4d3f-8f5e-ef0b21854a3e"/>
+                <textElement><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Ürün Kod]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="165" y="0" width="45" height="16" uuid="a5776de3-0e1e-46ae-9df3-87e358e3f1f3"/>
+                <textElement><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Birim]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="210" y="0" width="60" height="16" uuid="f0b17ec5-7b29-4203-9a38-85d4fdb84b9f"/>
+                <textElement textAlignment="Right"><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Miktar]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="270" y="0" width="80" height="16" uuid="e5a6a7e8-8bf2-4f71-8d47-6f2a6a0bf0fa"/>
+                <textElement textAlignment="Right"><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Birim Fiyat]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="350" y="0" width="35" height="16" uuid="f236a8df-3b10-4a74-bc83-7aa7aab64a4a"/>
+                <textElement><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Dvz]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="385" y="0" width="80" height="16" uuid="2b7cc281-6078-4d63-9a45-97c1d0d73ce7"/>
+                <textElement textAlignment="Right"><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[Tutar]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="16">
+            <textField>
+                <reportElement x="0" y="0" width="70" height="16" uuid="d7cc2f7a-1cb1-4a7f-ae52-f8ddfd46d30e"/>
+                <textElement><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{montaj_grup_kod}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="70" y="0" width="95" height="16" uuid="b4d7d9fa-49f1-46b0-a7b3-553b93c7f5e1"/>
+                <textElement><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{urun_kod}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="165" y="0" width="45" height="16" uuid="2db177b9-6e41-4ec1-81d2-22a9cbedc781"/>
+                <textElement><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{birim}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.###">
+                <reportElement x="210" y="0" width="60" height="16" uuid="99c23c14-0ef2-4cde-9a6d-661026a31d4f"/>
+                <textElement textAlignment="Right"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{miktar}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00">
+                <reportElement x="270" y="0" width="80" height="16" uuid="d0c1d4c4-5e8f-4c9f-9caa-6b3c6b2f5c45"/>
+                <textElement textAlignment="Right"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{birim_fiyat}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="350" y="0" width="35" height="16" uuid="a31b7c4e-e4d2-4c19-9d48-3c70a9f2e2c1"/>
+                <textElement><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{doviz}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00">
+                <reportElement x="385" y="0" width="80" height="16" uuid="f13f46df-2b84-4cf0-b3a3-3d1dc8f8f22f"/>
+                <textElement textAlignment="Right"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{satir_tutar}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+</jasperReport>
+

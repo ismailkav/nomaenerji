@@ -4022,6 +4022,96 @@
             return payload;
         }
 
+        var offerMontajDetailCache = {};
+        async function fetchMontajDetails(teklifDetayId) {
+            var id = (teklifDetayId === null || teklifDetayId === undefined) ? '' : String(teklifDetayId);
+            id = id.trim();
+            if (!id) return null;
+
+            if (offerMontajDetailCache[id]) {
+                try { return await offerMontajDetailCache[id]; } catch (e) { return null; }
+            }
+
+            var baseUrl = @json(url('teklifler/satirlar'));
+            var url = String(baseUrl || '').replace(/\/+$/, '') + '/' + encodeURIComponent(id) + '/montaj-detaylari';
+
+            offerMontajDetailCache[id] = fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(function (r) {
+                    return r.json().then(function (j) {
+                        if (!r.ok || !j || j.ok !== true) throw (j || {});
+                        return j;
+                    });
+                })
+                .catch(function () { return null; });
+
+            return offerMontajDetailCache[id];
+        }
+
+        async function enrichPayloadWithMontajDetails(payload) {
+            if (!payload || !Array.isArray(payload.satirlar)) return payload;
+
+            var allMontajItems = [];
+
+            var tasks = payload.satirlar.map(async function (line) {
+                if (!line || !line.montaj) return;
+                if (!line.teklif_detay_id) {
+                    line.montaj_groups = [];
+                    line.montaj_satirlari = [];
+                    line.montaj_satir_sayisi = 0;
+                    return;
+                }
+
+                var data = await fetchMontajDetails(line.teklif_detay_id);
+                var groups = (data && Array.isArray(data.groups)) ? data.groups : [];
+
+                line.montaj_groups = groups;
+
+                var flat = [];
+                groups.forEach(function (g) {
+                    var groupId = (g && g.id != null) ? g.id : null;
+                    var groupKod = (g && g.kod != null) ? String(g.kod) : '';
+                    var items = (g && Array.isArray(g.items)) ? g.items : [];
+                    items.forEach(function (it) {
+                        if (!it) return;
+                        flat.push({
+                            teklif_detay_id: line.teklif_detay_id,
+                            line_sira: line.sira || null,
+                            stok_kod: (line.stok_kod || '').toString(),
+                            stok_aciklama: (line.stok_aciklama || '').toString(),
+                            montaj_grup_id: groupId,
+                            montaj_grup_kod: groupKod,
+                            urun_kod: (it.urun_kod || '').toString(),
+                            birim: (it.birim || '').toString(),
+                            miktar: safeNumber(it.miktar),
+                            birim_fiyat: safeNumber(it.birim_fiyat),
+                            doviz: (it.doviz || 'TL').toString(),
+                            satir_tutar: safeNumber(it.satir_tutar),
+                            sirano: safeNumber(it.sirano),
+                        });
+                    });
+                });
+
+                line.montaj_satirlari = flat;
+                line.montaj_satir_sayisi = flat.length;
+
+                allMontajItems = allMontajItems.concat(flat);
+            });
+
+            await Promise.all(tasks);
+
+            payload.montaj_satirlari = allMontajItems;
+            if (payload.header) {
+                payload.header.montaj_var = allMontajItems.length > 0;
+                payload.header.montaj_satir_sayisi = allMontajItems.length;
+            }
+
+            return payload;
+        }
+
         function buildOfferPrintPayload() {
             var header = {
                 tur: (document.querySelector('input[name=\"tur\"]')?.value || '').toString(),
@@ -4091,6 +4181,7 @@
                     var iskTutar = safeNumber(tr.querySelector('.isk-tutar')?.value);
                     var kdvOran = safeNumber(tr.querySelector('.kdv-oran')?.value);
                     var kdvDurum = (tr.querySelector('.kdv-durum')?.value || '').toString();
+                    var satirTutarDoviz = safeNumber(tr.querySelector('.satir-tutar-doviz')?.value);
                     var satirTutar = safeNumber(tr.querySelector('.satir-tutar')?.value);
                     var resimYolu = (tr.dataset.resim || '').toString().trim();
                     var detayGrupId = (tr.dataset.detaygrup || '').toString().trim();
@@ -4119,10 +4210,14 @@
                         iskonto_tutar: iskTutar,
                         kdv_orani: kdvOran,
                         kdv_durum: kdvDurum,
+                        satir_tutar_doviz: satirTutarDoviz,
                         satir_tutar: satirTutar,
                         detay_grup_id: detayGrupId ? parseInt(detayGrupId, 10) || null : null,
                         multi: isMulti,
                         montaj: isMontaj,
+                        montaj_groups: [],
+                        montaj_satirlari: [],
+                        montaj_satir_sayisi: 0,
                         resim_yolu: resimYolu || null,
                         resim_url: buildProductImageUrl(resimYolu),
                         resim: null,
@@ -4169,6 +4264,7 @@
         async function handleOfferPrintJsonSend() {
             try {
                 var payload = buildOfferPrintPayload();
+                try { await enrichPayloadWithMontajDetails(payload); } catch (e) { }
                 try { await enrichPayloadWithImages(payload); } catch (e) { }
                 sendToJavaServlet(payload);
             } catch (e) { }
@@ -4323,6 +4419,7 @@
                 try {
                     menuPdf.disabled = true;
                     menuPdf.style.opacity = '0.6';
+                    await enrichPayloadWithMontajDetails(payload);
                     await enrichPayloadWithImages(payload);
                 } catch (e) { }
                 finally {
