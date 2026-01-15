@@ -200,6 +200,8 @@ class TeklifController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => 'Tomcat servisine baglanilamadi.',
+                'url' => $url,
+                'error' => $e->getMessage(),
             ], 502);
         }
 
@@ -207,6 +209,7 @@ class TeklifController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => 'Tomcat hata dondu.',
+                'url' => $url,
                 'status' => $resp->status(),
                 'body' => (string) $resp->body(),
             ], 502);

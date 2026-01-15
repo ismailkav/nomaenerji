@@ -4361,8 +4361,23 @@
                     }
                     openPdfPreview(blob);
                 })
-                .catch(function () {
-                    alert('PDF olusturulamadi (403 aliyorsaniz CORS/Yetki olabilir).');
+                .catch(function (err) {
+                    var msg = 'PDF olusturulamadi.';
+                    if (err && err.message) {
+                        msg = err.message;
+                    }
+                    try {
+                        var parsed = JSON.parse(msg);
+                        if (parsed && typeof parsed === 'object') {
+                            var parts = [];
+                            if (parsed.message) parts.push(parsed.message);
+                            if (parsed.url) parts.push(parsed.url);
+                            if (parsed.status) parts.push('HTTP ' + String(parsed.status));
+                            if (parsed.error) parts.push(parsed.error);
+                            msg = parts.length ? parts.join('\n') : msg;
+                        }
+                    } catch (e) { }
+                    alert(msg);
                 })
                 .finally(function () {
                     if (menuPdf) {
