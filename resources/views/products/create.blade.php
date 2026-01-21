@@ -248,14 +248,30 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="prm3">Prm3</label>
-                                <input type="text" id="prm3" name="prm3" value="{{ old('prm3') }}">
+                                <label for="prm3">Parametre 3</label>
+                                @php($selectedPrm3 = old('prm3'))
+                                <select id="prm3" name="prm3">
+                                    <option value="">Seçiniz</option>
+                                    @foreach(($stockParameters3 ?? []) as $value)
+                                        <option value="{{ $value }}" {{ (string)$selectedPrm3 === (string)$value ? 'selected' : '' }}>
+                                            {{ $value }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('prm3')<div class="form-error">{{ $message }}</div>@enderror
                             </div>
 
                             <div class="form-group">
-                                <label for="prm4">Prm4</label>
-                                <input type="text" id="prm4" name="prm4" value="{{ old('prm4') }}">
+                                <label for="prm4">Parametre 4</label>
+                                @php($selectedPrm4 = old('prm4'))
+                                <select id="prm4" name="prm4">
+                                    <option value="">Seçiniz</option>
+                                    @foreach(($stockParameters4 ?? []) as $value)
+                                        <option value="{{ $value }}" {{ (string)$selectedPrm4 === (string)$value ? 'selected' : '' }}>
+                                            {{ $value }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('prm4')<div class="form-error">{{ $message }}</div>@enderror
                             </div>
                         </div>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -408,7 +408,7 @@
                             <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </button>
-                    <button type="button" class="small-btn" title="PDF">
+                    <button type="button" class="small-btn" id="btnPdfTop" title="PDF">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <rect x="4" y="3" width="14" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
                             <path d="M8 8h8M8 12h5M8 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -438,7 +438,7 @@
                         </svg>
                     </button>
                     <div class="top-menu-dropdown" id="topMenuDropdown">
-                        <button type="button" class="top-menu-item" id="menuPdf" @unless(isset($teklif)) disabled @endunless>
+                        <button type="button" class="top-menu-item" id="menuPdf">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="4" y="3" width="14" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
                                 <path d="M8 8h8M8 12h5M8 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -616,12 +616,12 @@
 
             <div class="offer-header-row">
                 <div class="form-group">
-                    <label for="gecen_sure" style="color:#9ca3af;">Geçen Süre:</label>
+                    <label for="gecen_sure" style="color:#9ca3af; min-width: 90px;">Geçen Süre:</label>
                     <input id="gecen_sure" type="text" value="" style="border:none;background:transparent;outline:none;padding:0;" readonly>
                 </div>
 
                 <div class="form-group">
-                    <label for="gerceklesme_olasiligi" style="color:#9ca3af;">Gerçekleşme Olasılığı:</label>
+                    <label for="gerceklesme_olasiligi" style="color:#9ca3af; min-width: 90px;">Gerçekleşme Olasılığı:</label>
                     <select id="gerceklesme_olasiligi" name="gerceklesme_olasiligi" style="border:none;background:transparent;outline:none;padding:0;">
                         @php
                             $olasilikDegeri = old('gerceklesme_olasiligi', isset($teklif) ? $teklif->gerceklesme_olasiligi : 25);
@@ -631,6 +631,24 @@
                             <option value="{{ $oran }}" {{ (string) $olasilikDegeri === (string) $oran ? 'selected' : '' }}>{{ $oran }}</option>
                         @endforeach
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="proje_turu_id" style="color:#9ca3af; min-width: 90px;">Proje Türü:</label>
+                    <select id="proje_turu_id" name="proje_turu_id" style="border:none;background:transparent;outline:none;padding:0;">
+                        @php
+                            $selectedProjectTypeId = old('proje_turu_id', isset($teklif) ? $teklif->proje_turu_id : null);
+                        @endphp
+                        <option value="" {{ $selectedProjectTypeId === null || $selectedProjectTypeId === '' ? 'selected' : '' }}>Seçiniz</option>
+                        @foreach(($projectTypes ?? []) as $projectType)
+                            <option value="{{ $projectType->id }}" {{ (string) $selectedProjectTypeId === (string) $projectType->id ? 'selected' : '' }}>{{ $projectType->kod }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="hazirlayan" style="color:#9ca3af; min-width: 90px;">Hazırlayan:</label>
+                    <input id="hazirlayan" name="hazirlayan" type="text" value="{{ old('hazirlayan', isset($teklif) ? $teklif->hazirlayan : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
                 </div>
             </div>
 
@@ -719,9 +737,9 @@
                 <label for="onay_tarihi" style="color:#9ca3af;">Onay Tarihi:</label>
                 <input id="onay_tarihi" name="onay_tarihi" type="date" value="{{ old('onay_tarihi', isset($teklif) && $teklif->onay_tarihi ? $teklif->onay_tarihi->toDateString() : null) }}">
             </div>
-            <div class="form-group">
-                <label for="hazirlayan" style="color:#9ca3af;">Hazırlayan:</label>
-                <input id="hazirlayan" name="hazirlayan" type="text" value="{{ old('hazirlayan', isset($teklif) ? $teklif->hazirlayan : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
+            <div class="form-group" style="display:none;">
+                <label for="hazirlayan_shadow" style="color:#9ca3af;">Hazırlayan:</label>
+                <input id="hazirlayan_shadow" type="text" value="{{ old('hazirlayan', isset($teklif) ? $teklif->hazirlayan : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
             </div>
         </div>
     </div>
@@ -1002,6 +1020,12 @@
                             data-id="{{ $product->id }}"
                             data-kod="{{ $product->kod }}"
                             data-aciklama="{{ $product->aciklama }}"
+                            data-marka="{{ $product->marka ?? '' }}"
+                            data-prm3="{{ $product->prm3 ?? '' }}"
+                            data-prm4="{{ $product->prm4 ?? '' }}"
+                            data-stok-anagrup="{{ $product->category?->ad ?? $product->subGroup?->group?->ad ?? $product->detailGroup?->group?->ad ?? '' }}"
+                            data-stok-altgrup="{{ $product->subGroup?->ad ?? $product->detailGroup?->subGroup?->ad ?? '' }}"
+                            data-stok-detaygrup="{{ $product->detailGroup?->ad ?? '' }}"
                             data-fiyat="{{ $product->satis_fiyat }}"
                             data-doviz="{{ $product->satis_doviz ?? 'TL' }}"
                             data-detaygrup="{{ $product->urun_detay_grup_id ?? '' }}"
@@ -1169,6 +1193,25 @@
     </div>
 </div>
 
+<div id="pdfFormSelectModal" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+        <div class="modal-header">
+            <div class="modal-title">Form Seç</div>
+            <button type="button" class="small-btn" data-modal-close="pdfFormSelectModal">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size:0.9rem;color:#6b7280;margin-bottom:0.75rem;">
+                Formlar sayfasında Teklif altında tanımlı formlar listelenir.
+            </div>
+            <div id="pdfFormList"></div>
+        </div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" class="btn btn-primary" id="btnPdfFormSelectContinue">Devam</button>
+            <button type="button" class="btn btn-cancel" data-modal-close="pdfFormSelectModal">İptal</button>
+        </div>
+    </div>
+</div>
+
 <div id="pdfJsonModal" class="modal-overlay">
     <div class="modal" style="max-width:none;width:calc(100vw - 32px);">
         <div class="modal-header">
@@ -1285,6 +1328,72 @@
         var btnOfferLineSettings = document.getElementById('btnOfferLineSettings');
         var lineIndex = 0;
         var initialLines = @json(isset($teklif) ? $teklif->detaylar : []);
+
+        // PDF JSON icin (stok anagrup/altgrup/detaygrup vb.) urun metalarini product modal listesinden hizli bulmak icin
+        if (!window.__offerGetProductMeta) {
+            window.__offerProductMetaIndex = null;
+            window.__offerBuildProductMetaIndex = function () {
+                var byId = {};
+                var byCode = {};
+                document.querySelectorAll('#productModal .product-row').forEach(function (row) {
+                    var idRaw = (row.dataset.id || row.getAttribute('data-id') || '').toString().trim();
+                    var kodRaw = (row.dataset.kod || row.getAttribute('data-kod') || '').toString().trim();
+
+                    var id = parseInt(idRaw, 10);
+                    if (!isFinite(id)) id = 0;
+
+                    var kodKey = kodRaw ? kodRaw.toUpperCase() : '';
+                    var meta = {
+                        id: id > 0 ? id : null,
+                        kod: kodRaw,
+                        marka: (row.dataset.marka || '').toString(),
+                        prm3: (row.dataset.prm3 || '').toString(),
+                        prm4: (row.dataset.prm4 || '').toString(),
+                        stokAnagrup: (row.dataset.stokAnagrup || '').toString(),
+                        stokAltgrup: (row.dataset.stokAltgrup || '').toString(),
+                        stokDetaygrup: (row.dataset.stokDetaygrup || '').toString(),
+                        detayGrupId: (row.dataset.detaygrup || '').toString(),
+                        resimYolu: (row.dataset.resim || '').toString(),
+                        multi: (row.dataset.multi || '') === '1',
+                        montaj: (row.dataset.montaj || '') === '1',
+                    };
+
+                    if (meta.id) byId[meta.id] = meta;
+                    if (kodKey) byCode[kodKey] = meta;
+                });
+
+                return { byId: byId, byCode: byCode };
+            };
+
+            window.__offerGetProductMeta = function (urunId, kod) {
+                var idx = window.__offerProductMetaIndex;
+                if (!idx) {
+                    idx = window.__offerProductMetaIndex = window.__offerBuildProductMetaIndex();
+                }
+
+                var id = parseInt((urunId || '').toString(), 10);
+                if (isFinite(id) && id > 0 && idx.byId[id]) {
+                    return idx.byId[id];
+                }
+
+                var codeKey = (kod || '').toString().trim().toUpperCase();
+                if (codeKey && idx.byCode[codeKey]) {
+                    return idx.byCode[codeKey];
+                }
+
+                // Modal listesi sonradan degismis olabilir; bir defa yenile
+                idx = window.__offerProductMetaIndex = window.__offerBuildProductMetaIndex();
+
+                if (isFinite(id) && id > 0 && idx.byId[id]) {
+                    return idx.byId[id];
+                }
+                if (codeKey && idx.byCode[codeKey]) {
+                    return idx.byCode[codeKey];
+                }
+
+                return null;
+            };
+        }
 
         var offerLinesTable = document.querySelector('table.offer-lines');
         var offerLineColumns = null; // [{key,label,durum,sirano}]
@@ -2405,6 +2514,26 @@
                 tr.dataset.montaj = isMontaj ? '1' : '0';
                 tr.dataset.detaygrup = (line.urun && line.urun.urun_detay_grup_id != null) ? String(line.urun.urun_detay_grup_id) : '';
                 tr.dataset.resim = (line.urun && line.urun.resim_yolu) ? String(line.urun.resim_yolu) : '';
+                tr.dataset.marka = (line.urun && line.urun.marka) ? String(line.urun.marka) : '';
+                tr.dataset.prm3 = (line.urun && line.urun.prm3) ? String(line.urun.prm3) : '';
+                tr.dataset.prm4 = (line.urun && line.urun.prm4) ? String(line.urun.prm4) : '';
+
+                // Eski/ilk yuklenen satirlarda stok grup adlari dataset'e yazilmamis olabilir; product listesinden tamamla
+                try {
+                    var meta = window.__offerGetProductMeta
+                        ? window.__offerGetProductMeta(line.urun_id, (line.urun && line.urun.kod) ? line.urun.kod : (kodInput ? kodInput.value : ''))
+                        : null;
+                    if (meta) {
+                        if (!tr.dataset.stokAnagrup && meta.stokAnagrup) tr.dataset.stokAnagrup = String(meta.stokAnagrup);
+                        if (!tr.dataset.stokAltgrup && meta.stokAltgrup) tr.dataset.stokAltgrup = String(meta.stokAltgrup);
+                        if (!tr.dataset.stokDetaygrup && meta.stokDetaygrup) tr.dataset.stokDetaygrup = String(meta.stokDetaygrup);
+                        if (!tr.dataset.marka && meta.marka) tr.dataset.marka = String(meta.marka);
+                        if (!tr.dataset.prm3 && meta.prm3) tr.dataset.prm3 = String(meta.prm3);
+                        if (!tr.dataset.prm4 && meta.prm4) tr.dataset.prm4 = String(meta.prm4);
+                        if (!tr.dataset.detaygrup && meta.detayGrupId) tr.dataset.detaygrup = String(meta.detayGrupId);
+                        if (!tr.dataset.resim && meta.resimYolu) tr.dataset.resim = String(meta.resimYolu);
+                    }
+                } catch (e) { }
                 if (window.__offerSetLineDetayVisible) {
                     window.__offerSetLineDetayVisible(tr, isMulti || isMontaj);
                 }
@@ -2566,6 +2695,18 @@
             if (modal) {
                 modal.style.display = 'none';
             }
+        }
+
+        function autoGrowTextarea(el) {
+            if (!el || !el.style || String(el.tagName || '').toUpperCase() !== 'TEXTAREA') return;
+            el.style.height = 'auto';
+            el.style.height = String(el.scrollHeight || 0) + 'px';
+        }
+
+        function autoGrowTextareasInRow(tr) {
+            if (!tr) return;
+            autoGrowTextarea(tr.querySelector('.stok-kod'));
+            autoGrowTextarea(tr.querySelector('.stok-aciklama'));
         }
 
         function getCsrfToken() {
@@ -3505,6 +3646,12 @@
                     var isMontaj = (this.dataset.montaj || '') === '1';
                     var detayGrupId = this.dataset.detaygrup || '';
                     var resimYolu = this.dataset.resim || '';
+                    var marka = this.dataset.marka || '';
+                    var prm3 = this.dataset.prm3 || '';
+                    var prm4 = this.dataset.prm4 || '';
+                    var stokAnaGrup = this.dataset.stokAnagrup || '';
+                    var stokAltGrup = this.dataset.stokAltgrup || '';
+                    var stokDetayGrup = this.dataset.stokDetaygrup || '';
 
                     var kodInput = currentProductRow.querySelector('.stok-kod');
                     var aciklamaInput = currentProductRow.querySelector('.stok-aciklama');
@@ -3514,8 +3661,14 @@
                     var urunIdInput = currentProductRow.querySelector('.urun-id');
                     var satirAciklamaHidden = currentProductRow.querySelector('.satir-aciklama-hidden');
 
-                    if (kodInput) kodInput.value = kod;
-                    if (aciklamaInput) aciklamaInput.value = aciklama;
+                    if (kodInput) {
+                        kodInput.value = kod;
+                        try { kodInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                    }
+                    if (aciklamaInput) {
+                        aciklamaInput.value = aciklama;
+                        try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                    }
                     if (fiyatInput) fiyatInput.value = fiyat;
                     if (dovizSelect) {
                         var val = (doviz || 'TL').toString().trim().toUpperCase();
@@ -3555,6 +3708,12 @@
                     currentProductRow.dataset.montaj = isMontaj ? '1' : '0';
                     currentProductRow.dataset.detaygrup = detayGrupId ? String(detayGrupId) : '';
                     currentProductRow.dataset.resim = resimYolu ? String(resimYolu) : '';
+                    currentProductRow.dataset.marka = marka ? String(marka) : '';
+                    currentProductRow.dataset.prm3 = prm3 ? String(prm3) : '';
+                    currentProductRow.dataset.prm4 = prm4 ? String(prm4) : '';
+                    currentProductRow.dataset.stokAnagrup = stokAnaGrup ? String(stokAnaGrup) : '';
+                    currentProductRow.dataset.stokAltgrup = stokAltGrup ? String(stokAltGrup) : '';
+                    currentProductRow.dataset.stokDetaygrup = stokDetayGrup ? String(stokDetayGrup) : '';
 
                     autoGrowTextareasInRow(currentProductRow);
                     scheduleMontajDetailAutoFill();
@@ -3754,8 +3913,14 @@
                     var urunIdInput = currentProductRow.querySelector('.urun-id');
                     var satirAciklamaHidden = currentProductRow.querySelector('.satir-aciklama-hidden');
 
-                    if (kodInput) kodInput.value = kod;
-                    if (aciklamaInput) aciklamaInput.value = aciklama;
+                    if (kodInput) {
+                        kodInput.value = kod;
+                        try { kodInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                    }
+                    if (aciklamaInput) {
+                        aciklamaInput.value = aciklama;
+                        try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                    }
                     if (fiyatInput) fiyatInput.value = fiyat;
 
                     // Ürün seçildiğinde miktar 1 olsun (boşsa)
@@ -3785,6 +3950,9 @@
                     if (triggerInput) {
                         var ev = new Event('input', { bubbles: true });
                         triggerInput.dispatchEvent(ev);
+                    }
+                    if (satirAciklamaHidden) {
+                        satirAciklamaHidden.value = aciklama;
                     }
                     if (window.__offerSetLineDetayVisible) {
                         window.__offerSetLineDetayVisible(currentProductRow, isMulti || isMontaj);
@@ -3861,6 +4029,7 @@
         var topMenuToggle = document.getElementById('topMenuToggle');
         var topMenuDropdown = document.getElementById('topMenuDropdown');
         var menuPdf = document.getElementById('menuPdf');
+        var btnPdfTop = document.getElementById('btnPdfTop');
         var menuPrint = document.getElementById('menuPrint');
         var menuOrder = document.getElementById('menuOrder');
         var createSalesOrderForm = document.getElementById('createSalesOrderForm');
@@ -3873,6 +4042,13 @@
         var btnPdfJsonContinue = document.getElementById('btnPdfJsonContinue');
         var pendingPdfPayload = null;
         var pendingPdfUrl = null;
+
+        var pdfFormSelectModal = document.getElementById('pdfFormSelectModal');
+        var pdfFormList = document.getElementById('pdfFormList');
+        var btnPdfFormSelectContinue = document.getElementById('btnPdfFormSelectContinue');
+        var pendingPdfFormPayload = null;
+        var pendingPdfFormUrl = null;
+        var offerForms = @json($offerForms ?? []);
 
         if (topMenuToggle && topMenuDropdown) {
             topMenuToggle.addEventListener('click', function (e) {
@@ -4059,16 +4235,11 @@
             var tasks = payload.satirlar.map(async function (line) {
                 if (!line || !line.montaj) return;
                 if (!line.teklif_detay_id) {
-                    line.montaj_groups = [];
-                    line.montaj_satirlari = [];
-                    line.montaj_satir_sayisi = 0;
                     return;
                 }
 
                 var data = await fetchMontajDetails(line.teklif_detay_id);
                 var groups = (data && Array.isArray(data.groups)) ? data.groups : [];
-
-                line.montaj_groups = groups;
 
                 var flat = [];
                 groups.forEach(function (g) {
@@ -4095,14 +4266,31 @@
                     });
                 });
 
-                line.montaj_satirlari = flat;
-                line.montaj_satir_sayisi = flat.length;
-
                 allMontajItems = allMontajItems.concat(flat);
             });
 
             await Promise.all(tasks);
 
+            allMontajItems.sort(function (a, b) {
+                var la = (a && a.line_sira != null) ? Number(a.line_sira) : Number.POSITIVE_INFINITY;
+                var lb = (b && b.line_sira != null) ? Number(b.line_sira) : Number.POSITIVE_INFINITY;
+                if (la !== lb) return la - lb;
+
+                var ga = (a && a.montaj_grup_kod != null) ? String(a.montaj_grup_kod) : '';
+                var gb = (b && b.montaj_grup_kod != null) ? String(b.montaj_grup_kod) : '';
+                var gc = ga.localeCompare(gb, 'tr', { sensitivity: 'base' });
+                if (gc !== 0) return gc;
+
+                var sa = (a && a.sirano != null) ? Number(a.sirano) : Number.POSITIVE_INFINITY;
+                var sb = (b && b.sirano != null) ? Number(b.sirano) : Number.POSITIVE_INFINITY;
+                if (sa !== sb) return sa - sb;
+
+                var ua = (a && a.urun_kod != null) ? String(a.urun_kod) : '';
+                var ub = (b && b.urun_kod != null) ? String(b.urun_kod) : '';
+                return ua.localeCompare(ub, 'tr', { sensitivity: 'base' });
+            });
+
+            payload.montaj = allMontajItems;
             payload.montaj_satirlari = allMontajItems;
             if (payload.header) {
                 payload.header.montaj_var = allMontajItems.length > 0;
@@ -4187,6 +4375,35 @@
                     var detayGrupId = (tr.dataset.detaygrup || '').toString().trim();
                     var isMulti = (tr.dataset.multi || '') === '1';
                     var isMontaj = (tr.dataset.montaj || '') === '1';
+                    var marka = (tr.dataset.marka || '').toString().trim();
+                    var prm3 = (tr.dataset.prm3 || '').toString().trim();
+                    var prm4 = (tr.dataset.prm4 || '').toString().trim();
+                    var stokAnaGrup = (tr.dataset.stokAnagrup || '').toString().trim();
+                    var stokAltGrup = (tr.dataset.stokAltgrup || '').toString().trim();
+                    var stokDetayGrup = (tr.dataset.stokDetaygrup || '').toString().trim();
+
+                    // Eger satir dataset'inde stok grup adlari yoksa, product modal listesinden tamamla
+                    if ((!stokAnaGrup || !stokAltGrup || !stokDetayGrup || !marka || !prm3 || !prm4) && window.__offerGetProductMeta) {
+                        try {
+                            var meta = window.__offerGetProductMeta(urunId, kod);
+                            if (meta) {
+                                if (!marka && meta.marka) marka = String(meta.marka).trim();
+                                if (!prm3 && meta.prm3) prm3 = String(meta.prm3).trim();
+                                if (!prm4 && meta.prm4) prm4 = String(meta.prm4).trim();
+                                if (!stokAnaGrup && meta.stokAnagrup) stokAnaGrup = String(meta.stokAnagrup).trim();
+                                if (!stokAltGrup && meta.stokAltgrup) stokAltGrup = String(meta.stokAltgrup).trim();
+                                if (!stokDetayGrup && meta.stokDetaygrup) stokDetayGrup = String(meta.stokDetaygrup).trim();
+
+                                // Kalici olsun diye dataset'e de yaz
+                                if (marka) tr.dataset.marka = marka;
+                                if (prm3) tr.dataset.prm3 = prm3;
+                                if (prm4) tr.dataset.prm4 = prm4;
+                                if (stokAnaGrup) tr.dataset.stokAnagrup = stokAnaGrup;
+                                if (stokAltGrup) tr.dataset.stokAltgrup = stokAltGrup;
+                                if (stokDetayGrup) tr.dataset.stokDetaygrup = stokDetayGrup;
+                            }
+                        } catch (e) { }
+                    }
 
                     if (!kod && !aciklama && miktar <= 0 && birimFiyat <= 0) return;
 
@@ -4197,6 +4414,12 @@
                         stok_kod: kod,
                         stok_aciklama: aciklama,
                         satir_aciklama: satirAciklama || aciklama,
+                        marka: marka,
+                        prm3: prm3,
+                        prm4: prm4,
+                        stok_anagrup: stokAnaGrup,
+                        stok_altgrup: stokAltGrup,
+                        stok_detaygrup: stokDetayGrup,
                         miktar: miktar,
                         birim_fiyat: birimFiyat,
                         doviz: doviz || 'TL',
@@ -4215,9 +4438,6 @@
                         detay_grup_id: detayGrupId ? parseInt(detayGrupId, 10) || null : null,
                         multi: isMulti,
                         montaj: isMontaj,
-                        montaj_groups: [],
-                        montaj_satirlari: [],
-                        montaj_satir_sayisi: 0,
                         resim_yolu: resimYolu || null,
                         resim_url: buildProductImageUrl(resimYolu),
                         resim: null,
@@ -4225,12 +4445,22 @@
                 });
             }
 
-            return {
+            var formDosyaYolu = @json($formDosyaYolu ?? '');
+            formDosyaYolu = (formDosyaYolu || '').toString().trim();
+
+            var payload = {
                 kaynak: 'nomaenerji-laravel',
                 olusturma_zamani: new Date().toISOString(),
                 header: header,
                 satirlar: lines,
+                montaj: [],
             };
+
+            if (formDosyaYolu) {
+                payload.form_dosya_yolu = formDosyaYolu;
+            }
+
+            return payload;
         }
 
         function sendToJavaServlet(payload) {
@@ -4308,6 +4538,85 @@
             pdfPreviewBlobUrl = URL.createObjectURL(blob);
             pdfPreviewFrame.src = pdfPreviewBlobUrl;
             pdfPreviewModal.style.display = 'flex';
+        }
+
+        function renderPdfFormList() {
+            if (!pdfFormList) return;
+            pdfFormList.innerHTML = '';
+
+            if (!offerForms || !offerForms.length) {
+                var empty = document.createElement('div');
+                empty.textContent = 'Teklif için form tanımı bulunamadı. (Tanımlamalar > Formlar)';
+                empty.style.color = '#9ca3af';
+                empty.style.fontSize = '0.9rem';
+                pdfFormList.appendChild(empty);
+                return;
+            }
+
+            offerForms.forEach(function (item, idx) {
+                var fileName = (item && item.dosya_ad ? String(item.dosya_ad) : '').trim();
+                var title = (item && item.gorunen_isim ? String(item.gorunen_isim) : '').trim() || fileName;
+                if (!fileName && !title) return;
+
+                var label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'flex-start';
+                label.style.gap = '0.6rem';
+                label.style.padding = '0.65rem 0.75rem';
+                label.style.border = '1px solid #e5e7eb';
+                label.style.borderRadius = '12px';
+                label.style.cursor = 'pointer';
+                label.style.marginBottom = '0.5rem';
+                label.style.background = '#fff';
+
+                var radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'pdfFormChoice';
+                radio.value = fileName;
+                radio.style.marginTop = '0.25rem';
+                if (idx === 0) radio.checked = true;
+
+                var textWrap = document.createElement('div');
+                var titleDiv = document.createElement('div');
+                titleDiv.textContent = title;
+                titleDiv.style.fontWeight = '600';
+                titleDiv.style.color = '#111827';
+                titleDiv.style.fontSize = '0.95rem';
+
+                var subDiv = document.createElement('div');
+                subDiv.textContent = fileName;
+                subDiv.style.color = '#6b7280';
+                subDiv.style.fontSize = '0.85rem';
+
+                textWrap.appendChild(titleDiv);
+                textWrap.appendChild(subDiv);
+
+                label.appendChild(radio);
+                label.appendChild(textWrap);
+                pdfFormList.appendChild(label);
+            });
+        }
+
+        function getSelectedPdfFormFileName() {
+            if (!pdfFormSelectModal) return '';
+            var el = pdfFormSelectModal.querySelector('input[name="pdfFormChoice"]:checked');
+            return el && el.value ? String(el.value).trim() : '';
+        }
+
+        function openPdfFormSelect(payload, url) {
+            if (!pdfFormSelectModal) {
+                openPdfJson(payload, url);
+                return;
+            }
+            pendingPdfFormPayload = payload;
+            pendingPdfFormUrl = url;
+            renderPdfFormList();
+            pdfFormSelectModal.style.display = 'flex';
+        }
+
+        function closePdfFormSelect() {
+            if (!pdfFormSelectModal) return;
+            pdfFormSelectModal.style.display = 'none';
         }
 
         function openPdfJson(payload, url) {
@@ -4400,6 +4709,53 @@
             });
         }
 
+        if (pdfFormSelectModal && !pdfFormSelectModal.dataset.boundClose) {
+            pdfFormSelectModal.dataset.boundClose = '1';
+            pdfFormSelectModal.addEventListener('click', function (e) {
+                if (e.target !== pdfFormSelectModal) return;
+                closePdfFormSelect();
+            });
+        }
+
+        if (btnPdfFormSelectContinue && !btnPdfFormSelectContinue.dataset.bound) {
+            btnPdfFormSelectContinue.dataset.bound = '1';
+            btnPdfFormSelectContinue.addEventListener('click', async function () {
+                var payload = pendingPdfFormPayload;
+                var url = pendingPdfFormUrl;
+
+                if (!payload) {
+                    closePdfFormSelect();
+                    return;
+                }
+
+                var fileName = getSelectedPdfFormFileName();
+                if (offerForms && offerForms.length && !fileName) {
+                    alert('Lütfen bir form seçin.');
+                    return;
+                }
+
+                if (fileName) {
+                    payload.form_dosya_adi = fileName;
+                    payload.dosya_ad = fileName;
+                    payload.dosya_adi = fileName;
+                }
+
+                try {
+                    btnPdfFormSelectContinue.disabled = true;
+                    btnPdfFormSelectContinue.style.opacity = '0.6';
+                    await enrichPayloadWithMontajDetails(payload);
+                    await enrichPayloadWithImages(payload);
+                } catch (e) { }
+                finally {
+                    btnPdfFormSelectContinue.disabled = false;
+                    btnPdfFormSelectContinue.style.opacity = '1';
+                }
+
+                closePdfFormSelect();
+                openPdfJson(payload, url);
+            });
+        }
+
         if (pdfJsonModal && !pdfJsonModal.dataset.boundClose) {
             pdfJsonModal.dataset.boundClose = '1';
             pdfJsonModal.addEventListener('click', function (e) {
@@ -4430,20 +4786,25 @@
                 }
 
                 var url = buildTomcatServletUrl();
-                try { alert(url); } catch (e) { }
+                openPdfFormSelect(payload, url);
+            });
+        }
 
+        if (btnPdfTop && !btnPdfTop.dataset.boundPdf) {
+            btnPdfTop.dataset.boundPdf = '1';
+            btnPdfTop.addEventListener('click', async function () {
+                if (btnPdfTop.disabled) return;
+
+                var payload = null;
                 try {
-                    menuPdf.disabled = true;
-                    menuPdf.style.opacity = '0.6';
-                    await enrichPayloadWithMontajDetails(payload);
-                    await enrichPayloadWithImages(payload);
-                } catch (e) { }
-                finally {
-                    menuPdf.disabled = false;
-                    menuPdf.style.opacity = '1';
+                    payload = buildOfferPrintPayload();
+                } catch (e) {
+                    alert('JSON veri haz?rlanamad?.');
+                    return;
                 }
 
-                openPdfJson(payload, url);
+                var url = buildTomcatServletUrl();
+                openPdfFormSelect(payload, url);
             });
         }
 

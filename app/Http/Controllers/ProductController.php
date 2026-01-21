@@ -7,11 +7,13 @@ use App\Models\ProductCategory;
 use App\Models\ProductDetailGroup;
 use App\Models\ProductRecipe;
 use App\Models\ProductSubGroup;
+use App\Models\StockParameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -58,9 +60,21 @@ class ProductController extends Controller
             return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
         });
 
+        $stockParameters3 = StockParameter::query()
+            ->where('parametre_no', 3)
+            ->orderBy('deger')
+            ->pluck('deger')
+            ->values();
+
+        $stockParameters4 = StockParameter::query()
+            ->where('parametre_no', 4)
+            ->orderBy('deger')
+            ->pluck('deger')
+            ->values();
+
         $stockCards = Product::query()->orderBy('kod')->get(['id', 'kod', 'aciklama']);
 
-        return view('products.create', compact('categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockCards'));
+        return view('products.create', compact('categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockParameters3', 'stockParameters4', 'stockCards'));
     }
 
     public function store(Request $request)
@@ -93,6 +107,18 @@ class ProductController extends Controller
             return $items->map(fn ($i) => ['id' => $i->id, 'ad' => $i->ad])->values();
         });
 
+        $stockParameters3 = StockParameter::query()
+            ->where('parametre_no', 3)
+            ->orderBy('deger')
+            ->pluck('deger')
+            ->values();
+
+        $stockParameters4 = StockParameter::query()
+            ->where('parametre_no', 4)
+            ->orderBy('deger')
+            ->pluck('deger')
+            ->values();
+
         $stockCards = Product::query()
             ->where('id', '!=', $product->id)
             ->orderBy('kod')
@@ -114,7 +140,7 @@ class ProductController extends Controller
             })
             ->values();
 
-        return view('products.edit', compact('product', 'categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockCards', 'recipeItems'));
+        return view('products.edit', compact('product', 'categories', 'subGroupsByGroup', 'detailGroupsBySubGroup', 'stockParameters3', 'stockParameters4', 'stockCards', 'recipeItems'));
     }
 
     public function update(Request $request, Product $product)
@@ -169,8 +195,8 @@ class ProductController extends Controller
             'urun_detay_grup_id' => ['nullable', 'integer', 'exists:urun_detay_gruplari,id'],
             'prm1'        => ['nullable', 'string', 'max:255'],
             'prm2'        => ['nullable', 'string', 'max:255'],
-            'prm3'        => ['nullable', 'string', 'max:255'],
-            'prm4'        => ['nullable', 'string', 'max:255'],
+            'prm3'        => ['nullable', 'string', 'max:150', Rule::exists('stokparametreler', 'deger')->where('parametre_no', 3)],
+            'prm4'        => ['nullable', 'string', 'max:150', Rule::exists('stokparametreler', 'deger')->where('parametre_no', 4)],
             'fatura_kodu' => ['nullable', 'string', 'max:50'],
             'resim'       => ['nullable', 'image', 'max:2048'],
             'pasif'       => ['sometimes', 'boolean'],

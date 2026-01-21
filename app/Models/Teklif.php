@@ -31,6 +31,7 @@ class Teklif extends Model
         'hazirlayan',
         'islem_turu_id',
         'proje_id',
+        'proje_turu_id',
         'teklif_doviz',
         'teklif_kur',
         'ekleme_tarihi',
@@ -68,5 +69,10 @@ class Teklif extends Model
     public function proje()
     {
         return $this->belongsTo(Project::class, 'proje_id');
+    }
+
+    public function projeTuru()
+    {
+        return $this->belongsTo(ProjectType::class, 'proje_turu_id');
     }
 }

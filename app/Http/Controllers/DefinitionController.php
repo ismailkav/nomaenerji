@@ -13,8 +13,13 @@ use App\Models\MontajProduct;
 use App\Models\MontajProductGroup;
 use App\Models\IslemTuru;
 use App\Models\Project;
+use App\Models\ProjectType;
 use App\Models\Parameter;
+use App\Models\StockParameter;
+use App\Models\FormDefinition;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\MessageBag;
 
 class DefinitionController extends Controller
 {
@@ -25,6 +30,7 @@ class DefinitionController extends Controller
             'tomcat_port',
             'tomcat_proje',
             'resim_yol',
+            'form_dosya_yolu',
         ];
 
         $params = Parameter::query()
@@ -37,6 +43,7 @@ class DefinitionController extends Controller
             'tomcatPort' => (string) ($params['tomcat_port']->deger ?? ''),
             'tomcatProje' => (string) ($params['tomcat_proje']->deger ?? ''),
             'resimYol' => (string) ($params['resim_yol']->deger ?? ''),
+            'formDosyaYolu' => (string) ($params['form_dosya_yolu']->deger ?? ''),
         ]);
     }
 
@@ -47,9 +54,10 @@ class DefinitionController extends Controller
             'tomcat_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'tomcat_proje' => ['nullable', 'string', 'max:100'],
             'resim_yol' => ['nullable', 'string', 'max:255'],
+            'form_dosya_yolu' => ['nullable', 'string', 'max:500'],
         ]);
 
-        foreach (['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'resim_yol'] as $key) {
+        foreach (['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'resim_yol', 'form_dosya_yolu'] as $key) {
             $value = $validated[$key] ?? null;
             $value = is_null($value) ? null : (string) $value;
 
@@ -61,6 +69,165 @@ class DefinitionController extends Controller
 
         return redirect()->route('definitions.parameters')
             ->with('status', 'Parametreler kaydedildi.');
+    }
+
+    public function stockParameters(Request $request)
+    {
+        $selectedParameterNo = (int) $request->query('parametre_no', 3);
+        if (!in_array($selectedParameterNo, [3, 4], true)) {
+            $selectedParameterNo = 3;
+        }
+
+        $items = StockParameter::query()
+            ->where('parametre_no', $selectedParameterNo)
+            ->orderBy('deger')
+            ->get();
+
+        return view('definitions.stock-parameters', [
+            'selectedParameterNo' => $selectedParameterNo,
+            'items' => $items,
+        ]);
+    }
+
+    public function saveStockParameters(Request $request)
+    {
+        $validated = $request->validate([
+            'parametre_no' => ['required', 'integer', 'in:3,4'],
+            'items' => ['array'],
+            'items.*.deger' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        $parameterNo = (int) $validated['parametre_no'];
+        $values = [];
+        $seen = [];
+
+        foreach (($validated['items'] ?? []) as $item) {
+            $value = trim((string) ($item['deger'] ?? ''));
+            if ($value === '' || isset($seen[$value])) {
+                continue;
+            }
+
+            $seen[$value] = true;
+            $values[] = $value;
+        }
+
+        DB::transaction(function () use ($parameterNo, $values) {
+            StockParameter::where('parametre_no', $parameterNo)->delete();
+
+            if (empty($values)) {
+                return;
+            }
+
+            $now = now();
+            $rows = array_map(function ($value) use ($parameterNo, $now) {
+                return [
+                    'parametre_no' => $parameterNo,
+                    'deger' => $value,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $values);
+
+            StockParameter::insert($rows);
+        });
+
+        return redirect()->route('definitions.stock-parameters', ['parametre_no' => $parameterNo])
+            ->with('status', 'Stok parametreler kaydedildi.');
+    }
+
+    public function forms(Request $request)
+    {
+        $screens = [
+            'teklif' => 'Teklif',
+            'siparis' => 'Sipariş',
+            'fatura' => 'Fatura',
+        ];
+
+        $selectedScreen = (string) $request->query('ekran', 'teklif');
+        if (!array_key_exists($selectedScreen, $screens)) {
+            $selectedScreen = 'teklif';
+        }
+
+        $items = FormDefinition::query()
+            ->where('ekran', $selectedScreen)
+            ->orderBy('dosya_ad')
+            ->get();
+
+        return view('definitions.forms', [
+            'screens' => $screens,
+            'selectedScreen' => $selectedScreen,
+            'items' => $items,
+        ]);
+    }
+
+    public function saveForms(Request $request)
+    {
+        $validated = $request->validate([
+            'ekran' => ['required', 'string', 'in:teklif,siparis,fatura'],
+            'items' => ['array'],
+            'items.*.dosya_ad' => ['nullable', 'string', 'max:255'],
+            'items.*.gorunen_isim' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $screen = (string) $validated['ekran'];
+        $rows = [];
+        $errors = new MessageBag();
+        $seen = [];
+        $rowNumber = 0;
+
+        foreach (($validated['items'] ?? []) as $item) {
+            $rowNumber++;
+            $fileName = trim((string) ($item['dosya_ad'] ?? ''));
+            $visibleName = trim((string) ($item['gorunen_isim'] ?? ''));
+
+            if ($fileName === '' || $visibleName === '') {
+                if ($fileName === '' && $visibleName === '') {
+                    continue;
+                }
+
+                $errors->add('items', 'Satır ' . $rowNumber . ': Dosya Ad ve Ekran Görünen İsim birlikte doldurulmalı.');
+                continue;
+            }
+
+            $key = strtolower($fileName);
+            if (isset($seen[$key])) {
+                $errors->add('items', 'Satır ' . $rowNumber . ': Aynı Dosya Ad birden fazla kez kullanılamaz.');
+                continue;
+            }
+            $seen[$key] = true;
+
+            $rows[] = [
+                'ekran' => $screen,
+                'dosya_ad' => $fileName,
+                'gorunen_isim' => $visibleName,
+            ];
+        }
+
+        if ($errors->isNotEmpty()) {
+            return redirect()->route('definitions.forms', ['ekran' => $screen])
+                ->withErrors($errors)
+                ->withInput();
+        }
+
+        DB::transaction(function () use ($screen, $rows) {
+            FormDefinition::where('ekran', $screen)->delete();
+
+            if (empty($rows)) {
+                return;
+            }
+
+            $now = now();
+            foreach ($rows as &$row) {
+                $row['created_at'] = $now;
+                $row['updated_at'] = $now;
+            }
+            unset($row);
+
+            FormDefinition::insert($rows);
+        });
+
+        return redirect()->route('definitions.forms', ['ekran' => $screen])
+            ->with('status', 'Formlar kaydedildi.');
     }
 
     public function cariGroups(Request $request)
@@ -661,8 +828,8 @@ class DefinitionController extends Controller
             $kod = trim($item['kod'] ?? '');
             $id = $item['id'] ?? null;
             $pasif = !empty($item['pasif']);
-            $iskonto1 = isset($item['iskonto1']) ? (float) $item['iskonto1'] : 0.0;
-            $iskonto2 = isset($item['iskonto2']) ? (float) $item['iskonto2'] : 0.0;
+            $iskonto1 = (float) str_replace(',', '.', (string) ($item['iskonto1'] ?? 0));
+            $iskonto2 = (float) str_replace(',', '.', (string) ($item['iskonto2'] ?? 0));
 
             if ($kod === '') {
                 continue;
@@ -698,6 +865,55 @@ class DefinitionController extends Controller
 
         return redirect()->route('definitions.projects')
             ->with('status', 'Projeler gÇ¬ncellendi.');
+    }
+
+    public function projectTypes(Request $request)
+    {
+        $projectTypes = ProjectType::orderBy('kod')->get();
+
+        return view('definitions.project-types', compact('projectTypes'));
+    }
+
+    public function saveProjectTypes(Request $request)
+    {
+        $items = $request->input('project_types', []);
+        $keptIds = [];
+
+        foreach ($items as $item) {
+            $kod = trim($item['kod'] ?? '');
+            $id = $item['id'] ?? null;
+            $pasif = !empty($item['pasif']);
+
+            if ($kod === '') {
+                continue;
+            }
+
+            if ($id) {
+                $projectType = ProjectType::find($id);
+                if ($projectType) {
+                    $projectType->update([
+                        'kod' => $kod,
+                        'pasif' => $pasif,
+                    ]);
+                    $keptIds[] = $projectType->id;
+                }
+            } else {
+                $projectType = ProjectType::create([
+                    'kod' => $kod,
+                    'pasif' => $pasif,
+                ]);
+                $keptIds[] = $projectType->id;
+            }
+        }
+
+        if (!empty($keptIds)) {
+            ProjectType::whereNotIn('id', $keptIds)->delete();
+        } else {
+            ProjectType::query()->delete();
+        }
+
+        return redirect()->route('definitions.project-types')
+            ->with('status', 'Proje türleri güncellendi.');
     }
 
     public function depots(Request $request)

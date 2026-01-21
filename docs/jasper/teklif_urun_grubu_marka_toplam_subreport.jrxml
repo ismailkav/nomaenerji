@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Subreport datasource: JSON array `urun_grubu_marka_toplamlari`.
+
+  Columns:
+  - Ürün Grubu
+  - Marka
+  - Tutar (with currency)
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="teklif_urun_grubu_marka_toplam_subreport"
+              pageWidth="555"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="0"
+              rightMargin="0"
+              topMargin="0"
+              bottomMargin="0"
+              uuid="c1e4b1b5-9c79-4d2c-8f2f-e7a2e0fe7d8a">
+
+    <field name="urun_grubu" class="java.lang.String"/>
+    <field name="marka" class="java.lang.String"/>
+    <field name="doviz" class="java.lang.String"/>
+    <field name="tutar" class="java.lang.Double"/>
+
+    <detail>
+        <band height="18" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="17" width="555" height="1" uuid="6a4b52b7-25d6-4f1c-9d93-6c5d7c6f7e52"/>
+                <graphicElement>
+                    <pen lineWidth="0.3" lineColor="#E5E7EB"/>
+                </graphicElement>
+            </line>
+
+            <textField>
+                <reportElement x="0" y="0" width="230" height="18" uuid="74f83b8c-f539-4c77-b4d7-31b3bdbf9b6a"/>
+                <textElement verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{urun_grubu}]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="230" y="0" width="190" height="18" uuid="4c9e5b1c-0aa1-4ef4-8d90-b49a1df0a2f4"/>
+                <textElement verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$F{marka}]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement x="420" y="0" width="135" height="18" uuid="5e046f69-6b05-4b40-8c4e-6a987f5b2c0d"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[
+                    ($F{tutar} == null ? "" : new java.text.DecimalFormat("#,##0.00").format($F{tutar}))
+                    + " "
+                    + ($F{doviz} == null ? "" : $F{doviz})
+                ]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+</jasperReport>

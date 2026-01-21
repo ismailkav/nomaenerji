@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Subreport datasource: JSON array `genel_toplamlar`.
+
+  Outputs one line per currency: "<amount> <currency>".
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="teklif_genel_toplam_subreport"
+              pageWidth="355"
+              pageHeight="842"
+              columnWidth="355"
+              leftMargin="0"
+              rightMargin="0"
+              topMargin="0"
+              bottomMargin="0"
+              uuid="a8e2a81d-60f3-4c9f-9c39-1a3e7c2b5b90">
+
+    <field name="doviz" class="java.lang.String"/>
+    <field name="tutar" class="java.lang.Double"/>
+
+    <detail>
+        <band height="18" splitType="Stretch">
+            <textField>
+                <reportElement x="0" y="0" width="355" height="18" uuid="e1f8d3ae-5dd7-46e1-9b2f-3b38f3d9f30a"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="10" isBold="true"/></textElement>
+                <textFieldExpression><![CDATA[
+                    ($F{tutar} == null ? "" : new java.text.DecimalFormat("#,##0.00").format($F{tutar}))
+                    + " "
+                    + ($F{doviz} == null ? "" : $F{doviz})
+                ]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+</jasperReport>

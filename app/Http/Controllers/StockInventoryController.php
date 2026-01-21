@@ -10,9 +10,29 @@ class StockInventoryController extends Controller
 {
     public function index(Request $request)
     {
+        $openOrderTotalsByStockCode = DB::table('siparis_detaylari as sd')
+            ->join('siparisler as s', 's.id', '=', 'sd.siparis_id')
+            ->join('urunler as u2', 'u2.id', '=', 'sd.urun_id')
+            ->where('s.siparis_turu', 'satis')
+            ->where('sd.durum', 'A')
+            ->groupBy('u2.kod')
+            ->selectRaw(
+                "u2.kod as stokkod,
+                 SUM(
+                    CASE
+                        WHEN (COALESCE(sd.miktar,0) - COALESCE(sd.gelen,0)) > 0
+                            THEN (COALESCE(sd.miktar,0) - COALESCE(sd.gelen,0))
+                        ELSE 0
+                    END
+                 ) as siparis_miktar"
+            );
+
         $items = StockInventory::query()
             ->leftJoin('depolar', 'depolar.id', '=', 'stokenvanter.depo_id')
             ->leftJoin('urunler', 'urunler.kod', '=', 'stokenvanter.stokkod')
+            ->leftJoinSub($openOrderTotalsByStockCode, 'oot', function ($join) {
+                $join->on('oot.stokkod', '=', 'stokenvanter.stokkod');
+            })
             ->select([
                 'stokenvanter.id',
                 'stokenvanter.depo_id',
@@ -20,6 +40,7 @@ class StockInventoryController extends Controller
                 'stokenvanter.stokkod',
                 'urunler.aciklama as stokaciklama',
                 'stokenvanter.stokmiktar',
+                DB::raw('COALESCE(oot.siparis_miktar,0) as siparis_miktar'),
             ])
             ->selectSub(
                 DB::table('stokrevize as sr')

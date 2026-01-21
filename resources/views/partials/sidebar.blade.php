@@ -207,8 +207,8 @@
             <span class="nav-text">Ürünler</span>
         </a>
 
-        <a href="#" id="definitionsToggle"
-           class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','product-sub-groups','product-detail-groups','montaj-groups','montaj-products','montaj-product-groups','islem-turleri','projects','depots','price-lists','parameters']) ? 'active' : '' }}">
+         <a href="#" id="definitionsToggle"
+            class="nav-item {{ in_array(($active ?? ''), ['users','firms','products','cari-groups','product-groups','product-sub-groups','product-detail-groups','montaj-groups','montaj-products','montaj-product-groups','islem-turleri','projects','project-types','depots','price-lists','parameters','stock-parameters','forms']) ? 'active' : '' }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h16v4H4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -290,15 +290,30 @@
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Projeler</span>
             </a>
+            <a href="{{ route('definitions.project-types') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'project-types' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Proje Türü</span>
+            </a>
             <a href="{{ route('definitions.depots') }}"
                class="nav-item nav-sub-item {{ ($active ?? '') === 'depots' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
                 <span class="nav-text">Depo</span>
             </a>
-            <a href="{{ route('definitions.parameters') }}"
-               class="nav-item nav-sub-item {{ ($active ?? '') === 'parameters' ? 'active' : '' }}"
+             <a href="{{ route('definitions.parameters') }}"
+                class="nav-item nav-sub-item {{ ($active ?? '') === 'parameters' ? 'active' : '' }}"
+                style="padding-left:2.75rem;font-size:0.9rem;">
+                 <span class="nav-text">Parametreler</span>
+             </a>
+            <a href="{{ route('definitions.stock-parameters') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'stock-parameters' ? 'active' : '' }}"
                style="padding-left:2.75rem;font-size:0.9rem;">
-                <span class="nav-text">Parametreler</span>
+                <span class="nav-text">Stok Parametre</span>
+            </a>
+            <a href="{{ route('definitions.forms') }}"
+               class="nav-item nav-sub-item {{ ($active ?? '') === 'forms' ? 'active' : '' }}"
+               style="padding-left:2.75rem;font-size:0.9rem;">
+                <span class="nav-text">Formlar</span>
             </a>
             <a href="{{ route('price-lists.index') }}"
                class="nav-item nav-sub-item {{ ($active ?? '') === 'price-lists' ? 'active' : '' }}"

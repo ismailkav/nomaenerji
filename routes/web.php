@@ -216,6 +216,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('projeler', [DefinitionController::class, 'saveProjects'])
         ->name('definitions.projects.save');
 
+    Route::get('proje-turleri', [DefinitionController::class, 'projectTypes'])
+        ->name('definitions.project-types');
+    Route::post('proje-turleri', [DefinitionController::class, 'saveProjectTypes'])
+        ->name('definitions.project-types.save');
+
     Route::get('depolar', [DefinitionController::class, 'depots'])
         ->name('definitions.depots');
     Route::post('depolar', [DefinitionController::class, 'saveDepots'])
@@ -225,6 +230,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('definitions.parameters');
     Route::post('parametreler', [DefinitionController::class, 'saveParameters'])
         ->name('definitions.parameters.save');
+
+    Route::get('stok-parametreler', [DefinitionController::class, 'stockParameters'])
+        ->name('definitions.stock-parameters');
+    Route::post('stok-parametreler', [DefinitionController::class, 'saveStockParameters'])
+        ->name('definitions.stock-parameters.save');
+
+    Route::get('formlar', [DefinitionController::class, 'forms'])
+        ->name('definitions.forms');
+    Route::post('formlar', [DefinitionController::class, 'saveForms'])
+        ->name('definitions.forms.save');
 
     Route::prefix('stok')->group(function () {
         Route::get('konsinye-giris', [ConsignmentController::class, 'indexIn'])

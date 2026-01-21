@@ -94,6 +94,13 @@
                                     @error('resim_yol')<div class="form-error">{{ $message }}</div>@enderror
                                 </td>
                             </tr>
+                            <tr>
+                                <td style="padding:0.5rem 0.5rem;">Form Dosya Yolu (JRXML)</td>
+                                <td style="padding:0.5rem 0.5rem;">
+                                    <input type="text" name="form_dosya_yolu" value="{{ old('form_dosya_yolu', $formDosyaYolu ?? '') }}" style="width:100%;" placeholder="Örn: C:\Jasper\templates">
+                                    @error('form_dosya_yolu')<div class="form-error">{{ $message }}</div>@enderror
+                                </td>
+                            </tr>
                             </tbody>
                         </table>
                     </div>

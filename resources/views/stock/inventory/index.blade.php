@@ -185,6 +185,7 @@
                             <th>Stok Açıklama</th>
                             <th style="text-align:right;">Stok Miktar</th>
                             <th style="text-align:right;">Rezerve Miktar</th>
+                            <th style="text-align:right;">Sipariş Miktar</th>
                             <th style="text-align:right;">Kullanılabilir Miktar</th>
                         </tr>
                         </thead>
@@ -211,11 +212,12 @@
                                         </button>
                                     </div>
                                 </td>
+                                <td style="text-align:right;">{{ number_format((float) ($item->siparis_miktar ?? 0), 4, ',', '.') }}</td>
                                 <td style="text-align:right;">{{ number_format(((float) $item->stokmiktar) - ((float) ($item->revize_miktar ?? 0)), 4, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
+                                <td colspan="7" style="text-align:center; padding: 16px;">Kayıt bulunamadı.</td>
                             </tr>
                         @endforelse
                         </tbody>

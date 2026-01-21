@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8"  ?>
+<!-- Created with iReport - A designer for JasperReports -->
+<!DOCTYPE jasperReport PUBLIC "//JasperReports//DTD Report Design//EN" "http://jasperreports.sourceforge.net/dtds/jasperreport.dtd">
+<jasperReport
+		 name="nomaenerji_form"
+		 columnCount="1"
+		 printOrder="Vertical"
+		 orientation="Portrait"
+		 pageWidth="595"
+		 pageHeight="842"
+		 columnWidth="555"
+		 columnSpacing="0"
+		 leftMargin="20"
+		 rightMargin="20"
+		 topMargin="20"
+		 bottomMargin="20"
+		 whenNoDataType="NoPages"
+		 isTitleNewPage="false"
+		 isSummaryNewPage="false">
+	<property name="ireport.scriptlethandling" value="0" />
+	<property name="ireport.encoding" value="UTF-8" />
+	<import value="java.util.*" />
+	<import value="net.sf.jasperreports.engine.*" />
+	<import value="net.sf.jasperreports.engine.data.*" />
+
+	<!--
+	  This report is designed to work without JasperReports JSON query executer.
+	  The servlet must pass header values as parameters and subreport data as JRRewindableDataSource.
+
+	  Main fill datasource can be: new net.sf.jasperreports.engine.JREmptyDataSource(1)
+	-->
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="DS_URUN_GRUBU_MARKA" class="net.sf.jasperreports.engine.JRRewindableDataSource" isForPrompting="false"/>
+	<parameter name="DS_GENEL_TOPLAM" class="net.sf.jasperreports.engine.JRRewindableDataSource" isForPrompting="false"/>
+	<parameter name="DS_MONTAJ" class="net.sf.jasperreports.engine.JRRewindableDataSource" isForPrompting="false"/>
+
+	<parameter name="P_TEKLIF_NO" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_REVIZE_NO" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_TARIH" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_GECERLILIK_TARIHI" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_FIRMA_KOD" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_FIRMA_UNVAN" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_FIRMA_ADRES1" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_FIRMA_ADRES2" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_FIRMA_IL_ILCE" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_YETKILI_PERSONEL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_HAZIRLAYAN" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_PROJE_KOD" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="P_ACIKLAMA" class="java.lang.String" isForPrompting="false"/>
+
+		<background>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</background>
+		<title>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</title>
+		<pageHeader>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</pageHeader>
+		<columnHeader>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</columnHeader>
+		<detail>
+			<band height="780"  isSplitAllowed="true" >
+				<staticText>
+					<reportElement
+						x="0"
+						y="0"
+						width="555"
+						height="26"
+						key="staticText"/>
+					<box></box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="14" isBold="true"/>
+					</textElement>
+				<text><![CDATA[TEKLİF FORMU]]></text>
+				</staticText>
+				<rectangle>
+					<reportElement
+						x="0"
+						y="40"
+						width="555"
+						height="170"
+						key="rectangle"/>
+					<graphicElement stretchType="NoStretch">
+					<pen lineWidth="0.5" lineColor="#E5E7EB"/>
+</graphicElement>
+				</rectangle>
+				<staticText>
+					<reportElement
+						x="12"
+						y="50"
+						width="255"
+						height="14"
+						key="staticText"/>
+					<box></box>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Firma Bilgileri]]></text>
+				</staticText>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="12"
+						y="70"
+						width="255"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA[($P{P_FIRMA_KOD} == null ? "" : $P{P_FIRMA_KOD}) + "  " + ($P{P_FIRMA_UNVAN} == null ? "" : $P{P_FIRMA_UNVAN})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="12"
+						y="88"
+						width="255"
+						height="40"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA[($P{P_FIRMA_ADRES1} == null ? "" : $P{P_FIRMA_ADRES1}) + "\n" + ($P{P_FIRMA_ADRES2} == null ? "" : $P{P_FIRMA_ADRES2})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="12"
+						y="132"
+						width="255"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA[$P{P_FIRMA_IL_ILCE}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement
+						x="290"
+						y="50"
+						width="250"
+						height="14"
+						key="staticText"/>
+					<box></box>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Teklif Parametreleri]]></text>
+				</staticText>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="70"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Teklif No: " + ($P{P_TEKLIF_NO} == null ? "" : $P{P_TEKLIF_NO})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="88"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Revize No: " + ($P{P_REVIZE_NO} == null ? "" : $P{P_REVIZE_NO})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="106"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Tarih: " + ($P{P_TARIH} == null ? "" : $P{P_TARIH})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="124"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Geçerlilik: " + ($P{P_GECERLILIK_TARIHI} == null ? "" : $P{P_GECERLILIK_TARIHI})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="142"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Yetkili: " + ($P{P_YETKILI_PERSONEL} == null ? "" : $P{P_YETKILI_PERSONEL})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="160"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Hazırlayan: " + ($P{P_HAZIRLAYAN} == null ? "" : $P{P_HAZIRLAYAN})]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="false" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="290"
+						y="178"
+						width="250"
+						height="14"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA["Proje: " + ($P{P_PROJE_KOD} == null ? "" : $P{P_PROJE_KOD})]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement
+						x="0"
+						y="230"
+						width="555"
+						height="14"
+						key="staticText"/>
+					<box></box>
+					<textElement>
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Açıklama]]></text>
+				</staticText>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="false" evaluationTime="Now" hyperlinkType="None"  hyperlinkTarget="Self" >
+					<reportElement
+						x="0"
+						y="248"
+						width="555"
+						height="90"
+						key="textField"/>
+					<box></box>
+					<textElement>
+						<font size="8"/>
+					</textElement>
+				<textFieldExpression   class="java.lang.String"><![CDATA[$P{P_ACIKLAMA}]]></textFieldExpression>
+				</textField>
+				<break>
+					<reportElement
+						x="0"
+						y="760"
+						width="555"
+						height="0"
+						key="element-48"/>
+				</break>
+				<staticText>
+					<reportElement
+						x="0"
+						y="0"
+						width="555"
+						height="20"
+						key="staticText"/>
+					<box></box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Ürün Grupları / Marka Toplamları]]></text>
+				</staticText>
+				<rectangle>
+					<reportElement
+						mode="Opaque"
+						x="0"
+						y="30"
+						width="555"
+						height="20"
+						backcolor="#F3F4F6"
+						key="rectangle"/>
+					<graphicElement stretchType="NoStretch">
+					<pen lineWidth="0.5"/>
+</graphicElement>
+				</rectangle>
+				<staticText>
+					<reportElement
+						x="0"
+						y="30"
+						width="230"
+						height="20"
+						key="staticText"/>
+					<box></box>
+					<textElement verticalAlignment="Middle">
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Ürün Grubu]]></text>
+				</staticText>
+				<staticText>
+					<reportElement
+						x="230"
+						y="30"
+						width="190"
+						height="20"
+						key="staticText"/>
+					<box></box>
+					<textElement verticalAlignment="Middle">
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Marka]]></text>
+				</staticText>
+				<staticText>
+					<reportElement
+						x="420"
+						y="30"
+						width="135"
+						height="20"
+						key="staticText"/>
+					<box></box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="9" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Tutar]]></text>
+				</staticText>
+				<subreport  isUsingCache="true">
+					<reportElement
+						x="0"
+						y="55"
+						width="555"
+						height="600"
+						key="subreport"/>
+					<dataSourceExpression><![CDATA[$P{DS_URUN_GRUBU_MARKA}]]></dataSourceExpression>
+					<subreportExpression  class="java.lang.String"><![CDATA[
+						($P{SUBREPORT_DIR} != null && $P{SUBREPORT_DIR}.trim().length() > 0)
+							? new java.io.File($P{SUBREPORT_DIR}.trim(), "teklif_urun_grubu_marka_toplam_subreport.jasper").getPath()
+							: "teklif_urun_grubu_marka_toplam_subreport.jasper"
+					]]></subreportExpression>
+				</subreport>
+				<staticText>
+					<reportElement
+						x="0"
+						y="670"
+						width="200"
+						height="18"
+						key="staticText"/>
+					<box></box>
+					<textElement verticalAlignment="Middle">
+						<font size="10" isBold="true"/>
+					</textElement>
+				<text><![CDATA[Genel Toplam]]></text>
+				</staticText>
+				<subreport  isUsingCache="true">
+					<reportElement
+						x="200"
+						y="670"
+						width="355"
+						height="80"
+						key="subreport"/>
+					<dataSourceExpression><![CDATA[$P{DS_GENEL_TOPLAM}]]></dataSourceExpression>
+					<subreportExpression  class="java.lang.String"><![CDATA[
+						($P{SUBREPORT_DIR} != null && $P{SUBREPORT_DIR}.trim().length() > 0)
+							? new java.io.File($P{SUBREPORT_DIR}.trim(), "teklif_genel_toplam_subreport.jasper").getPath()
+							: "teklif_genel_toplam_subreport.jasper"
+					]]></subreportExpression>
+				</subreport>
+				<break>
+					<reportElement
+						x="0"
+						y="760"
+						width="555"
+						height="0"
+						key="element-57"/>
+				</break>
+				<subreport  isUsingCache="true">
+					<reportElement
+						x="0"
+						y="0"
+						width="555"
+						height="740"
+						key="subreport"/>
+					<dataSourceExpression><![CDATA[$P{DS_MONTAJ}]]></dataSourceExpression>
+					<subreportExpression  class="java.lang.String"><![CDATA[
+						($P{SUBREPORT_DIR} != null && $P{SUBREPORT_DIR}.trim().length() > 0)
+							? new java.io.File($P{SUBREPORT_DIR}.trim(), "teklif_montaj_subreport.jasper").getPath()
+							: "teklif_montaj_subreport.jasper"
+					]]></subreportExpression>
+				</subreport>
+				<break>
+					<reportElement
+						x="0"
+						y="760"
+						width="555"
+						height="0"
+						key="element-59"/>
+				</break>
+				<staticText>
+					<reportElement
+						x="0"
+						y="0"
+						width="555"
+						height="24"
+						key="staticText"/>
+					<box></box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+				<text><![CDATA[EK SAYFA]]></text>
+				</staticText>
+				<rectangle>
+					<reportElement
+						x="0"
+						y="40"
+						width="555"
+						height="700"
+						key="rectangle"/>
+					<graphicElement stretchType="NoStretch">
+					<pen lineWidth="0.5" lineColor="#E5E7EB"/>
+</graphicElement>
+				</rectangle>
+				<staticText>
+					<reportElement
+						x="0"
+						y="50"
+						width="555"
+						height="18"
+						key="staticText"/>
+					<box></box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="10" isItalic="true"/>
+					</textElement>
+				<text><![CDATA[Bu sayfa kullanıcı tarafından daha sonra doldurulacaktır.]]></text>
+				</staticText>
+			</band>
+		</detail>
+		<columnFooter>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</columnFooter>
+		<pageFooter>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</pageFooter>
+		<summary>
+			<band height="0"  isSplitAllowed="true" >
+			</band>
+		</summary>
+</jasperReport>
