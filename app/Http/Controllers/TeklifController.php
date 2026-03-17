@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
@@ -1555,11 +1556,32 @@ class TeklifController extends Controller
 
     protected function salesUsers()
     {
-        return User::query()
-            ->where('aktif', true)
-            ->orderBy('ad')
-            ->orderBy('soyad')
-            ->get(['id', 'ad', 'soyad', 'mail'])
+        try {
+            $columns = Schema::getColumnListing('users');
+        } catch (\Throwable $e) {
+            return collect();
+        }
+
+        $selectColumns = array_values(array_intersect(['id', 'ad', 'soyad', 'mail'], $columns));
+        if ($selectColumns === []) {
+            return collect();
+        }
+
+        $query = User::query()->getQuery()->select($selectColumns);
+
+        if (in_array('aktif', $columns, true)) {
+            $query->where('aktif', true);
+        }
+
+        if (in_array('ad', $columns, true)) {
+            $query->orderBy('ad');
+        }
+
+        if (in_array('soyad', $columns, true)) {
+            $query->orderBy('soyad');
+        }
+
+        return User::hydrate($query->get()->map(fn ($item) => (array) $item)->all())
             ->map(function (User $user) {
                 $fullName = trim(($user->ad ?? '') . ' ' . ($user->soyad ?? ''));
 
