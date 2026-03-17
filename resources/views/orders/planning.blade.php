@@ -513,6 +513,70 @@
             applyFilter();
         }
 
+        function isVisible(el) {
+            if (!el) return false;
+            var r = el.getClientRects();
+            return r && r.length > 0;
+        }
+
+        function isFocusable(el) {
+            if (!el) return false;
+            if (el.disabled) return false;
+            if (!isVisible(el)) return false;
+            if (el.tagName === 'INPUT') {
+                var type = (el.getAttribute('type') || '').toLowerCase();
+                if (type === 'hidden') return false;
+                if (el.readOnly) return false;
+            }
+            return true;
+        }
+
+        function firstFocusableInCell(td) {
+            if (!td) return null;
+            var list = td.querySelectorAll('input, select, textarea, button, a[href], [tabindex]');
+            for (var i = 0; i < list.length; i++) {
+                if (isFocusable(list[i])) return list[i];
+            }
+            return null;
+        }
+
+        function focusNextEditableCellInRow(from) {
+            var td = from && from.tagName === 'TD' ? from : (from ? from.closest('td') : null);
+            if (!td) return false;
+            var tr = td.closest('tr');
+            if (!tr) return false;
+
+            var tds = Array.prototype.slice.call(tr.querySelectorAll('td'));
+            var idx = tds.indexOf(td);
+            if (idx < 0) return false;
+
+            for (var j = idx + 1; j < tds.length; j++) {
+                var nextTd = tds[j];
+                if (!nextTd) continue;
+                if (nextTd.style && nextTd.style.display === 'none') continue;
+                var target = firstFocusableInCell(nextTd);
+                if (target) {
+                    try { target.focus(); } catch (e) { }
+                    if (target.tagName === 'INPUT') {
+                        try { target.select(); } catch (e) { }
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        var planningTable = document.getElementById('planningTable');
+        if (planningTable) {
+            planningTable.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || !e.target) return;
+                if (e.target.tagName === 'TEXTAREA') return;
+                if (!planningTable.contains(e.target)) return;
+                e.preventDefault();
+                focusNextEditableCellInRow(e.target);
+            });
+        }
+
         if (selectAll && tbody) {
             selectAll.addEventListener('change', function () {
                 var checked = !!selectAll.checked;

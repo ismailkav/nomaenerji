@@ -171,6 +171,28 @@
             white-space: nowrap;
         }
 
+        .amount-currency-header {
+            text-align: right !important;
+        }
+
+        .amount-currency-cell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 3.5ch;
+            align-items: center;
+            gap: 0.35rem;
+            width: 100%;
+        }
+
+        .amount-currency-value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .amount-currency-code {
+            text-align: left;
+            white-space: nowrap;
+        }
+
         .offers-status-pill {
             display: inline-flex;
             align-items: center;
@@ -387,10 +409,10 @@
                             @endif
                             <th>Cari Kod</th>
                             <th>Cari Açıklama</th>
-                            <th>Onay Durum</th>
+                            <th>Yetkili Onayı</th>
                             <th>Onay Tarih</th>
                             <th>Hazırlayan</th>
-                            <th>Toplam Tutar</th>
+                            <th class="amount-currency-header">Toplam Tutar</th>
                             <th style="text-align:right;">İşlem</th>
                         </tr>
                         </thead>
@@ -439,8 +461,10 @@
                                 @endif
                                 <td>{{ $siparis->hazirlayan }}</td>
                                 <td>
-                                    {{ number_format(((float) ($siparis->genel_toplam ?? 0)) / (((float) ($siparis->siparis_kur ?? 1)) > 0 ? (float) $siparis->siparis_kur : 1), 2, ',', '.') }}
-                                    {{ $siparis->siparis_doviz ?? 'TL' }}
+                                    <div class="amount-currency-cell">
+                                        <span class="amount-currency-value">{{ number_format(((float) ($siparis->genel_toplam ?? 0)) / (((float) ($siparis->siparis_kur ?? 1)) > 0 ? (float) $siparis->siparis_kur : 1), 2, ',', '.') }}</span>
+                                        <span class="amount-currency-code">{{ $siparis->siparis_doviz ?? 'TL' }}</span>
+                                    </div>
                                 </td>
                                 <td style="text-align:right;">
                                     <x-edit-icon :href="route(($resource ?? 'orders') . '.edit', $siparis)" />

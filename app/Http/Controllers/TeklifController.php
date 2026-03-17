@@ -19,6 +19,7 @@ use App\Models\MontajProductGroup;
 use App\Models\ProductRecipe;
 use App\Models\Parameter;
 use App\Models\FormDefinition;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -484,7 +485,7 @@ class TeklifController extends Controller
         $teklifler = $query
             ->orderByDesc('tarih')
             ->orderByDesc('id')
-            ->paginate(15)
+            ->paginate(50)
             ->appends($request->query());
 
         $durumlar = $this->durumlar();
@@ -543,6 +544,7 @@ class TeklifController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
         $projectTypes = ProjectType::orderBy('kod')->get();
+        $salesUsers = $this->salesUsers();
 
         $maxTeklifNo = Teklif::query()
             ->where('teklif_no', 'like', $prefix . '%')
@@ -581,6 +583,7 @@ class TeklifController extends Controller
             'tomcatProje'     => $tomcatProje,
             'formDosyaYolu'   => $formDosyaYolu,
             'offerForms'      => $offerForms,
+            'salesUsers'      => $salesUsers,
         ]);
     }
 
@@ -768,6 +771,7 @@ class TeklifController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
         $projectTypes = ProjectType::orderBy('kod')->get();
+        $salesUsers = $this->salesUsers();
 
         $teklif->load(['detaylar.urun', 'islemTuru', 'proje']);
 
@@ -810,6 +814,7 @@ class TeklifController extends Controller
             'tomcatProje'     => $tomcatProje,
             'formDosyaYolu'   => $formDosyaYolu,
             'offerForms'      => $offerForms,
+            'salesUsers'      => $salesUsers,
         ]);
     }
 
@@ -1071,6 +1076,7 @@ class TeklifController extends Controller
                 'onay_tarihi'       => null,
                 'yetkili_personel'  => $teklif->yetkili_personel,
                 'hazirlayan'        => $teklif->hazirlayan,
+                'satis_temsilcisi'  => $teklif->satis_temsilcisi,
                 'islem_turu_id'     => $teklif->islem_turu_id,
                 'proje_id'          => $teklif->proje_id,
                 'siparis_doviz'     => $teklif->teklif_doviz ?? 'TL',
@@ -1525,6 +1531,7 @@ class TeklifController extends Controller
             'onay_tarihi'       => ['nullable', 'date'],
             'yetkili_personel'  => ['nullable', 'string', 'max:150'],
             'hazirlayan'        => ['nullable', 'string', 'max:150'],
+            'satis_temsilcisi'  => ['nullable', 'string', 'max:150'],
             'islem_turu_id'     => ['nullable', 'integer', 'exists:islem_turleri,id'],
             'proje_id'          => ['nullable', 'integer', 'exists:projeler,id'],
             'proje_turu_id'     => ['nullable', 'integer', 'exists:projeturu,id'],
@@ -1544,6 +1551,28 @@ class TeklifController extends Controller
         }
 
         return $validated;
+    }
+
+    protected function salesUsers()
+    {
+        return User::query()
+            ->where('aktif', true)
+            ->orderBy('ad')
+            ->orderBy('soyad')
+            ->get(['id', 'ad', 'soyad', 'mail'])
+            ->map(function (User $user) {
+                $fullName = trim(($user->ad ?? '') . ' ' . ($user->soyad ?? ''));
+
+                return [
+                    'id' => $user->id,
+                    'full_name' => $fullName !== '' ? $fullName : (string) ($user->mail ?? ''),
+                    'mail' => (string) ($user->mail ?? ''),
+                ];
+            })
+            ->filter(function (array $user) {
+                return $user['full_name'] !== '' || $user['mail'] !== '';
+            })
+            ->values();
     }
 
     protected function durumlar(): array

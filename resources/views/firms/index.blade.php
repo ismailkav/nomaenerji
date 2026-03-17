@@ -27,6 +27,29 @@
             box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
         }
 
+        .table-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.75rem;
+        }
+
+        .table-filter-input {
+            width: min(360px, 100%);
+            border-radius: 999px;
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            background: #ffffff;
+            padding: 0.65rem 0.95rem;
+            font-size: 0.9rem;
+            color: #111827;
+            outline: none;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .table-filter-input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+        }
+
         .user-table-modern {
             width: 100%;
             border-collapse: collapse;
@@ -45,6 +68,33 @@
             font-weight: 600;
             color: #374151;
             border-bottom: 1px solid #e5e7eb;
+        }
+
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 2rem !important;
+        }
+
+        .sortable-header::after {
+            content: "↕";
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.78rem;
+            color: #9ca3af;
+        }
+
+        .sortable-header[data-sort-dir="asc"]::after {
+            content: "↑";
+            color: #2563eb;
+        }
+
+        .sortable-header[data-sort-dir="desc"]::after {
+            content: "↓";
+            color: #2563eb;
         }
 
         .user-table-modern tbody tr {
@@ -109,7 +159,21 @@
             border-bottom: none;
         }
 
+        .filter-empty-row td {
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
+            .table-toolbar {
+                justify-content: stretch;
+            }
+
+            .table-filter-input {
+                width: 100%;
+            }
+
             .user-table-modern thead {
                 display: none;
             }
@@ -174,26 +238,33 @@
                     </div>
                 @endif
 
+                <div class="table-toolbar">
+                    <input id="firmTableFilter"
+                           class="table-filter-input"
+                           type="text"
+                           placeholder="Filtrele (kod, açıklama, il, ilçe, telefon...)">
+                </div>
+
                 <div class="user-table-wrapper">
-                    <table class="user-table-modern">
+                    <table class="user-table-modern" id="firmsTable">
                         <thead>
                         <tr>
-                            <th>Cari Kod</th>
-                            <th>Cari Açıklama</th>
-                            <th>Adres 1</th>
-                            <th>Adres 2</th>
-                            <th>İl</th>
-                            <th>İlçe</th>
-                            <th>Ülke</th>
-                            <th>Telefon</th>
-                            <th>Mail</th>
-                            <th>Web Sitesi</th>
+                            <th class="sortable-header" data-sort-index="0">Cari Kod</th>
+                            <th class="sortable-header" data-sort-index="1">Cari Açıklama</th>
+                            <th class="sortable-header" data-sort-index="2">Adres 1</th>
+                            <th class="sortable-header" data-sort-index="3">Adres 2</th>
+                            <th class="sortable-header" data-sort-index="4">İl</th>
+                            <th class="sortable-header" data-sort-index="5">İlçe</th>
+                            <th class="sortable-header" data-sort-index="6">Ülke</th>
+                            <th class="sortable-header" data-sort-index="7">Telefon</th>
+                            <th class="sortable-header" data-sort-index="8">Mail</th>
+                            <th class="sortable-header" data-sort-index="9">Web Sitesi</th>
                             <th style="width: 160px;">İşlemler</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="firmsTableBody">
                         @forelse($firms as $firm)
-                            <tr>
+                            <tr data-firm-row="1">
                                 <td>{{ $firm->carikod }}</td>
                                 <td>{{ $firm->cariaciklama }}</td>
                                 <td>{{ $firm->adres1 }}</td>
@@ -221,7 +292,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr>
+                            <tr id="firmsTableServerEmpty">
                                 <td colspan="11" style="text-align:center;padding:16px;">Kayıtlı firma bulunamadı.</td>
                             </tr>
                         @endforelse
@@ -237,5 +308,127 @@
     </main>
 </div>
 <script src="{{ asset('js/dashboard.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var filterInput = document.getElementById('firmTableFilter');
+        var tableBody = document.getElementById('firmsTableBody');
+        if (!tableBody) return;
+
+        var rows = Array.prototype.slice.call(tableBody.querySelectorAll('tr[data-firm-row="1"]'));
+        var headers = Array.prototype.slice.call(document.querySelectorAll('.sortable-header'));
+        var serverEmptyRow = document.getElementById('firmsTableServerEmpty');
+        var noMatchRow = document.createElement('tr');
+        noMatchRow.className = 'filter-empty-row';
+        noMatchRow.style.display = 'none';
+        noMatchRow.innerHTML = '<td colspan="11">Filtreye uygun firma bulunamadı.</td>';
+        tableBody.appendChild(noMatchRow);
+
+        var currentSortIndex = null;
+        var currentSortDir = 'asc';
+
+        rows.forEach(function (row) {
+            var searchText = Array.prototype.slice.call(row.children)
+                .slice(0, 10)
+                .map(function (cell) { return (cell.textContent || '').trim().toLocaleLowerCase('tr'); })
+                .join(' ');
+            row.dataset.searchText = searchText;
+        });
+
+        function getCellValue(row, index) {
+            var cell = row.children[index];
+            return cell ? (cell.textContent || '').trim() : '';
+        }
+
+        function compareRows(a, b, index, dir) {
+            var aValue = getCellValue(a, index);
+            var bValue = getCellValue(b, index);
+
+            var aNumber = Number(aValue.replace(',', '.'));
+            var bNumber = Number(bValue.replace(',', '.'));
+            var isNumeric = aValue !== '' && bValue !== '' && !Number.isNaN(aNumber) && !Number.isNaN(bNumber);
+
+            var result = isNumeric
+                ? (aNumber - bNumber)
+                : aValue.localeCompare(bValue, 'tr', { sensitivity: 'base', numeric: true });
+
+            return dir === 'asc' ? result : -result;
+        }
+
+        function updateHeaderState() {
+            headers.forEach(function (header) {
+                var headerIndex = Number(header.getAttribute('data-sort-index'));
+                if (headerIndex === currentSortIndex) {
+                    header.setAttribute('data-sort-dir', currentSortDir);
+                } else {
+                    header.removeAttribute('data-sort-dir');
+                }
+            });
+        }
+
+        function renderRows() {
+            var query = filterInput && filterInput.value
+                ? filterInput.value.trim().toLocaleLowerCase('tr')
+                : '';
+
+            var orderedRows = rows.slice();
+            if (currentSortIndex !== null) {
+                orderedRows.sort(function (a, b) {
+                    return compareRows(a, b, currentSortIndex, currentSortDir);
+                });
+            }
+
+            var visibleCount = 0;
+            var fragment = document.createDocumentFragment();
+
+            orderedRows.forEach(function (row) {
+                var matches = !query || (row.dataset.searchText || '').indexOf(query) !== -1;
+                row.style.display = matches ? '' : 'none';
+                if (matches) {
+                    visibleCount += 1;
+                    fragment.appendChild(row);
+                }
+            });
+
+            if (serverEmptyRow) {
+                serverEmptyRow.style.display = rows.length === 0 ? '' : 'none';
+            }
+
+            if (visibleCount === 0 && rows.length > 0) {
+                noMatchRow.style.display = '';
+                fragment.appendChild(noMatchRow);
+            } else {
+                noMatchRow.style.display = 'none';
+            }
+
+            tableBody.innerHTML = '';
+            if (rows.length === 0 && serverEmptyRow) {
+                tableBody.appendChild(serverEmptyRow);
+            } else {
+                tableBody.appendChild(fragment);
+            }
+        }
+
+        headers.forEach(function (header) {
+            header.addEventListener('click', function () {
+                var nextIndex = Number(this.getAttribute('data-sort-index'));
+                if (currentSortIndex === nextIndex) {
+                    currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortIndex = nextIndex;
+                    currentSortDir = 'asc';
+                }
+                updateHeaderState();
+                renderRows();
+            });
+        });
+
+        if (filterInput) {
+            filterInput.addEventListener('input', renderRows);
+        }
+
+        updateHeaderState();
+        renderRows();
+    });
+</script>
 </body>
 </html>

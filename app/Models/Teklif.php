@@ -29,6 +29,7 @@ class Teklif extends Model
         'onay_tarihi',
         'yetkili_personel',
         'hazirlayan',
+        'satis_temsilcisi',
         'islem_turu_id',
         'proje_id',
         'proje_turu_id',

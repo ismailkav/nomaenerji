@@ -20,6 +20,7 @@ use App\Models\FormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\MessageBag;
+use Illuminate\Validation\Rule;
 
 class DefinitionController extends Controller
 {
@@ -819,6 +820,60 @@ class DefinitionController extends Controller
         return view('definitions.projects', compact('projects'));
     }
 
+    public function projectOptions(Request $request)
+    {
+        $query = Project::query()
+            ->where('pasif', false)
+            ->orderBy('kod');
+
+        $search = trim((string) $request->query('q', ''));
+        if ($search !== '') {
+            $query->where('kod', 'like', '%' . $search . '%');
+        }
+
+        $projects = $query->get()
+            ->map(fn (Project $project) => $this->projectOptionPayload($project))
+            ->values();
+
+        return response()->json([
+            'ok' => true,
+            'projects' => $projects,
+        ]);
+    }
+
+    public function storeProjectQuick(Request $request)
+    {
+        $kod = trim((string) $request->input('kod', ''));
+
+        validator(
+            ['kod' => $kod],
+            [
+                'kod' => ['required', 'string', 'max:100', Rule::unique('projeler', 'kod')],
+            ]
+        )->validate();
+
+        $project = Project::create([
+            'kod' => $kod,
+            'pasif' => false,
+            'iskonto1' => 0,
+            'iskonto2' => 0,
+        ]);
+
+        $projects = Project::query()
+            ->where('pasif', false)
+            ->orderBy('kod')
+            ->get()
+            ->map(fn (Project $item) => $this->projectOptionPayload($item))
+            ->values();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Proje kaydedildi.',
+            'project' => $this->projectOptionPayload($project),
+            'projects' => $projects,
+        ], 201);
+    }
+
     public function saveProjects(Request $request)
     {
         $items = $request->input('projects', []);
@@ -865,6 +920,16 @@ class DefinitionController extends Controller
 
         return redirect()->route('definitions.projects')
             ->with('status', 'Projeler gÇ¬ncellendi.');
+    }
+
+    protected function projectOptionPayload(Project $project): array
+    {
+        return [
+            'id' => (int) $project->id,
+            'kod' => (string) $project->kod,
+            'isk1' => (float) ($project->iskonto1 ?? 0),
+            'isk2' => (float) ($project->iskonto2 ?? 0),
+        ];
     }
 
     public function projectTypes(Request $request)

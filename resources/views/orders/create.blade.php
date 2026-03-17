@@ -16,6 +16,7 @@
         $siparisBaslik = $isInvoice
             ? ($pageHeading ?? $invoiceBaslik)
             : ($siparisTuru === 'satis' ? 'Satış Siparişi' : 'Alım Siparişi');
+        $isPurchaseOrderPage = !$isInvoice && $siparisTuru === 'alim';
     @endphp
     <title>{{ isset($siparis) ? ($siparisBaslik . ' Düzenle') : $siparisBaslik }} - NomaEnerji</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -261,6 +262,60 @@
         .offer-summary-table td:first-child {
             padding-right: 1.5rem;
         }
+        .offer-summary {
+            margin-top: 1rem;
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 2rem;
+        }
+        .offer-summary-note {
+            flex: 1 1 420px;
+            max-width: 520px;
+            margin-bottom: 0;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 0.6rem;
+        }
+        .offer-summary-note label {
+            flex: 0 0 70px;
+            margin: 0;
+            display: flex;
+            align-items: flex-start;
+            padding-top: 0.65rem;
+        }
+        .offer-summary-note textarea {
+            flex: 1 1 auto;
+            min-height: 124px;
+            height: 124px;
+            resize: none;
+            border-radius: 0;
+            border: none;
+            background: #f3f4f6;
+            box-shadow: none;
+            padding: 0.65rem 0.8rem;
+        }
+        .offer-summary-totals {
+            margin-left: auto;
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+        .offer-summary-exchange {
+            font-size: 0.8rem;
+            align-self: flex-start;
+        }
+        .order-header-spacer {
+            flex: 1 1 0;
+        }
+        .order-header-fixed-box {
+            width: 520px;
+            flex: 0 0 520px;
+        }
+        .order-header-middle-field {
+            width: 240px;
+            flex: 0 0 240px;
+        }
         .actions {
             display: none;
         }
@@ -373,6 +428,42 @@
             background: #e5e7eb;
             cursor: pointer;
         }
+        .project-modal-toolbar {
+            margin-bottom: 0.75rem;
+        }
+        .project-modal-search {
+            width: 100%;
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            padding: 0.45rem 0.8rem;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .project-modal-create {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            margin-top: 0.9rem;
+            padding-top: 0.9rem;
+            border-top: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+        .project-modal-create .form-group {
+            flex: 1 1 240px;
+        }
+        .project-modal-message {
+            min-height: 1.1rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #2563eb;
+        }
+        .project-modal-message.is-error {
+            color: #dc2626;
+        }
+        .project-modal-table-empty td {
+            text-align: center;
+            color: #6b7280;
+        }
         .authority-list {
             list-style: none;
             padding-left: 0;
@@ -386,7 +477,7 @@
         .authority-list li:hover {
             background: #f3f4f6;
         }
-            .offer-header input,
+        .offer-header input,
         .offer-header select,
         .offer-header textarea {
             border: none !important;
@@ -394,7 +485,120 @@
             box-shadow: none !important;
             outline: none;
         }
-            .offer-header label {\n            color: #2563eb !important;\n        }\n        .offer-header .input-with-button span,\n        .offer-header input,\n        .offer-header select {\n            color: #000000 !important;\n        }\n        .small-btn {\n            color: #000000 !important;\n        }\n    </style>
+        .offer-header label {
+            color: #2563eb !important;
+        }
+        .offer-header .input-with-button span,
+        .offer-header input,
+        .offer-header select {
+            color: #000000 !important;
+        }
+        .small-btn {
+            color: #000000 !important;
+        }
+        .offer-header input:not([type="hidden"]),
+        .offer-header select,
+        .offer-header textarea,
+        .offer-header .input-with-button,
+        .offer-header .form-group > div:not(.input-with-button) {
+            background: #f3f4f6 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0.45rem 0.75rem !important;
+            min-height: 38px;
+            box-shadow: none !important;
+        }
+        .offer-header .input-with-button {
+            min-width: 0;
+            width: 100%;
+            gap: 0.4rem;
+        }
+        .offer-header .offer-header-company-field {
+            background: transparent !important;
+            padding: 0 !important;
+            min-height: 0;
+            width: 520px;
+            flex: 0 0 520px;
+        }
+        .offer-header .input-with-button input:not([type="hidden"]),
+        .offer-header .input-with-button select,
+        .offer-header .input-with-button textarea,
+        #firma_kod_label,
+        #firma_aciklama_label {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            min-height: 0;
+        }
+        #firma_kod_label,
+        #firma_aciklama_label {
+            display: inline-flex;
+            align-items: center;
+            background: #f3f4f6 !important;
+            padding: 0.45rem 0.75rem !important;
+            min-height: 38px;
+            color: #111827;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #firma_kod_label {
+            width: 140px;
+            flex: 0 0 140px;
+        }
+        #firma_aciklama_label {
+            width: 320px;
+            flex: 0 0 320px;
+        }
+        .offer-header .offer-header-company-field .small-btn {
+            background: #ffffff !important;
+        }
+        .offer-header .form-group input.framed-input {
+            background: #ffffff !important;
+            border-radius: 12px !important;
+            border: 1px solid #e5e7eb !important;
+            padding: 0.5rem 0.85rem !important;
+            box-shadow: inset 0 0 0 1px #e5e7eb !important;
+        }
+        @media (max-width: 768px) {
+            .offer-summary {
+                flex-direction: column;
+            }
+            .offer-summary-note {
+                max-width: none;
+            }
+            .offer-summary-note label {
+                flex-basis: 62px;
+            }
+            .order-header-fixed-box {
+                width: 100%;
+                flex-basis: 100%;
+            }
+            .order-header-middle-field {
+                width: 100%;
+                flex-basis: 100%;
+            }
+            .offer-header .offer-header-company-field {
+                width: 100%;
+                flex-basis: 100%;
+            }
+            #firma_kod_label {
+                width: 110px;
+                flex-basis: 110px;
+            }
+            #firma_aciklama_label {
+                width: 220px;
+                flex-basis: 220px;
+            }
+            .offer-summary-totals {
+                margin-left: 0;
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="dashboard-container">
@@ -547,7 +751,7 @@
     @if(($resource ?? 'orders') !== 'invoices')
     <div class="form-group">
         <label for="teklif_no" style="color:#9ca3af;">Teklif No:</label>
-        <div class="input-with-button">
+        <div class="input-with-button order-header-middle-field">
             <input id="teklif_no" name="teklif_no" type="text" style="text-align:left;" value="{{ old('teklif_no', isset($siparis) ? ($siparis->teklif_no ?? '') : '') }}" readonly>
             <button type="button" class="small-btn" id="btnTeklifOpen" title="Teklifi Aç">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -562,7 +766,7 @@
             <div class="offer-header-row">
                 <div class="form-group">
                     <label for="carikod" style="color:#9ca3af;">Firma:</label>
-                    <div class="input-with-button">
+                    <div class="input-with-button offer-header-company-field">
                         <span id="firma_kod_label">{{ old('carikod', isset($siparis) ? $siparis->carikod : '') }}</span>
                         <span>/</span>
                         <span id="firma_aciklama_label">{{ old('cariaciklama', isset($siparis) ? $siparis->cariaciklama : '') }}</span>
@@ -574,7 +778,7 @@
 
                 <div class="form-group">
                     <label for="islem_turu_adi" style="color:#9ca3af;">İşlem Türü:</label>
-                    <div class="input-with-button">
+                    <div class="input-with-button order-header-middle-field">
                         <input id="islem_turu_adi" type="text"
                                value="{{ old('islem_turu_adi', isset($siparis) && $siparis->islemTuru ? $siparis->islemTuru->ad : '') }}"
                                style="border:none;background:transparent;outline:none;padding:0;" readonly>
@@ -595,7 +799,7 @@
             <div class="offer-header-row">
                 <div class="form-group">
                     <label style="color:#9ca3af;">Adres:</label>
-                    <div>
+                    <div class="order-header-fixed-box">
                         <div id="firma_adres_satir1">{{ isset($selectedFirm) ? $selectedFirm->adres1 : '' }}</div>
                         <div id="firma_adres_satir2">{{ isset($selectedFirm) ? $selectedFirm->adres2 : '' }}</div>
                     </div>
@@ -603,7 +807,7 @@
 
                 <div class="form-group">
                     <label for="proje_kod" style="color:#9ca3af;">Proje:</label>
-                    <div class="input-with-button">
+                    <div class="input-with-button order-header-middle-field">
                         <input id="proje_kod" type="text"
                                value="{{ old('proje_kod', isset($siparis) && $siparis->proje ? $siparis->proje->kod : '') }}"
                                style="border:none;background:transparent;outline:none;padding:0;" readonly>
@@ -624,7 +828,7 @@
             <div class="offer-header-row">
                 <div class="form-group">
                     <label style="color:#9ca3af;">İl / İlçe:</label>
-                    <div id="firma_il_ilce">
+                    <div id="firma_il_ilce" class="order-header-fixed-box">
                         {{ isset($selectedFirm)
                             ? ($selectedFirm->il . ($selectedFirm->ilce ? ' / '.$selectedFirm->ilce : ''))
                             : '' }}
@@ -633,9 +837,34 @@
 
                 <div class="form-group">
                     <label for="yetkili_personel" style="color:#9ca3af;">Yetkili Personel:</label>
-                    <div class="input-with-button">
+                    <div class="input-with-button order-header-middle-field">
                         <input id="yetkili_personel" name="yetkili_personel" type="text" value="{{ old('yetkili_personel', isset($siparis) ? $siparis->yetkili_personel : '') }}" style="border:none;background:transparent;outline:none;padding:0;">
                         <button type="button" class="small-btn" id="btnYetkiliSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/><line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+                    </div>
+                </div>
+            </div>
+            <div class="offer-header-row" id="salesRepRow">
+                @if($isPurchaseOrderPage)
+                    <div class="form-group">
+                        <label for="tedarikci_siparis_no" style="color:#9ca3af;">Tedarikçi Sipariş No:</label>
+                        <div class="order-header-fixed-box">
+                            <input id="tedarikci_siparis_no" name="tedarikci_siparis_no" type="text" value="{{ old('tedarikci_siparis_no', isset($siparis) ? ($siparis->tedarikci_siparis_no ?? '') : '') }}" style="border:none;background:transparent;outline:none;padding:0;width:100%;">
+                        </div>
+                    </div>
+                @else
+                    <div class="form-group order-header-spacer" aria-hidden="true"></div>
+                @endif
+
+                <div class="form-group">
+                    <label for="satis_temsilcisi" style="color:#9ca3af;">Satış Temsilcisi:</label>
+                    <div class="input-with-button order-header-middle-field">
+                        <input id="satis_temsilcisi" name="satis_temsilcisi" type="text" value="{{ old('satis_temsilcisi', isset($siparis) ? $siparis->satis_temsilcisi : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
+                        <button type="button" class="small-btn" id="btnSalesRepSearch">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/>
+                                <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -748,13 +977,19 @@
                 <label for="hazirlayan" style="color:#9ca3af;">Hazırlayan:</label>
                 <input id="hazirlayan" name="hazirlayan" type="text" value="{{ old('hazirlayan', isset($siparis) ? $siparis->hazirlayan : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
             </div>
+            @if($isPurchaseOrderPage)
+                <div class="form-group" id="siparisKanaliGroup">
+                    <label for="siparis_kanali" style="color:#9ca3af;">Sipariş Kanalı:</label>
+                    @php($selectedSiparisKanali = old('siparis_kanali', isset($siparis) ? ($siparis->siparis_kanali ?? '') : ''))
+                    <select id="siparis_kanali" name="siparis_kanali">
+                        <option value="" {{ $selectedSiparisKanali === '' ? 'selected' : '' }}>Seçiniz</option>
+                        <option value="ZK02" {{ $selectedSiparisKanali === 'ZK02' ? 'selected' : '' }}>ZK02</option>
+                        <option value="ZK03" {{ $selectedSiparisKanali === 'ZK03' ? 'selected' : '' }}>ZK03</option>
+                    </select>
+                </div>
+            @endif
         </div>
     </div>
-
-    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="aciklama" style="color:#9ca3af;">Açıklama</label>
-                        <textarea id="aciklama" name="aciklama">{{ old('aciklama', isset($siparis) ? ($siparis->aciklama ?? '') : '') }}</textarea>
-                    </div>
 
                     <div class="lines-header">
                         <div class="lines-header-left">
@@ -802,65 +1037,72 @@
                         </tbody>
                     </table>
                 
-                    <div class="offer-summary" style="margin-top: 1rem; display:flex; justify-content:flex-end; gap:2rem; align-items:flex-start;">
-                        <table class="offer-summary-table" style="font-size:0.8rem;">
-                            <tr>
-                                <td>Toplam:</td>
-                                <td style="text-align:right;"><span id="sumToplam">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td>İskonto Tutar:</td>
-                                <td style="text-align:right;"><span id="sumIskonto">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td>KDV:</td>
-                                <td style="text-align:right;"><span id="sumKdv">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Genel Toplam:</strong></td>
-                                <td style="text-align:right;"><strong id="sumGenel">0,00</strong></td>
-                            </tr>
-                        </table>
-                    
-                        <div class="offer-summary-exchange" style="font-size:0.8rem;">
-                            <div style="margin-bottom:0.35rem;">
-                                <label for="offer_currency" style="color:#9ca3af;margin-right:0.5rem;">Sipariş Döviz:</label>
-                                <select id="offer_currency" name="siparis_doviz" style="min-width:80px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
-                                    @php($offerDoviz = old('siparis_doviz', $siparis->siparis_doviz ?? 'TL'))
-                                    <option value="TL" @selected($offerDoviz === 'TL')>TL</option>
-                                    <option value="USD" @selected($offerDoviz === 'USD')>USD</option>
-                                    <option value="EUR" @selected($offerDoviz === 'EUR')>EUR</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="offer_rate" style="color:#9ca3af;margin-right:0.5rem;">Sipariş Kur:</label>
-                                <input id="offer_rate" name="siparis_kur" value="{{ old('siparis_kur', $siparis->siparis_kur ?? 1) }}" type="number" step="0.0001" style="width:100px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
-                                <button type="button" class="small-btn rate-search-btn" data-rate-target="header" title="Kur Seç">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="offer-summary">
+                        <div class="form-group offer-summary-note">
+                            <label for="aciklama" style="color:#9ca3af;">Açıklama</label>
+                            <textarea id="aciklama" name="aciklama">{{ old('aciklama', isset($siparis) ? ($siparis->aciklama ?? '') : '') }}</textarea>
                         </div>
-                    
-                        <table class="offer-summary-table" style="font-size:0.8rem;">
-                            <tr>
-                                <td>Toplam (Döviz):</td>
-                                <td style="text-align:right;"><span id="sumToplamFx">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td>İskonto Tutar (Döviz):</td>
-                                <td style="text-align:right;"><span id="sumIskontoFx">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td>KDV (Döviz):</td>
-                                <td style="text-align:right;"><span id="sumKdvFx">0,00</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Genel Toplam (Döviz):</strong></td>
-                                <td style="text-align:right;"><strong id="sumGenelFx">0,00</strong></td>
-                            </tr>
-                        </table>
+
+                        <div class="offer-summary-totals">
+                            <table class="offer-summary-table" style="font-size:0.8rem;">
+                                <tr>
+                                    <td>Toplam:</td>
+                                    <td style="text-align:right;"><span id="sumToplam">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td>İskonto Tutar:</td>
+                                    <td style="text-align:right;"><span id="sumIskonto">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td>KDV:</td>
+                                    <td style="text-align:right;"><span id="sumKdv">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Genel Toplam:</strong></td>
+                                    <td style="text-align:right;"><strong id="sumGenel">0,00</strong></td>
+                                </tr>
+                            </table>
+
+                            <div class="offer-summary-exchange">
+                                <div style="margin-bottom:0.35rem;">
+                                    <label for="offer_currency" style="color:#9ca3af;margin-right:0.5rem;">Sipariş Döviz:</label>
+                                    <select id="offer_currency" name="siparis_doviz" style="min-width:80px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
+                                        @php($offerDoviz = old('siparis_doviz', $siparis->siparis_doviz ?? 'TL'))
+                                        <option value="TL" @selected($offerDoviz === 'TL')>TL</option>
+                                        <option value="USD" @selected($offerDoviz === 'USD')>USD</option>
+                                        <option value="EUR" @selected($offerDoviz === 'EUR')>EUR</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="offer_rate" style="color:#9ca3af;margin-right:0.5rem;">Sipariş Kur:</label>
+                                    <input id="offer_rate" name="siparis_kur" value="{{ old('siparis_kur', $siparis->siparis_kur ?? 1) }}" type="number" step="0.0001" style="width:100px;border-radius:999px;border:1px solid #e5e7eb;padding:0.25rem 0.6rem;font-size:0.8rem;outline:none;">
+                                    <button type="button" class="small-btn rate-search-btn" data-rate-target="header" title="Kur Seç">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table class="offer-summary-table" style="font-size:0.8rem;">
+                                <tr>
+                                    <td>Toplam (Döviz):</td>
+                                    <td style="text-align:right;"><span id="sumToplamFx">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td>İskonto Tutar (Döviz):</td>
+                                    <td style="text-align:right;"><span id="sumIskontoFx">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td>KDV (Döviz):</td>
+                                    <td style="text-align:right;"><span id="sumKdvFx">0,00</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Genel Toplam (Döviz):</strong></td>
+                                    <td style="text-align:right;"><strong id="sumGenelFx">0,00</strong></td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
                     
 
@@ -950,6 +1192,46 @@
             </div>
         </div>
     </div>
+    <div id="salesRepModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Kullanıcı Seç</div>
+                <input id="salesRepModalSearch" type="text" placeholder="Ara (Ad Soyad / Mail)"
+                       style="margin-left:auto;min-width:260px;border-radius:999px;border:1px solid #e5e7eb;padding:0.35rem 0.75rem;font-size:0.9rem;outline:none;">
+                <button type="button" class="small-btn" data-modal-close="salesRepModal">X</button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table">
+                    <thead>
+                    <tr>
+                        <th>Ad Soyad</th>
+                        <th>Mail</th>
+                    </tr>
+                    </thead>
+                    <tbody id="salesRepModalTableBody">
+                    @forelse(($salesUsers ?? []) as $salesUser)
+                        <tr class="sales-rep-row"
+                            data-name="{{ $salesUser['full_name'] }}"
+                            data-mail="{{ $salesUser['mail'] }}">
+                            <td>{{ $salesUser['full_name'] }}</td>
+                            <td>{{ $salesUser['mail'] }}</td>
+                        </tr>
+                    @empty
+                        <tr id="salesRepModalEmptyRow">
+                            <td colspan="2">Aktif kullanıcı bulunamadı.</td>
+                        </tr>
+                    @endforelse
+                    <tr id="salesRepModalNoMatchRow" style="display:none;">
+                        <td colspan="2">Uygun kullanıcı bulunamadı.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-cancel" data-modal-close="salesRepModal">Kapat</button>
+            </div>
+        </div>
+    </div>
     <!-- Ürün seçimi modal -->
     <div id="islemTuruModal" class="modal-overlay">
         <div class="modal">
@@ -986,13 +1268,16 @@
                 <button type="button" class="small-btn" data-modal-close="projeModal">X</button>
             </div>
             <div class="modal-body">
+                <div class="project-modal-toolbar">
+                    <input id="projectModalSearch" class="project-modal-search" type="text" placeholder="Proje kodu ile filtrele">
+                </div>
                 <table class="modal-table">
                     <thead>
                     <tr>
                         <th>Kod</th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="projectModalTableBody">
                     @foreach($projects as $project)
                         <tr class="project-row"
                             data-id="{{ $project->id }}"
@@ -1004,6 +1289,14 @@
                     @endforeach
                     </tbody>
                 </table>
+                <div class="project-modal-create">
+                    <div class="form-group">
+                        <label for="projectModalNewCode">Yeni Proje Kodu</label>
+                        <input id="projectModalNewCode" type="text" placeholder="Yeni proje kodu">
+                    </div>
+                    <button type="button" class="btn btn-save" id="projectModalCreateButton">Kaydet</button>
+                </div>
+                <div id="projectModalMessage" class="project-modal-message"></div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-cancel" data-modal-close="projeModal">Kapat</button>
@@ -2592,9 +2885,11 @@
         var firmaAdres2 = document.getElementById('firma_adres_satir2');
         var firmaIlIlce = document.getElementById('firma_il_ilce');
         var yetkiliInput = document.getElementById('yetkili_personel');
+        var salesRepInput = document.getElementById('satis_temsilcisi');
         var teklifNoInput = document.getElementById('teklif_no');
         var btnCariSearch = document.getElementById('btnCariSearch');
         var btnYetkiliSearch = document.getElementById('btnYetkiliSearch');
+        var btnSalesRepSearch = document.getElementById('btnSalesRepSearch');
         var btnTeklifOpen = document.getElementById('btnTeklifOpen');
 
         if (isInvoice) {
@@ -2606,9 +2901,15 @@
             }
 
             hideFormGroupById('yetkili_personel');
+            hideFormGroupById('satis_temsilcisi');
             hideFormGroupById('islem_turu_adi');
             hideFormGroupById('proje_kod');
             hideFormGroupById('gecerlilik_tarihi');
+
+            var salesRepRow = document.getElementById('salesRepRow');
+            if (salesRepRow) {
+                salesRepRow.style.display = 'none';
+            }
 
             var linesHeader = document.querySelector('.lines-header');
             if (linesHeader) {
@@ -2633,17 +2934,30 @@
         var authorityList = document.getElementById('authorityList');
         var authorityNewInput = document.getElementById('authorityNewInput');
         var authorityUseButton = document.getElementById('authorityUseButton');
+        var salesRepModal = document.getElementById('salesRepModal');
+        var salesRepModalSearch = document.getElementById('salesRepModalSearch');
+        var salesRepModalNoMatchRow = document.getElementById('salesRepModalNoMatchRow');
         var islemTuruModal = document.getElementById('islemTuruModal');
         var projeModal = document.getElementById('projeModal');
         var depoModal = document.getElementById('depoModal');
         var islemTuruIdInput = document.getElementById('islem_turu_id');
         var islemTuruAdiInput = document.getElementById('islem_turu_adi');
-        var projeIdInput = document.getElementById('proje_id');
-        var projeKodInput = document.getElementById('proje_kod');
+        var projeIdInputs = document.querySelectorAll('[id="proje_id"]');
+        var projeKodInputs = document.querySelectorAll('[id="proje_kod"]');
+        var projeIdInput = projeIdInputs.length ? projeIdInputs[0] : null;
+        var projeKodInput = projeKodInputs.length ? projeKodInputs[0] : null;
         var depoIdInput = document.getElementById('depo_id');
         var depoKodInput = document.getElementById('depo_kod');
         var btnIslemTuruSearch = document.getElementById('btnIslemTuruSearch');
-        var btnProjeSearch = document.getElementById('btnProjeSearch');
+        var btnProjeSearchButtons = document.querySelectorAll('[id="btnProjeSearch"]');
+        var projectModalSearchInput = document.getElementById('projectModalSearch');
+        var projectModalTableBody = document.getElementById('projectModalTableBody');
+        var projectModalNewCode = document.getElementById('projectModalNewCode');
+        var projectModalCreateButton = document.getElementById('projectModalCreateButton');
+        var projectModalMessage = document.getElementById('projectModalMessage');
+        var projectOptionsUrl = @json(route('definitions.projects.list'));
+        var projectQuickStoreUrl = @json(route('definitions.projects.quick-store'));
+        var projectOptions = [];
         var btnDepoSearch = document.getElementById('btnDepoSearch');
         var productModal = document.getElementById('productModal');
         var planningModal = document.getElementById('planningModal');
@@ -2653,6 +2967,7 @@
         var orderTransferConfirm = document.getElementById('orderTransferConfirm');
         var orderTransferModalTitle = document.getElementById('orderTransferModalTitle');
         var currentProductRow = null;
+        var currentProductCell = null;
         var linesBody = document.getElementById('offerLinesBody');
         var planningDurumHidden = document.getElementById('planlama_durum');
         var planningMiktarHidden = document.getElementById('planlanan_miktar');
@@ -2670,7 +2985,7 @@
         function applyHeaderProjectToEmptyLines() {
             if (!isPurchaseOrder) return;
             if (!linesBody) return;
-            var kod = (projeKodInput && projeKodInput.value ? projeKodInput.value : '').toString().trim();
+            var kod = getSelectedProjectKod();
             if (!kod) return;
 
             Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (tr) {
@@ -2690,25 +3005,28 @@
         }
 
         function syncProjectDiscountsFromHeader() {
-            var id = (projeIdInput && projeIdInput.value ? projeIdInput.value : '').toString().trim();
+            var id = getSelectedProjectId();
             if (!id) {
                 currentProjectDiscounts = { isk1: 0, isk2: 0 };
                 return;
             }
 
-            var found = false;
-            document.querySelectorAll('.project-row').forEach(function (row) {
+            var found = null;
+            projectOptions.forEach(function (project) {
                 if (found) return;
-                if (String(row.dataset.id || '') !== String(id)) return;
-                var isk1 = parseFloat(row.dataset.isk1 || '0') || 0;
-                var isk2 = parseFloat(row.dataset.isk2 || '0') || 0;
-                currentProjectDiscounts = { isk1: isk1, isk2: isk2 };
-                found = true;
+                if (String(project.id || '') !== String(id)) return;
+                found = project;
             });
 
             if (!found) {
                 currentProjectDiscounts = { isk1: 0, isk2: 0 };
+                return;
             }
+
+            currentProjectDiscounts = {
+                isk1: parseFloat(found.isk1 || '0') || 0,
+                isk2: parseFloat(found.isk2 || '0') || 0
+            };
         }
 
         function tryApplyPurchasePriceFromPriceList(rowEl, urunId, stokKod) {
@@ -2946,6 +3264,29 @@
             }
         }
 
+        function filterSalesRepRows() {
+            var query = salesRepModalSearch && salesRepModalSearch.value
+                ? String(salesRepModalSearch.value).trim().toLocaleLowerCase('tr')
+                : '';
+            var visibleCount = 0;
+            var totalRows = 0;
+
+            document.querySelectorAll('.sales-rep-row').forEach(function (row) {
+                totalRows += 1;
+                var name = String(row.getAttribute('data-name') || '').toLocaleLowerCase('tr');
+                var mail = String(row.getAttribute('data-mail') || '').toLocaleLowerCase('tr');
+                var matches = !query || name.indexOf(query) !== -1 || mail.indexOf(query) !== -1;
+                row.style.display = matches ? '' : 'none';
+                if (matches) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (salesRepModalNoMatchRow) {
+                salesRepModalNoMatchRow.style.display = totalRows > 0 && visibleCount === 0 ? '' : 'none';
+            }
+        }
+
         var currentInvoiceId = @json(isset($siparis) ? ($siparis->id ?? null) : null);
         var deleteInvoiceLineUrlTemplate = @json(isset($siparis) ? route('invoices.lines.destroy', ['fatura' => $siparis->id, 'detay' => '__DETAY__']) : null);
         var invoiceLinksUrlTemplate = @json(isset($siparis) ? route('invoices.lines.links', ['fatura' => $siparis->id, 'detay' => '__DETAY__']) : null);
@@ -2953,6 +3294,230 @@
         function getCsrfToken() {
             var meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? (meta.getAttribute('content') || '') : '';
+        }
+
+        function normalizeProjectOption(item) {
+            return {
+                id: item && item.id != null ? String(item.id) : '',
+                kod: item && item.kod != null ? String(item.kod) : '',
+                isk1: parseFloat(item && item.isk1 != null ? item.isk1 : '0') || 0,
+                isk2: parseFloat(item && item.isk2 != null ? item.isk2 : '0') || 0
+            };
+        }
+
+        function readProjectOptionsFromDom() {
+            if (!projectModalTableBody) return [];
+
+            return Array.prototype.map.call(projectModalTableBody.querySelectorAll('.project-row'), function (row) {
+                return normalizeProjectOption({
+                    id: row.dataset.id || '',
+                    kod: row.dataset.kod || '',
+                    isk1: row.dataset.isk1 || '0',
+                    isk2: row.dataset.isk2 || '0'
+                });
+            });
+        }
+
+        function getSelectedProjectId() {
+            return projeIdInput && projeIdInput.value ? String(projeIdInput.value).trim() : '';
+        }
+
+        function getSelectedProjectKod() {
+            return projeKodInput && projeKodInput.value ? String(projeKodInput.value).trim() : '';
+        }
+
+        function setProjectModalMessage(message, isError) {
+            if (!projectModalMessage) return;
+            projectModalMessage.textContent = message || '';
+            projectModalMessage.classList.toggle('is-error', !!isError);
+        }
+
+        function renderProjectOptions(preferredProjectId) {
+            if (!projectModalTableBody) return;
+
+            var query = projectModalSearchInput && projectModalSearchInput.value
+                ? String(projectModalSearchInput.value).trim().toLowerCase()
+                : '';
+            var selectedId = preferredProjectId != null && preferredProjectId !== ''
+                ? String(preferredProjectId)
+                : getSelectedProjectId();
+
+            projectModalTableBody.innerHTML = '';
+
+            var visibleCount = 0;
+            projectOptions.forEach(function (project) {
+                var kod = (project.kod || '').toLowerCase();
+                if (query && kod.indexOf(query) === -1) {
+                    return;
+                }
+
+                visibleCount += 1;
+
+                var tr = document.createElement('tr');
+                tr.className = 'project-row';
+                tr.dataset.id = project.id;
+                tr.dataset.kod = project.kod;
+                tr.dataset.isk1 = String(project.isk1 || 0);
+                tr.dataset.isk2 = String(project.isk2 || 0);
+                if (selectedId && selectedId === String(project.id)) {
+                    tr.style.background = '#dbeafe';
+                }
+
+                var td = document.createElement('td');
+                td.textContent = project.kod;
+                tr.appendChild(td);
+                projectModalTableBody.appendChild(tr);
+            });
+
+            if (visibleCount === 0) {
+                var emptyRow = document.createElement('tr');
+                emptyRow.className = 'project-modal-table-empty';
+
+                var emptyCell = document.createElement('td');
+                emptyCell.colSpan = 1;
+                emptyCell.textContent = 'Uygun proje bulunamadi.';
+
+                emptyRow.appendChild(emptyCell);
+                projectModalTableBody.appendChild(emptyRow);
+            }
+        }
+
+        function replaceProjectOptions(items) {
+            projectOptions = Array.isArray(items)
+                ? items.map(function (item) { return normalizeProjectOption(item); })
+                : [];
+            projectOptions.sort(function (a, b) {
+                return String(a.kod || '').localeCompare(String(b.kod || ''), 'tr');
+            });
+        }
+
+        function refreshProjectOptions(selectedProjectId) {
+            if (!projectOptionsUrl) {
+                renderProjectOptions(selectedProjectId);
+                return Promise.resolve();
+            }
+
+            return fetch(projectOptionsUrl, {
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Proje listesi alinamadi.');
+                    }
+
+                    return response.json();
+                })
+                .then(function (payload) {
+                    replaceProjectOptions(payload && payload.projects ? payload.projects : []);
+                    renderProjectOptions(selectedProjectId);
+                    syncProjectDiscountsFromHeader();
+                });
+        }
+
+        function setSelectedProject(project, shouldCloseModal) {
+            var selected = normalizeProjectOption(project || {});
+
+            Array.prototype.forEach.call(projeIdInputs, function (input) {
+                input.value = selected.id;
+            });
+
+            Array.prototype.forEach.call(projeKodInputs, function (input) {
+                input.value = selected.kod;
+            });
+
+            currentProjectDiscounts = {
+                isk1: selected.isk1,
+                isk2: selected.isk2
+            };
+
+            renderProjectOptions(selected.id);
+            applyHeaderProjectToEmptyLines();
+
+            if (shouldCloseModal !== false) {
+                closeModal(projeModal);
+            }
+        }
+
+        function saveProjectQuick() {
+            var kod = projectModalNewCode && projectModalNewCode.value
+                ? String(projectModalNewCode.value).trim()
+                : '';
+
+            if (!kod) {
+                setProjectModalMessage('Proje kodu giriniz.', true);
+                if (projectModalNewCode) projectModalNewCode.focus();
+                return;
+            }
+
+            if (!projectQuickStoreUrl) {
+                setProjectModalMessage('Proje kayit adresi tanimli degil.', true);
+                return;
+            }
+
+            setProjectModalMessage('', false);
+
+            if (projectModalCreateButton) {
+                projectModalCreateButton.disabled = true;
+                projectModalCreateButton.dataset.originalText = projectModalCreateButton.dataset.originalText || projectModalCreateButton.textContent;
+                projectModalCreateButton.textContent = 'Kaydediliyor...';
+            }
+
+            fetch(projectQuickStoreUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken()
+                },
+                body: JSON.stringify({ kod: kod })
+            })
+                .then(function (response) {
+                    return response.json()
+                        .catch(function () { return {}; })
+                        .then(function (payload) {
+                            if (!response.ok) {
+                                var message = payload && payload.message ? payload.message : 'Proje kaydedilemedi.';
+                                if (payload && payload.errors && payload.errors.kod && payload.errors.kod.length) {
+                                    message = payload.errors.kod[0];
+                                }
+                                throw new Error(message);
+                            }
+
+                            return payload;
+                        });
+                })
+                .then(function (payload) {
+                    var selectedProject = payload && payload.project ? payload.project : null;
+
+                    if (payload && payload.projects) {
+                        replaceProjectOptions(payload.projects);
+                    } else if (selectedProject) {
+                        replaceProjectOptions(projectOptions.concat([selectedProject]));
+                    }
+
+                    if (projectModalSearchInput && selectedProject && selectedProject.kod != null) {
+                        projectModalSearchInput.value = String(selectedProject.kod);
+                    }
+
+                    if (projectModalNewCode) {
+                        projectModalNewCode.value = '';
+                    }
+
+                    renderProjectOptions(selectedProject && selectedProject.id ? selectedProject.id : '');
+
+                    if (selectedProject) {
+                        setSelectedProject(selectedProject, true);
+                    }
+                })
+                .catch(function (error) {
+                    setProjectModalMessage(error && error.message ? error.message : 'Proje kaydedilemedi.', true);
+                })
+                .finally(function () {
+                    if (projectModalCreateButton) {
+                        projectModalCreateButton.disabled = false;
+                        projectModalCreateButton.textContent = projectModalCreateButton.dataset.originalText || 'Kaydet';
+                    }
+                });
         }
 
         if (linesBody) {
@@ -3310,11 +3875,47 @@
             });
         }
 
-        // Proje seçimi
-        if (btnProjeSearch && projeModal) {
-            btnProjeSearch.addEventListener('click', function () {
+        // Proje secimi
+        replaceProjectOptions(readProjectOptionsFromDom());
+        renderProjectOptions();
+        syncProjectDiscountsFromHeader();
+        applyHeaderProjectToEmptyLines();
+
+        Array.prototype.forEach.call(btnProjeSearchButtons, function (button) {
+            button.addEventListener('click', function () {
+                setProjectModalMessage('', false);
+                renderProjectOptions();
                 openModal(projeModal);
+                if (projectModalSearchInput) {
+                    projectModalSearchInput.focus();
+                    projectModalSearchInput.select();
+                }
+                refreshProjectOptions().catch(function (error) {
+                    setProjectModalMessage(error && error.message ? error.message : 'Proje listesi alinamadi.', true);
+                });
             });
+        });
+
+        if (projectModalSearchInput && !projectModalSearchInput.dataset.bound) {
+            projectModalSearchInput.dataset.bound = '1';
+            projectModalSearchInput.addEventListener('input', function () {
+                renderProjectOptions();
+            });
+        }
+
+        if (projectModalNewCode && !projectModalNewCode.dataset.bound) {
+            projectModalNewCode.dataset.bound = '1';
+            projectModalNewCode.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveProjectQuick();
+                }
+            });
+        }
+
+        if (projectModalCreateButton && !projectModalCreateButton.dataset.bound) {
+            projectModalCreateButton.dataset.bound = '1';
+            projectModalCreateButton.addEventListener('click', saveProjectQuick);
         }
 
         if (projeModal) {
@@ -3323,25 +3924,21 @@
                     closeModal(projeModal);
                 }
             });
+        }
 
-            document.querySelectorAll('.project-row').forEach(function (row) {
-                row.addEventListener('click', function () {
-                    var id = this.dataset.id || '';
-                    var kod = this.dataset.kod || '';
-                    var isk1 = parseFloat(this.dataset.isk1 || '0') || 0;
-                    var isk2 = parseFloat(this.dataset.isk2 || '0') || 0;
+        if (projectModalTableBody && !projectModalTableBody.dataset.bound) {
+            projectModalTableBody.dataset.bound = '1';
+            projectModalTableBody.addEventListener('click', function (e) {
+                var row = e.target && e.target.closest ? e.target.closest('.project-row') : null;
+                if (!row) return;
 
-                    if (projeIdInput) projeIdInput.value = id;
-                    if (projeKodInput) projeKodInput.value = kod;
-                    currentProjectDiscounts = { isk1: isk1, isk2: isk2 };
-                    applyHeaderProjectToEmptyLines();
-
-                    closeModal(projeModal);
-                });
+                setSelectedProject({
+                    id: row.dataset.id || '',
+                    kod: row.dataset.kod || '',
+                    isk1: row.dataset.isk1 || '0',
+                    isk2: row.dataset.isk2 || '0'
+                }, true);
             });
-
-            syncProjectDiscountsFromHeader();
-            applyHeaderProjectToEmptyLines();
         }
 
         // ï¿½rï¿½n seï¿½imi - stok kodu veya aï¿½ï¿½klamaya ï¿½ift tï¿½k
@@ -3369,6 +3966,7 @@
                     return;
                 }
 
+                currentProductCell = cell;
                 currentProductRow = cell.parentElement;
                 if (currentProductRow) {
                     openModal(productModal);
@@ -3456,6 +4054,12 @@
                     });
 
                     closeModal(productModal);
+                    if (currentProductCell) {
+                        setTimeout(function () {
+                            focusNextEditableCellInRow(currentProductCell);
+                            currentProductCell = null;
+                        }, 0);
+                    }
                 });
             });
         }
@@ -3507,13 +4111,132 @@
             });
         }
 
-        // Enter ile formun kazara gönderilmesini engelle
+        document.querySelectorAll('.sales-rep-row').forEach(function (row) {
+            row.addEventListener('click', function () {
+                if (salesRepInput) {
+                    salesRepInput.value = String(this.getAttribute('data-name') || '').trim();
+                }
+                closeModal(salesRepModal);
+            });
+        });
+
+        if (btnSalesRepSearch && salesRepModal) {
+            btnSalesRepSearch.addEventListener('click', function () {
+                if (salesRepModalSearch) {
+                    salesRepModalSearch.value = '';
+                }
+                filterSalesRepRows();
+                openModal(salesRepModal);
+                if (salesRepModalSearch) {
+                    salesRepModalSearch.focus();
+                }
+            });
+        }
+
+        if (salesRepModalSearch && !salesRepModalSearch.dataset.bound) {
+            salesRepModalSearch.dataset.bound = '1';
+            salesRepModalSearch.addEventListener('input', filterSalesRepRows);
+        }
+
+        if (salesRepModal) {
+            salesRepModal.addEventListener('click', function (e) {
+                if (e.target === salesRepModal) {
+                    closeModal(salesRepModal);
+                }
+            });
+        }
+
+        function isVisible(el) {
+            if (!el) return false;
+            if (el.offsetParent === null && el !== document.activeElement) {
+                // offsetParent null can also happen for fixed elements; fallback to rects
+                var r = el.getClientRects();
+                return r && r.length > 0;
+            }
+            return true;
+        }
+
+        function isFocusable(el) {
+            if (!el) return false;
+            if (el.disabled) return false;
+            if (el.getAttribute && el.getAttribute('aria-disabled') === 'true') return false;
+            if (!isVisible(el)) return false;
+            if (el.tagName === 'INPUT') {
+                var type = (el.getAttribute('type') || '').toLowerCase();
+                if (type === 'hidden') return false;
+                if (el.readOnly) return false;
+            }
+            return true;
+        }
+
+        function firstFocusableInCell(td) {
+            if (!td) return null;
+            var list = td.querySelectorAll('input, select, textarea, button, a[href], [tabindex]');
+            for (var i = 0; i < list.length; i++) {
+                var el = list[i];
+                if (el.tagName === 'TEXTAREA') {
+                    // textarea enter newline davranışı için ayrı; yine de focuslanabilir
+                    if (isFocusable(el)) return el;
+                } else if (isFocusable(el)) {
+                    return el;
+                }
+            }
+            return null;
+        }
+
+        function focusNextEditableCellInRow(from) {
+            var td = from && from.tagName === 'TD' ? from : (from ? from.closest('td') : null);
+            if (!td) return false;
+            var tr = td.closest('tr');
+            if (!tr) return false;
+
+            var tds = Array.prototype.slice.call(tr.querySelectorAll('td'));
+            var idx = tds.indexOf(td);
+            if (idx < 0) return false;
+
+            for (var j = idx + 1; j < tds.length; j++) {
+                var nextTd = tds[j];
+                if (!nextTd) continue;
+                if (nextTd.style && nextTd.style.display === 'none') continue;
+                var target = firstFocusableInCell(nextTd);
+                if (target) {
+                    try { target.focus(); } catch (e) { }
+                    if (target.tagName === 'INPUT' && target.type !== 'button' && target.type !== 'submit') {
+                        try { target.select(); } catch (e) { }
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Enter ile formun kazara gönderilmesini engelle + satırda sağa geçiş
         var offerForm = document.getElementById('orderForm');
         if (offerForm) {
             offerForm.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+                if (e.key !== 'Enter' || !e.target) return;
+                if (e.target.tagName === 'TEXTAREA') return;
+
+                var inLinesTable = !!(orderLinesTable && orderLinesTable.contains(e.target));
+                if (!inLinesTable) {
                     e.preventDefault();
+                    return;
                 }
+
+                // Select için keydown'da engelleme yapmayıp keyup'da sağa geçirelim (tarayıcı seçim davranışını bozmayalım)
+                if (e.target.tagName === 'SELECT') {
+                    return;
+                }
+
+                e.preventDefault();
+                focusNextEditableCellInRow(e.target);
+            });
+
+            offerForm.addEventListener('keyup', function (e) {
+                if (e.key !== 'Enter' || !e.target) return;
+                if (!orderLinesTable || !orderLinesTable.contains(e.target)) return;
+                if (e.target.tagName !== 'SELECT') return;
+                focusNextEditableCellInRow(e.target);
             });
         }
     });

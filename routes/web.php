@@ -211,6 +211,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('islem-turleri', [DefinitionController::class, 'saveIslemTurleri'])
         ->name('definitions.islem-turleri.save');
 
+    Route::get('projeler/liste', [DefinitionController::class, 'projectOptions'])
+        ->name('definitions.projects.list');
+    Route::post('projeler/hizli-kayit', [DefinitionController::class, 'storeProjectQuick'])
+        ->name('definitions.projects.quick-store');
+
     Route::get('projeler', [DefinitionController::class, 'projects'])
         ->name('definitions.projects');
     Route::post('projeler', [DefinitionController::class, 'saveProjects'])

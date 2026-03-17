@@ -281,6 +281,97 @@
             white-space: nowrap;
         }
 
+        .amount-currency-header {
+            text-align: right !important;
+        }
+
+        .amount-currency-cell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 3.5ch;
+            align-items: center;
+            gap: 0.35rem;
+            width: 100%;
+        }
+
+        .amount-currency-value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .amount-currency-code {
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .offers-pagination {
+            margin-top: 16px;
+        }
+
+        .offers-pagination nav[role="navigation"] {
+            width: 100%;
+        }
+
+        .offers-pagination nav[role="navigation"] > div:first-child {
+            display: none;
+        }
+
+        .offers-pagination nav[role="navigation"] > div:last-child {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .offers-pagination nav[role="navigation"] > div:last-child > div:first-child p {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .offers-pagination nav[role="navigation"] > div:last-child > div:last-child > span {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .offers-pagination nav a,
+        .offers-pagination nav span[aria-current="page"] > span,
+        .offers-pagination nav span[aria-disabled="true"] > span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            padding: 0 0.55rem;
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            color: #4b5563;
+            font-size: 0.78rem;
+            line-height: 1;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .offers-pagination nav span[aria-current="page"] > span {
+            background: #e5e7eb;
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .offers-pagination nav span[aria-disabled="true"] > span {
+            color: #9ca3af;
+            background: #f9fafb;
+            cursor: not-allowed;
+        }
+
+        .offers-pagination nav a:hover {
+            background: #f3f4f6;
+        }
+
+        .offers-pagination nav svg {
+            width: 14px;
+            height: 14px;
+        }
+
         .offers-status-pill {
             display: inline-flex;
             align-items: center;
@@ -329,6 +420,15 @@
             .offers-filter-actions {
                 align-items: center;
                 justify-content: flex-start;
+            }
+
+            .offers-pagination nav[role="navigation"] > div:last-child {
+                justify-content: center;
+            }
+
+            .offers-pagination nav[role="navigation"] > div:last-child > div:first-child {
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -473,7 +573,7 @@
                             <th data-col-key="proje">Proje</th>
                             <th data-col-key="carikod">Cari Kod</th>
                             <th data-col-key="cariaciklama">Cari Açıklama</th>
-                            <th data-col-key="onay_durum">Onay Durum</th>
+                            <th data-col-key="onay_durum">Yetkili Onayı</th>
                             <th data-col-key="onay_tarihi">Onay Tarih</th>
                             <th data-col-key="hazirlayan">Hazırlayan</th>
                             <th data-col-key="teklif_doviz">Teklif Döviz</th>
@@ -482,7 +582,7 @@
                             <th data-col-key="iskonto_tutar">İskonto Tutar</th>
                             <th data-col-key="kdv">KDV</th>
                             <th data-col-key="genel_toplam">Genel Toplam (TL)</th>
-                            <th data-col-key="toplam_tutar">Toplam Tutar</th>
+                            <th data-col-key="toplam_tutar" class="amount-currency-header">Toplam Tutar</th>
                             <th data-col-key="aciklama">Açıklama</th>
                             <th data-col-key="islem" style="text-align:right;">İşlem</th>
                         </tr>
@@ -540,7 +640,10 @@
                                         $kur = (float) ($teklif->teklif_kur ?? 1);
                                         $dovizTutar = $kur > 0 ? ((float) ($teklif->genel_toplam ?? 0) / $kur) : (float) ($teklif->genel_toplam ?? 0);
                                     @endphp
-                                    {{ number_format($dovizTutar, 2, ',', '.') }} {{ $teklif->teklif_doviz ?? 'TL' }}
+                                    <div class="amount-currency-cell">
+                                        <span class="amount-currency-value">{{ number_format($dovizTutar, 2, ',', '.') }}</span>
+                                        <span class="amount-currency-code">{{ $teklif->teklif_doviz ?? 'TL' }}</span>
+                                    </div>
                                 </td>
                                 <td data-col-key="aciklama">{{ $teklif->aciklama }}</td>
                                 <td data-col-key="islem" style="text-align:right;">
@@ -556,7 +659,7 @@
                     </table>
                 </div>
 
-                <div style="margin-top: 16px;">
+                <div class="offers-pagination">
                     {{ $teklifler->links() }}
                 </div>
             </div>

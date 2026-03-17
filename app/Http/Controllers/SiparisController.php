@@ -13,6 +13,7 @@ use App\Models\Siparis;
 use App\Models\SiparisDetay;
 use App\Models\StockRevision;
 use App\Models\Teklif;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -947,6 +948,7 @@ class SiparisController extends Controller
 
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
+        $salesUsers = $this->salesUsers();
 
         $start = $tur === 'satis' ? 20000001 : 10000001;
 
@@ -1002,6 +1004,7 @@ class SiparisController extends Controller
             'selectedFirm' => $selectedFirm,
             'prefillLines' => $prefillLines,
             'autoSaveToken' => $autoSaveToken,
+            'salesUsers'   => $salesUsers,
         ]);
     }
 
@@ -1009,6 +1012,7 @@ class SiparisController extends Controller
     {
         $data = $this->validatedHeader($request);
         $data['siparis_turu'] = $this->normalizeTur($data['siparis_turu'] ?? $request->query('tur'));
+        $data = $this->normalizePurchaseOnlyFields($data);
 
         if (Auth::check()) {
             $user = Auth::user();
@@ -1271,6 +1275,7 @@ class SiparisController extends Controller
 
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
+        $salesUsers = $this->salesUsers();
 
         $siparis->load([
             'detaylar.urun',
@@ -1322,6 +1327,7 @@ class SiparisController extends Controller
             'selectedFirm'  => $selectedFirm,
             'tur'           => $tur,
             'active'        => $active,
+            'salesUsers'    => $salesUsers,
         ]);
     }
 
@@ -1329,6 +1335,7 @@ class SiparisController extends Controller
     {
         $data = $this->validatedHeader($request);
         $data['siparis_turu'] = $this->normalizeTur($data['siparis_turu'] ?? $siparis->siparis_turu);
+        $data = $this->normalizePurchaseOnlyFields($data);
 
         if (Auth::check()) {
             $user = Auth::user();
@@ -1580,11 +1587,56 @@ class SiparisController extends Controller
             'onay_tarihi'       => ['nullable', 'date'],
             'yetkili_personel'  => ['nullable', 'string', 'max:150'],
             'hazirlayan'        => ['nullable', 'string', 'max:150'],
+            'satis_temsilcisi'  => ['nullable', 'string', 'max:150'],
+            'siparis_kanali'    => ['nullable', 'string', 'in:ZK02,ZK03'],
+            'tedarikci_siparis_no' => ['nullable', 'string', 'max:100'],
             'islem_turu_id'     => ['nullable', 'integer', 'exists:islem_turleri,id'],
             'proje_id'          => ['nullable', 'integer', 'exists:projeler,id'],
             'siparis_doviz'     => ['nullable', 'string', 'max:3', 'in:TL,USD,EUR'],
             'siparis_kur'       => ['nullable', 'numeric', 'min:0'],
         ]);
+    }
+
+    protected function normalizePurchaseOnlyFields(array $data): array
+    {
+        $tur = $this->normalizeTur($data['siparis_turu'] ?? 'alim');
+
+        if ($tur !== 'alim') {
+            $data['siparis_kanali'] = null;
+            $data['tedarikci_siparis_no'] = null;
+
+            return $data;
+        }
+
+        $siparisKanali = strtoupper(trim((string) ($data['siparis_kanali'] ?? '')));
+        $data['siparis_kanali'] = in_array($siparisKanali, ['ZK02', 'ZK03'], true) ? $siparisKanali : null;
+
+        $tedarikciSiparisNo = trim((string) ($data['tedarikci_siparis_no'] ?? ''));
+        $data['tedarikci_siparis_no'] = $tedarikciSiparisNo !== '' ? $tedarikciSiparisNo : null;
+
+        return $data;
+    }
+
+    protected function salesUsers()
+    {
+        return User::query()
+            ->where('aktif', true)
+            ->orderBy('ad')
+            ->orderBy('soyad')
+            ->get(['id', 'ad', 'soyad', 'mail'])
+            ->map(function (User $user) {
+                $fullName = trim(($user->ad ?? '') . ' ' . ($user->soyad ?? ''));
+
+                return [
+                    'id' => $user->id,
+                    'full_name' => $fullName !== '' ? $fullName : (string) ($user->mail ?? ''),
+                    'mail' => (string) ($user->mail ?? ''),
+                ];
+            })
+            ->filter(function (array $user) {
+                return $user['full_name'] !== '' || $user['mail'] !== '';
+            })
+            ->values();
     }
 
     protected function durumlar(): array
