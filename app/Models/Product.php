@@ -28,6 +28,7 @@ class Product extends Model
         'prm4',
         'fatura_kodu',
         'resim_yolu',
+        'original_name',
         'pasif',
         'multi',
         'montaj',

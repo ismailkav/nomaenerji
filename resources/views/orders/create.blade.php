@@ -147,8 +147,10 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.5rem;
+            gap: 1rem;
         }
-        .lines-header #btnAddLine {
+        .lines-header #btnAddLine,
+        .lines-header #btnAddInvoiceDate {
             border-radius: 999px;
             border: none;
             background: #e5e7eb;
@@ -156,10 +158,75 @@
             font-size: 0.8rem;
             cursor: pointer;
         }
+        .lines-header #btnAddInvoiceDate {
+            background: #eef2ff;
+            color: #3730a3;
+        }
         .lines-header .lines-header-left {
             display: flex;
             align-items: center;
             gap: 0.35rem;
+        }
+        .lines-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-left: auto;
+        }
+        .order-line-tabs {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+        .order-line-tab {
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.35rem 0;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .order-line-tab.active {
+            color: #111827;
+            border-bottom-color: #111827;
+        }
+        .order-tab-panel[hidden] {
+            display: none !important;
+        }
+        .invoice-schedule-panel {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            min-height: 220px;
+        }
+        .invoice-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .invoice-schedule-table th,
+        .invoice-schedule-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.55rem 0.7rem;
+        }
+        .invoice-schedule-table thead {
+            background: #f3f4f6;
+        }
+        .invoice-schedule-table input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 0.82rem;
+        }
+        .invoice-schedule-table input[readonly] {
+            cursor: default;
+        }
+        .invoice-schedule-empty {
+            padding: 1.25rem;
+            color: #9ca3af;
+            font-size: 0.9rem;
         }
         .offer-line-setting-item {
             display: flex;
@@ -205,6 +272,11 @@
         .offer-lines thead {
             background: #f3f4f6;
         }
+        .offer-lines th.line-check,
+        .offer-lines td.line-check-cell {
+            width: 36px;
+            text-align: center;
+        }
         .offer-lines th.stok-kod,
         .offer-lines td.stok-kod-cell { width: 12%; }
         .offer-lines th.stok-aciklama,
@@ -239,6 +311,12 @@
             box-shadow: none !important;
             font-size: 0.75rem;
             outline: none;
+        }
+        .offer-lines input.order-line-check,
+        .offer-lines input#orderLineSelectAll {
+            width: auto;
+            min-width: 14px;
+            height: 14px;
         }
         .offer-lines input[type="number"] {
             text-align: right;
@@ -658,7 +736,7 @@
                         </svg>
                     </button>
                     <div class="top-menu-dropdown" id="topMenuDropdown">
-                        <button type="button" class="top-menu-item" id="menuPdf" disabled>
+                        <button type="button" class="top-menu-item" id="menuPdf" @if(($resource ?? 'orders') === 'invoices') disabled @endif>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="4" y="3" width="14" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
                                 <path d="M8 8h8M8 12h5M8 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -993,19 +1071,31 @@
 
                     <div class="lines-header">
                         <div class="lines-header-left">
+                            <div class="order-line-tabs" role="tablist" aria-label="Sipariş satır sekmeleri">
+                                <button type="button" class="order-line-tab active" id="orderDetailTabButton" data-order-tab="detail" role="tab" aria-selected="true" aria-controls="orderDetailTabPanel">Detay</button>
+                                <button type="button" class="order-line-tab" id="invoiceScheduleTabButton" data-order-tab="invoice-schedule" role="tab" aria-selected="false" aria-controls="invoiceScheduleTabPanel">Fatura Takvimi</button>
+                            </div>
+                        </div>
+                        <div class="lines-header-actions">
                             <button type="button" id="btnOrderLineSettings" class="small-btn" title="Sütun Ayarları">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
                                     <path d="M19.4 15a8.07 8.07 0 0 0 .04-1 8.07 8.07 0 0 0-.04-1l2.1-1.64a.5.5 0 0 0 .12-.65l-2-3.46a.5.5 0 0 0-.6-.22l-2.48 1a7.74 7.74 0 0 0-1.73-1l-.38-2.65A.5.5 0 0 0 13.94 3h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.62.24-1.2.57-1.73 1l-2.48-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.65L4.6 13c-.03.33-.04.66-.04 1s.01.67.04 1l-2.1 1.64a.5.5 0 0 0-.12.65l2 3.46a.5.5 0 0 0 .6.22l2.48-1c.53.43 1.11.76 1.73 1l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65c.62-.24 1.2-.57 1.73-1l2.48 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.65L19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                 </svg>
                             </button>
+                            <button type="button" id="btnAddInvoiceDate">Fatura Tarih Ekle</button>
+                            <input type="date" id="invoiceScheduleDatePicker" aria-label="Fatura tarihi seç" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;">
+                            <button type="button" id="btnAddLine">Satır Ekle</button>
                         </div>
-                        <button type="button" id="btnAddLine">Satır Ekle</button>
                     </div>
 
+                    <div class="order-tab-panel" id="orderDetailTabPanel" data-order-tab-panel="detail" role="tabpanel" aria-labelledby="orderDetailTabButton">
                     <table class="offer-lines">
                         <thead>
                         <tr>
+                            <th class="line-check">
+                                <input type="checkbox" id="orderLineSelectAll" aria-label="Tüm satırları seç">
+                            </th>
                             <th class="stok-kod">Stok Kod</th>
                             <th class="stok-aciklama">Stok Açıklama</th>
                             <th class="proje-kodu">Proje Kodu</th>
@@ -1104,7 +1194,26 @@
                             </table>
                         </div>
                     </div>
-                    
+                    </div>
+
+                    <div class="order-tab-panel invoice-schedule-panel" id="invoiceScheduleTabPanel" data-order-tab-panel="invoice-schedule" role="tabpanel" aria-labelledby="invoiceScheduleTabButton" hidden>
+                        <table class="invoice-schedule-table">
+                            <thead>
+                            <tr>
+                                <th style="width:140px;">Fatura Tarih</th>
+                                <th style="width:130px;">Stok Kod</th>
+                                <th>Stok Açıklama</th>
+                                <th style="width:100px; text-align:right;">Miktar</th>
+                                <th style="width:120px; text-align:right;">Birim Fiyat</th>
+                                <th style="width:120px; text-align:right;">Tutar</th>
+                                <th style="width:60px;"></th>
+                            </tr>
+                            </thead>
+                            <tbody id="invoiceScheduleBody"></tbody>
+                        </table>
+                        <div class="invoice-schedule-empty" id="invoiceScheduleEmpty">Fatura takvimi satırı yok.</div>
+                    </div>
+                     
 
                     <div class="actions">
                         <a href="{{ route(($resource ?? 'orders') . '.index', ['tur' => $tur ?? 'alim']) }}" class="btn btn-cancel">İptal</a>
@@ -1149,6 +1258,7 @@
                             data-isk4="{{ $firm->iskonto4 ?? 0 }}"
                             data-isk5="{{ $firm->iskonto5 ?? 0 }}"
                             data-isk6="{{ $firm->iskonto6 ?? 0 }}" data-adres1="{{ $firm->adres1 }}" data-adres2="{{ $firm->adres2 }}" data-il="{{ $firm->il }}" data-ilce="{{ $firm->ilce }}"
+                            data-telefon="{{ $firm->telefon }}" data-mail="{{ $firm->mail }}" data-web="{{ $firm->web_sitesi }}"
                             data-authorities='@json($firm->authorities->pluck("full_name"))'>
                             <td>{{ $firm->carikod }}</td>
                             <td>{{ $firm->cariaciklama }}</td>
@@ -1522,6 +1632,56 @@
 </div>
 </div>
 
+<div id="pdfPreviewModal" class="modal-overlay">
+    <div class="modal" style="max-width:none;width:calc(100vw - 32px);">
+        <div class="modal-header">
+            <div class="modal-title">PDF Önizleme</div>
+            <button type="button" class="small-btn" data-modal-close="pdfPreviewModal">X</button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <iframe id="pdfPreviewFrame" style="width:100%;height:80vh;border:none;"></iframe>
+        </div>
+    </div>
+</div>
+
+<div id="pdfFormSelectModal" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+        <div class="modal-header">
+            <div class="modal-title">Form Seç</div>
+            <button type="button" class="small-btn" data-modal-close="pdfFormSelectModal">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size:0.9rem;color:#6b7280;margin-bottom:0.75rem;">
+                Formlar sayfasında Sipariş altında tanımlı formlar listelenir.
+            </div>
+            <div id="pdfFormList"></div>
+        </div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" class="btn btn-primary" id="btnPdfFormSelectContinue">Devam</button>
+            <button type="button" class="btn btn-cancel" data-modal-close="pdfFormSelectModal">İptal</button>
+        </div>
+    </div>
+</div>
+
+<div id="pdfJsonModal" class="modal-overlay">
+    <div class="modal" style="max-width:none;width:calc(100vw - 32px);">
+        <div class="modal-header">
+            <div class="modal-title">PDF JSON</div>
+            <button type="button" class="small-btn" data-modal-close="pdfJsonModal">X</button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size:0.85rem;color:#6b7280;margin-bottom:0.5rem;">
+                Servlet: <span id="pdfJsonServletUrl" style="color:#111827;"></span>
+            </div>
+            <textarea id="pdfJsonTextarea" readonly style="width:100%;height:60vh;resize:vertical;border:1px solid #e5e7eb;border-radius:12px;padding:0.75rem;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;font-size:0.85rem;line-height:1.25rem;"></textarea>
+        </div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" class="btn btn-primary" id="btnPdfJsonContinue">PDF Oluştur</button>
+            <button type="button" class="btn btn-cancel" data-modal-close="pdfJsonModal">İptal</button>
+        </div>
+    </div>
+</div>
+
 <!-- Kur seçimi modal -->
 <div id="rateModal" class="modal-overlay">
     <div class="modal" style="max-width: 560px;">
@@ -1641,6 +1801,16 @@
 
         var linesBody = document.getElementById('offerLinesBody');
         var btnAddLine = document.getElementById('btnAddLine');
+        var btnAddInvoiceDate = document.getElementById('btnAddInvoiceDate');
+        var invoiceScheduleDatePicker = document.getElementById('invoiceScheduleDatePicker');
+        var orderLineSelectAll = document.getElementById('orderLineSelectAll');
+        var orderTabButtons = document.querySelectorAll('.order-line-tab');
+        var orderTabPanels = document.querySelectorAll('.order-tab-panel');
+        var invoiceScheduleBody = document.getElementById('invoiceScheduleBody');
+        var invoiceScheduleEmpty = document.getElementById('invoiceScheduleEmpty');
+        var invoiceScheduleIndex = 0;
+        var pendingInvoiceScheduleRows = [];
+        var invoiceScheduleDateColors = ['#fef3c7', '#dcfce7', '#dbeafe', '#fae8ff', '#ffedd5', '#ccfbf1', '#fce7f3', '#e0e7ff'];
         var lineIndex = 0;
         var initialLines = @json($prefillLines ?? (isset($siparis) ? $siparis->detaylar : []));
         var isSalesOrder = @json($siparisTuru === 'satis');
@@ -1648,6 +1818,28 @@
         var isInvoicePage = @json(($resource ?? 'orders') === 'invoices');
         var autoSaveToken = @json($autoSaveToken ?? null);
         var isEditPage = @json(isset($siparis));
+
+        var menuPdf = document.getElementById('menuPdf');
+        var pdfPreviewModal = document.getElementById('pdfPreviewModal');
+        var pdfPreviewFrame = document.getElementById('pdfPreviewFrame');
+        var pdfPreviewBlobUrl = null;
+        var pdfFormSelectModal = document.getElementById('pdfFormSelectModal');
+        var pdfFormList = document.getElementById('pdfFormList');
+        var btnPdfFormSelectContinue = document.getElementById('btnPdfFormSelectContinue');
+        var pdfJsonModal = document.getElementById('pdfJsonModal');
+        var pdfJsonTextarea = document.getElementById('pdfJsonTextarea');
+        var pdfJsonServletUrl = document.getElementById('pdfJsonServletUrl');
+        var btnPdfJsonContinue = document.getElementById('btnPdfJsonContinue');
+        var orderForms = @json($orderForms ?? []);
+        var pendingPdfFormPayload = null;
+        var pendingPdfFormUrl = null;
+        var pendingPdfPayload = null;
+        var pendingPdfUrl = null;
+        var initialFirmPdfInfo = {
+            telefon: @json(isset($selectedFirm) ? ($selectedFirm->telefon ?? '') : ''),
+            mail: @json(isset($selectedFirm) ? ($selectedFirm->mail ?? '') : ''),
+            web: @json(isset($selectedFirm) ? ($selectedFirm->web_sitesi ?? '') : '')
+        };
 
         var btnOrderLineSettings = document.getElementById('btnOrderLineSettings');
         var orderLineSettingsModal = document.getElementById('orderLineSettingsModal');
@@ -1668,6 +1860,282 @@
             if (token) return token;
             return document.querySelector('input[name=\"_token\"]')?.value || '';
         }
+
+        function setActiveOrderTab(tabName) {
+            var target = (tabName || 'detail').toString();
+
+            Array.prototype.forEach.call(orderTabButtons || [], function (btn) {
+                var isActive = btn.dataset.orderTab === target;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            Array.prototype.forEach.call(orderTabPanels || [], function (panel) {
+                panel.hidden = panel.dataset.orderTabPanel !== target;
+            });
+        }
+
+        function syncOrderLineSelectAll() {
+            if (!orderLineSelectAll || !linesBody) return;
+            var checks = Array.prototype.slice.call(linesBody.querySelectorAll('.order-line-check'));
+            if (!checks.length) {
+                orderLineSelectAll.checked = false;
+                orderLineSelectAll.indeterminate = false;
+                return;
+            }
+
+            var selectedCount = checks.filter(function (cb) { return cb.checked; }).length;
+            orderLineSelectAll.checked = selectedCount === checks.length;
+            orderLineSelectAll.indeterminate = selectedCount > 0 && selectedCount < checks.length;
+        }
+
+        function updateInvoiceScheduleEmpty() {
+            if (!invoiceScheduleEmpty || !invoiceScheduleBody) return;
+            invoiceScheduleEmpty.style.display = invoiceScheduleBody.querySelector('tr') ? 'none' : '';
+        }
+
+        function scheduleNumber(value) {
+            var n = parseFloat(value);
+            return isFinite(n) ? n : 0;
+        }
+
+        function formatScheduleNumber(value, digits) {
+            return scheduleNumber(value).toFixed(digits == null ? 2 : digits);
+        }
+
+        function getOrderLineScheduleKey(tr) {
+            if (!tr) return '';
+            var detailId = (tr.querySelector('.siparis-detay-id')?.value || '').toString().trim();
+            if (detailId) return 'detail:' + detailId;
+            if (!tr.dataset.scheduleKey) {
+                tr.dataset.scheduleKey = 'line:' + Date.now().toString(36) + ':' + Math.random().toString(36).slice(2, 8);
+            }
+            return tr.dataset.scheduleKey;
+        }
+
+        function calculateScheduleLineTotal(tr) {
+            var price = scheduleNumber(tr.querySelector('.birim-fiyat')?.value);
+            var qty = scheduleNumber(tr.querySelector('.miktar')?.value);
+            var net = price * qty;
+
+            ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
+                var rate = scheduleNumber(tr.querySelector('.' + cls)?.value);
+                if (!rate) return;
+                net -= net * (rate / 100);
+            });
+
+            return Math.max(0, net);
+        }
+
+        function selectedOrderRowsForSchedule() {
+            if (!linesBody) return [];
+            return Array.prototype.slice.call(linesBody.querySelectorAll('tr')).filter(function (tr) {
+                var cb = tr.querySelector('.order-line-check');
+                if (!cb || !cb.checked) return false;
+                var kod = (tr.querySelector('.stok-kod')?.value || '').toString().trim();
+                var aciklama = (tr.querySelector('.stok-aciklama')?.value || '').toString().trim();
+                var qty = scheduleNumber(tr.querySelector('.miktar')?.value);
+                var price = scheduleNumber(tr.querySelector('.birim-fiyat')?.value);
+                return !!kod || !!aciklama || qty > 0 || price > 0;
+            });
+        }
+
+        function readScheduleDataFromOrderRow(tr, invoiceDate) {
+            return {
+                sourceKey: getOrderLineScheduleKey(tr),
+                invoiceDate: invoiceDate,
+                stokKod: (tr.querySelector('.stok-kod')?.value || '').toString().trim(),
+                stokAciklama: (tr.querySelector('.stok-aciklama')?.value || '').toString().trim(),
+                miktar: scheduleNumber(tr.querySelector('.miktar')?.value),
+                birimFiyat: scheduleNumber(tr.querySelector('.birim-fiyat')?.value),
+                tutar: calculateScheduleLineTotal(tr)
+            };
+        }
+
+        function applyScheduleDataToRow(tr, data) {
+            if (!tr || !data) return;
+            tr.dataset.sourceKey = data.sourceKey || '';
+            tr.dataset.invoiceDate = data.invoiceDate || '';
+
+            var dateInput = tr.querySelector('.invoice-schedule-date');
+            var stokKodInput = tr.querySelector('.invoice-schedule-stok-kod');
+            var stokAciklamaInput = tr.querySelector('.invoice-schedule-stok-aciklama');
+            var miktarInput = tr.querySelector('.invoice-schedule-miktar');
+            var birimFiyatInput = tr.querySelector('.invoice-schedule-birim-fiyat');
+            var tutarInput = tr.querySelector('.invoice-schedule-tutar');
+            var sourceInput = tr.querySelector('.invoice-schedule-source-key');
+
+            if (dateInput) dateInput.value = data.invoiceDate || '';
+            if (stokKodInput) stokKodInput.value = data.stokKod || '';
+            if (stokAciklamaInput) stokAciklamaInput.value = data.stokAciklama || '';
+            if (miktarInput) miktarInput.value = formatScheduleNumber(data.miktar, 3);
+            if (birimFiyatInput) birimFiyatInput.value = formatScheduleNumber(data.birimFiyat, 2);
+            if (tutarInput) tutarInput.value = formatScheduleNumber(data.tutar, 2);
+            if (sourceInput) sourceInput.value = data.sourceKey || '';
+        }
+
+        function createInvoiceScheduleRow(data) {
+            if (!invoiceScheduleBody) return null;
+
+            var idx = invoiceScheduleIndex++;
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="date" class="invoice-schedule-date" name="invoice_schedule[' + idx + '][fatura_tarihi]"></td>' +
+                '<td><input type="text" class="invoice-schedule-stok-kod" name="invoice_schedule[' + idx + '][stok_kod]" readonly></td>' +
+                '<td><input type="text" class="invoice-schedule-stok-aciklama" name="invoice_schedule[' + idx + '][stok_aciklama]" readonly></td>' +
+                '<td><input type="number" step="0.001" class="invoice-schedule-miktar" name="invoice_schedule[' + idx + '][miktar]" style="text-align:right;" readonly></td>' +
+                '<td><input type="number" step="0.01" class="invoice-schedule-birim-fiyat" name="invoice_schedule[' + idx + '][birim_fiyat]" style="text-align:right;" readonly></td>' +
+                '<td><input type="number" step="0.01" class="invoice-schedule-tutar" name="invoice_schedule[' + idx + '][tutar]" style="text-align:right;" readonly></td>' +
+                '<td style="text-align:center;">' +
+                '<input type="hidden" class="invoice-schedule-source-key" name="invoice_schedule[' + idx + '][source_key]">' +
+                '<button type="button" class="small-btn invoice-schedule-delete" title="Sil">X</button>' +
+                '</td>';
+
+            var dateInput = tr.querySelector('.invoice-schedule-date');
+            if (dateInput) {
+                dateInput.addEventListener('change', function () {
+                    tr.dataset.invoiceDate = dateInput.value || '';
+                    sortInvoiceScheduleRows();
+                    applyInvoiceScheduleDateColors();
+                });
+            }
+
+            var del = tr.querySelector('.invoice-schedule-delete');
+            if (del) {
+                del.addEventListener('click', function () {
+                    tr.remove();
+                    sortInvoiceScheduleRows();
+                    applyInvoiceScheduleDateColors();
+                    updateInvoiceScheduleEmpty();
+                });
+            }
+
+            applyScheduleDataToRow(tr, data);
+            invoiceScheduleBody.appendChild(tr);
+            return tr;
+        }
+
+        function findInvoiceScheduleRow(sourceKey) {
+            if (!invoiceScheduleBody || !sourceKey) return null;
+            var rows = invoiceScheduleBody.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                if ((rows[i].dataset.sourceKey || '') === sourceKey) {
+                    return rows[i];
+                }
+            }
+            return null;
+        }
+
+        function sortInvoiceScheduleRows() {
+            if (!invoiceScheduleBody) return;
+            var rows = Array.prototype.slice.call(invoiceScheduleBody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                var da = (a.dataset.invoiceDate || '').toString();
+                var db = (b.dataset.invoiceDate || '').toString();
+                if (da !== db) return da.localeCompare(db);
+                return (parseInt(a.dataset.scheduleOrder || '0', 10) || 0) - (parseInt(b.dataset.scheduleOrder || '0', 10) || 0);
+            });
+            rows.forEach(function (tr) { invoiceScheduleBody.appendChild(tr); });
+        }
+
+        function applyInvoiceScheduleDateColors() {
+            if (!invoiceScheduleBody) return;
+            var dateColorIndex = {};
+            var uniqueDates = [];
+            Array.prototype.forEach.call(invoiceScheduleBody.querySelectorAll('tr'), function (tr) {
+                var date = (tr.dataset.invoiceDate || '').toString();
+                if (!dateColorIndex.hasOwnProperty(date)) {
+                    dateColorIndex[date] = uniqueDates.length;
+                    uniqueDates.push(date);
+                }
+                tr.style.backgroundColor = invoiceScheduleDateColors[dateColorIndex[date] % invoiceScheduleDateColors.length];
+            });
+        }
+
+        function upsertInvoiceScheduleRows(invoiceDate, sourceRows) {
+            if (!invoiceScheduleBody || !invoiceDate || !sourceRows || !sourceRows.length) return;
+
+            sourceRows.forEach(function (sourceRow) {
+                var data = readScheduleDataFromOrderRow(sourceRow, invoiceDate);
+                var existing = findInvoiceScheduleRow(data.sourceKey);
+                if (existing) {
+                    applyScheduleDataToRow(existing, data);
+                    return;
+                }
+
+                var row = createInvoiceScheduleRow(data);
+                if (row) {
+                    row.dataset.scheduleOrder = String(invoiceScheduleIndex);
+                }
+            });
+
+            sortInvoiceScheduleRows();
+            applyInvoiceScheduleDateColors();
+            updateInvoiceScheduleEmpty();
+        }
+
+        Array.prototype.forEach.call(orderTabButtons || [], function (btn) {
+            btn.addEventListener('click', function () {
+                setActiveOrderTab(btn.dataset.orderTab || 'detail');
+            });
+        });
+
+        if (orderLineSelectAll && linesBody) {
+            orderLineSelectAll.addEventListener('change', function () {
+                Array.prototype.forEach.call(linesBody.querySelectorAll('.order-line-check'), function (cb) {
+                    cb.checked = orderLineSelectAll.checked;
+                });
+                syncOrderLineSelectAll();
+            });
+        }
+
+        if (btnAddInvoiceDate) {
+            btnAddInvoiceDate.addEventListener('click', function () {
+                pendingInvoiceScheduleRows = selectedOrderRowsForSchedule();
+                if (!pendingInvoiceScheduleRows.length) {
+                    alert('Fatura takvimi için önce detay tablosunda satır seçin.');
+                    return;
+                }
+
+                setActiveOrderTab('invoice-schedule');
+
+                if (invoiceScheduleDatePicker) {
+                    invoiceScheduleDatePicker.value = '';
+                    try {
+                        if (typeof invoiceScheduleDatePicker.showPicker === 'function') {
+                            invoiceScheduleDatePicker.showPicker();
+                        } else {
+                            invoiceScheduleDatePicker.focus();
+                            invoiceScheduleDatePicker.click();
+                        }
+                    } catch (e) {
+                        var enteredDate = prompt('Fatura tarihi seçin (YYYY-AA-GG):', '');
+                        if (enteredDate) {
+                            upsertInvoiceScheduleRows(enteredDate, pendingInvoiceScheduleRows);
+                            pendingInvoiceScheduleRows = [];
+                        }
+                    }
+                    return;
+                }
+
+                var fallbackDate = prompt('Fatura tarihi seçin (YYYY-AA-GG):', '');
+                if (fallbackDate) {
+                    upsertInvoiceScheduleRows(fallbackDate, pendingInvoiceScheduleRows);
+                    pendingInvoiceScheduleRows = [];
+                }
+            });
+        }
+
+        if (invoiceScheduleDatePicker) {
+            invoiceScheduleDatePicker.addEventListener('change', function () {
+                var selectedDate = (invoiceScheduleDatePicker.value || '').toString().trim();
+                if (!selectedDate || !pendingInvoiceScheduleRows.length) return;
+                upsertInvoiceScheduleRows(selectedDate, pendingInvoiceScheduleRows);
+                pendingInvoiceScheduleRows = [];
+            });
+        }
+
+        updateInvoiceScheduleEmpty();
 
         function normalizeColumns(columns) {
             var cols = Array.isArray(columns) ? columns.slice() : [];
@@ -2367,6 +2835,7 @@
         function addLineRow() {
             var tr = document.createElement('tr');
             var rowHtml =
+                '<td class="line-check-cell"><input type="checkbox" class="order-line-check" aria-label="Satır seç"></td>' +
                 '<td class="stok-kod-cell"><input class="line-input stok-kod"><input type="hidden" class="line-input urun-id"></td>' +
                 '<td class="stok-aciklama-cell"><input class="line-input stok-aciklama"></td>' +
                 '<td class="proje-kodu-cell"><input class="line-input proje-kodu"></td>' +
@@ -2457,6 +2926,11 @@
                 '<input type="hidden" class="line-input satis-detay-ids">' +
                 '<input type="hidden" class="line-input sales-links-json">';
             tr.innerHTML = rowHtml;
+
+            var orderLineCheck = tr.querySelector('.order-line-check');
+            if (orderLineCheck) {
+                orderLineCheck.addEventListener('change', syncOrderLineSelectAll);
+            }
 
             if (isPurchaseOrder) {
                 var headerProjeKod = ((document.getElementById('proje_kod') || {}).value || '').toString().trim();
@@ -2716,6 +3190,7 @@
                 }
                 applyColumnsToRow(tr);
                 lineIndex++;
+                syncOrderLineSelectAll();
             }
         }
 
@@ -2734,6 +3209,7 @@
         if (linesBody && Array.isArray(initialLines) && initialLines.length > 0) {
             linesBody.innerHTML = '';
             lineIndex = 0;
+            syncOrderLineSelectAll();
 
             initialLines.forEach(function (line) {
                 addLineRow();
@@ -2868,6 +3344,490 @@
         if (offerRateInput) {
             offerRateInput.addEventListener('input', function () {
                 recalcTotals();
+            });
+        }
+
+        function pdfNumber(value) {
+            if (value === null || value === undefined) return 0;
+            var s = value.toString().trim();
+            if (!s) return 0;
+            if (s.indexOf(',') >= 0) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            }
+            s = s.replace(/\s/g, '');
+            var n = parseFloat(s);
+            return isFinite(n) ? n : 0;
+        }
+
+        function pdfInputValue(id) {
+            var el = document.getElementById(id);
+            return el && el.value !== undefined ? String(el.value || '').trim() : '';
+        }
+
+        function pdfTextValue(id) {
+            var el = document.getElementById(id);
+            return el && el.textContent !== undefined ? String(el.textContent || '').trim() : '';
+        }
+
+        function findFirmRowByCode(carikod) {
+            var target = (carikod || '').toString().trim();
+            if (!target) return null;
+            var rows = document.querySelectorAll('#firmModal .firm-row');
+            for (var i = 0; i < rows.length; i++) {
+                if ((rows[i].dataset.carikod || '').toString().trim() === target) {
+                    return rows[i];
+                }
+            }
+            return null;
+        }
+
+        function selectedFirmPdfInfo() {
+            var row = findFirmRowByCode(pdfInputValue('carikod'));
+            if (row) {
+                return {
+                    telefon: (row.dataset.telefon || '').toString().trim(),
+                    mail: (row.dataset.mail || '').toString().trim(),
+                    web: (row.dataset.web || '').toString().trim()
+                };
+            }
+            return {
+                telefon: (initialFirmPdfInfo && initialFirmPdfInfo.telefon ? String(initialFirmPdfInfo.telefon) : '').trim(),
+                mail: (initialFirmPdfInfo && initialFirmPdfInfo.mail ? String(initialFirmPdfInfo.mail) : '').trim(),
+                web: (initialFirmPdfInfo && initialFirmPdfInfo.web ? String(initialFirmPdfInfo.web) : '').trim()
+            };
+        }
+
+        function calculatePdfLineAmounts(tr) {
+            var price = pdfNumber(tr.querySelector('.birim-fiyat')?.value);
+            var qty = pdfNumber(tr.querySelector('.miktar')?.value);
+            var gross = price * qty;
+            var remaining = gross;
+            var discountTotal = 0;
+
+            ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
+                var rate = pdfNumber(tr.querySelector('.' + cls)?.value);
+                if (!rate) return;
+                var discount = remaining * (rate / 100);
+                discountTotal += discount;
+                remaining -= discount;
+            });
+
+            var net = Math.max(0, gross - discountTotal);
+            var kdvOran = pdfNumber(tr.querySelector('.kdv-oran')?.value);
+            var kdvDurum = (tr.querySelector('.kdv-durum')?.value || 'H').toString();
+            var kdv = 0;
+            var total = net;
+
+            if (kdvOran > 0 && net > 0) {
+                if (kdvDurum === 'H') {
+                    kdv = net * (kdvOran / 100);
+                    total = net + kdv;
+                } else if (kdvDurum === 'E' || kdvDurum === 'D') {
+                    var oran = kdvOran / 100;
+                    kdv = net - (net / (1 + oran));
+                    total = net;
+                }
+            }
+
+            return {
+                gross: gross,
+                discountTotal: discountTotal,
+                net: net,
+                kdv: kdv,
+                total: total
+            };
+        }
+
+        function buildOrderPrintPayload() {
+            if (typeof recalcTotals === 'function') {
+                recalcTotals();
+            }
+
+            var tur = (document.querySelector('input[name="siparis_turu"]')?.value || '').toString().trim();
+            var firmInfo = selectedFirmPdfInfo();
+            var headerCurrency = pdfInputValue('offer_currency') || 'TL';
+
+            var header = {
+                tur: tur,
+                siparis_turu: tur,
+                siparis_no: pdfInputValue('siparis_no'),
+                teklif_no: pdfInputValue('teklif_no'),
+                tarih: pdfInputValue('tarih'),
+                gecerlilik_tarihi: pdfInputValue('gecerlilik_tarihi'),
+                vade_gun: '',
+                carikod: pdfInputValue('carikod'),
+                cariaciklama: pdfInputValue('cariaciklama'),
+                firma_kod: pdfTextValue('firma_kod_label') || pdfInputValue('carikod'),
+                firma_unvan: pdfTextValue('firma_aciklama_label') || pdfInputValue('cariaciklama'),
+                firma_adres1: pdfTextValue('firma_adres_satir1'),
+                firma_adres2: pdfTextValue('firma_adres_satir2'),
+                firma_il_ilce: pdfTextValue('firma_il_ilce'),
+                firma_tel: firmInfo.telefon || '',
+                firma_fax: '',
+                firma_web: firmInfo.web || '',
+                firma_mail: firmInfo.mail || '',
+                firma_vergi_dairesi: '',
+                firma_vkn: '',
+                yetkili_personel: pdfInputValue('yetkili_personel'),
+                hazirlayan: pdfInputValue('hazirlayan'),
+                satis_temsilcisi: pdfInputValue('satis_temsilcisi'),
+                siparis_kanali: pdfInputValue('siparis_kanali'),
+                tedarikci_siparis_no: pdfInputValue('tedarikci_siparis_no'),
+                teslim_sekli: '',
+                odeme_sekli: '',
+                odeme_plani: '',
+                aciklama: pdfInputValue('aciklama'),
+                siparis_doviz: headerCurrency,
+                siparis_kur: pdfInputValue('offer_rate'),
+                alt_toplam_tl: pdfNumber(pdfTextValue('sumToplam')),
+                iskonto_tutar_tl: pdfNumber(pdfTextValue('sumIskonto')),
+                kdv_tl: pdfNumber(pdfTextValue('sumKdv')),
+                genel_toplam_tl: pdfNumber(pdfTextValue('sumGenel')),
+                alt_toplam_doviz: pdfTextValue('sumToplamFx') || pdfTextValue('sumToplam'),
+                iskonto_tutar_doviz: pdfTextValue('sumIskontoFx') || pdfTextValue('sumIskonto'),
+                kdv_doviz: pdfTextValue('sumKdvFx') || pdfTextValue('sumKdv'),
+                genel_toplam_doviz: pdfTextValue('sumGenelFx') || pdfTextValue('sumGenel')
+            };
+
+            var lines = [];
+            if (linesBody) {
+                Array.prototype.slice.call(linesBody.querySelectorAll('tr')).forEach(function (tr, idx) {
+                    var kod = (tr.querySelector('.stok-kod')?.value || '').toString().trim();
+                    var aciklama = (tr.querySelector('.stok-aciklama')?.value || '').toString().trim();
+                    var qty = pdfNumber(tr.querySelector('.miktar')?.value);
+                    var price = pdfNumber(tr.querySelector('.birim-fiyat')?.value);
+                    if (!kod && !aciklama && qty <= 0 && price <= 0) return;
+
+                    var amounts = calculatePdfLineAmounts(tr);
+                    var urunId = (tr.querySelector('.urun-id')?.value || '').toString().trim();
+                    var siparisDetayId = (tr.querySelector('.siparis-detay-id')?.value || '').toString().trim();
+                    var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString().trim().toUpperCase();
+                    var kur = pdfNumber(tr.querySelector('.kur')?.value);
+
+                    lines.push({
+                        sira: idx + 1,
+                        siparis_detay_id: siparisDetayId ? parseInt(siparisDetayId, 10) || null : null,
+                        urun_id: urunId ? parseInt(urunId, 10) || null : null,
+                        stok_kod: kod,
+                        stok_aciklama: aciklama,
+                        satir_aciklama: (tr.querySelector('.satir-aciklama-hidden')?.value || aciklama).toString(),
+                        proje_kodu: (tr.querySelector('.proje-kodu')?.value || '').toString().trim(),
+                        durum: (tr.querySelector('.durum')?.value || '').toString(),
+                        miktar: qty,
+                        birim: (tr.dataset.birim || 'ADET').toString(),
+                        birim_fiyat: price,
+                        doviz: doviz || 'TL',
+                        kur: doviz === 'TL' ? 1 : kur,
+                        iskonto1: pdfNumber(tr.querySelector('.isk1')?.value),
+                        iskonto2: pdfNumber(tr.querySelector('.isk2')?.value),
+                        iskonto3: pdfNumber(tr.querySelector('.isk3')?.value),
+                        iskonto4: pdfNumber(tr.querySelector('.isk4')?.value),
+                        iskonto5: pdfNumber(tr.querySelector('.isk5')?.value),
+                        iskonto6: pdfNumber(tr.querySelector('.isk6')?.value),
+                        iskonto_tutar: amounts.discountTotal,
+                        kdv_orani: pdfNumber(tr.querySelector('.kdv-oran')?.value),
+                        kdv_durum: (tr.querySelector('.kdv-durum')?.value || '').toString(),
+                        kdv_tutar: amounts.kdv,
+                        satir_tutar: amounts.net,
+                        satir_toplam: amounts.total,
+                        sevk_tarihi: ''
+                    });
+                });
+            }
+
+            var formDosyaYolu = @json($formDosyaYolu ?? '');
+            formDosyaYolu = (formDosyaYolu || '').toString().trim();
+
+            var payload = {
+                kaynak: 'nomaenerji-laravel',
+                olusturma_zamani: new Date().toISOString(),
+                header: header,
+                satirlar: lines,
+                montaj: [],
+                form_dosya_adi: 'siparis_form'
+            };
+
+            if (formDosyaYolu) {
+                payload.form_dosya_yolu = formDosyaYolu;
+            }
+
+            return payload;
+        }
+
+        function buildSiparisTomcatServletUrl() {
+            var ip = @json($tomcatIp ?? '45.136.107.28');
+            var port = @json($tomcatPort ?? '8080');
+            var project = @json($tomcatProje ?? '');
+            ip = (ip || '45.136.107.28').toString().trim();
+            port = (port || '8080').toString().trim();
+            project = (project || '').toString().trim();
+
+            var base = ip;
+            if (!base.startsWith('http://') && !base.startsWith('https://')) {
+                base = 'http://' + base;
+            }
+            if (!/:[0-9]+$/.test(base.replace(/\/+$/, ''))) {
+                base = base.replace(/\/+$/, '') + ':' + port;
+            }
+
+            var path = '';
+            if (project) {
+                project = project.replace(/^\/+/, '').replace(/\/+$/, '');
+                if (project) path += '/' + project;
+            }
+            path += '/api/siparis-json-to-pdf';
+
+            return base.replace(/\/+$/, '') + path;
+        }
+
+        function openPdfPreview(blob) {
+            if (!pdfPreviewModal || !pdfPreviewFrame) return;
+            try {
+                if (pdfPreviewBlobUrl) URL.revokeObjectURL(pdfPreviewBlobUrl);
+            } catch (e) { }
+            pdfPreviewBlobUrl = URL.createObjectURL(blob);
+            pdfPreviewFrame.src = pdfPreviewBlobUrl;
+            pdfPreviewModal.style.display = 'flex';
+        }
+
+        function renderPdfFormList() {
+            if (!pdfFormList) return;
+            pdfFormList.innerHTML = '';
+
+            if (!Array.isArray(orderForms) || !orderForms.length) {
+                orderForms = [{ dosya_ad: 'siparis_form', gorunen_isim: 'Siparis Formu' }];
+            }
+
+            var preferredFileName = '';
+            try {
+                var preferred = orderForms.find(function (x) {
+                    var name = (x && x.dosya_ad ? String(x.dosya_ad) : '').trim().toLowerCase();
+                    return name === 'siparis_form';
+                });
+                preferredFileName = preferred && preferred.dosya_ad ? String(preferred.dosya_ad).trim() : '';
+            } catch (e) { }
+
+            orderForms.forEach(function (item, idx) {
+                var fileName = (item && item.dosya_ad ? String(item.dosya_ad) : '').trim();
+                var title = (item && item.gorunen_isim ? String(item.gorunen_isim) : '').trim() || fileName;
+                if (!fileName && !title) return;
+
+                var label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'flex-start';
+                label.style.gap = '0.6rem';
+                label.style.padding = '0.65rem 0.75rem';
+                label.style.border = '1px solid #e5e7eb';
+                label.style.borderRadius = '12px';
+                label.style.cursor = 'pointer';
+                label.style.marginBottom = '0.5rem';
+                label.style.background = '#fff';
+
+                var radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'pdfFormChoice';
+                radio.value = fileName;
+                radio.style.marginTop = '0.25rem';
+                if ((preferredFileName && fileName === preferredFileName) || (!preferredFileName && idx === 0)) {
+                    radio.checked = true;
+                }
+
+                var textWrap = document.createElement('div');
+                var titleDiv = document.createElement('div');
+                titleDiv.textContent = title;
+                titleDiv.style.fontWeight = '600';
+                titleDiv.style.color = '#111827';
+                titleDiv.style.fontSize = '0.95rem';
+
+                var subDiv = document.createElement('div');
+                subDiv.textContent = fileName;
+                subDiv.style.color = '#6b7280';
+                subDiv.style.fontSize = '0.85rem';
+
+                textWrap.appendChild(titleDiv);
+                textWrap.appendChild(subDiv);
+                label.appendChild(radio);
+                label.appendChild(textWrap);
+                pdfFormList.appendChild(label);
+            });
+        }
+
+        function getSelectedPdfFormFileName() {
+            if (!pdfFormSelectModal) return '';
+            var el = pdfFormSelectModal.querySelector('input[name="pdfFormChoice"]:checked');
+            return el && el.value ? String(el.value).trim() : '';
+        }
+
+        function openPdfFormSelect(payload, url) {
+            if (!pdfFormSelectModal) {
+                openPdfJson(payload, url);
+                return;
+            }
+            pendingPdfFormPayload = payload;
+            pendingPdfFormUrl = url;
+            renderPdfFormList();
+            pdfFormSelectModal.style.display = 'flex';
+        }
+
+        function closePdfFormSelect() {
+            if (pdfFormSelectModal) pdfFormSelectModal.style.display = 'none';
+        }
+
+        function openPdfJson(payload, url) {
+            if (!pdfJsonModal || !pdfJsonTextarea) return;
+            pendingPdfPayload = payload;
+            pendingPdfUrl = url;
+            if (pdfJsonServletUrl) pdfJsonServletUrl.textContent = url || '';
+            try {
+                pdfJsonTextarea.value = JSON.stringify(payload, null, 2);
+            } catch (e) {
+                pdfJsonTextarea.value = String(payload || '');
+            }
+            pdfJsonModal.style.display = 'flex';
+        }
+
+        function closePdfJson() {
+            if (pdfJsonModal) pdfJsonModal.style.display = 'none';
+        }
+
+        function closePdfPreview() {
+            if (pdfPreviewModal) pdfPreviewModal.style.display = 'none';
+            if (pdfPreviewFrame) pdfPreviewFrame.src = 'about:blank';
+            try {
+                if (pdfPreviewBlobUrl) URL.revokeObjectURL(pdfPreviewBlobUrl);
+            } catch (e) { }
+            pdfPreviewBlobUrl = null;
+        }
+
+        function requestPdfFromTomcat(payload) {
+            if (!payload) return;
+
+            if (menuPdf) {
+                menuPdf.disabled = true;
+                menuPdf.style.opacity = '0.6';
+            }
+
+            fetch(@json(route('orders.json-to-pdf', [], false)), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/pdf',
+                    'X-CSRF-TOKEN': getCsrfToken()
+                },
+                body: JSON.stringify(payload),
+                credentials: 'same-origin'
+            })
+                .then(function (r) {
+                    if (!r.ok) {
+                        return r.text().then(function (t) {
+                            throw new Error(t || ('HTTP ' + r.status));
+                        });
+                    }
+                    return r.blob();
+                })
+                .then(function (blob) {
+                    if (!blob || !blob.size) {
+                        throw new Error('PDF bos dondu.');
+                    }
+                    openPdfPreview(blob);
+                })
+                .catch(function (err) {
+                    var msg = 'PDF olusturulamadi.';
+                    if (err && err.message) msg = err.message;
+                    try {
+                        var parsed = JSON.parse(msg);
+                        if (parsed && typeof parsed === 'object') {
+                            var parts = [];
+                            if (parsed.message) parts.push(parsed.message);
+                            if (parsed.url) parts.push(parsed.url);
+                            if (parsed.status) parts.push('HTTP ' + String(parsed.status));
+                            if (parsed.error) parts.push(parsed.error);
+                            if (parsed.body) parts.push(parsed.body);
+                            msg = parts.length ? parts.join('\n') : msg;
+                        }
+                    } catch (e) { }
+                    alert(msg);
+                })
+                .finally(function () {
+                    if (menuPdf) {
+                        menuPdf.disabled = false;
+                        menuPdf.style.opacity = '1';
+                    }
+                });
+        }
+
+        if (pdfPreviewModal && !pdfPreviewModal.dataset.boundClose) {
+            pdfPreviewModal.dataset.boundClose = '1';
+            pdfPreviewModal.addEventListener('click', function (e) {
+                if (e.target === pdfPreviewModal) closePdfPreview();
+            });
+            document.querySelectorAll('[data-modal-close="pdfPreviewModal"]').forEach(function (btn) {
+                btn.addEventListener('click', closePdfPreview);
+            });
+        }
+
+        if (pdfFormSelectModal && !pdfFormSelectModal.dataset.boundClose) {
+            pdfFormSelectModal.dataset.boundClose = '1';
+            pdfFormSelectModal.addEventListener('click', function (e) {
+                if (e.target === pdfFormSelectModal) closePdfFormSelect();
+            });
+            document.querySelectorAll('[data-modal-close="pdfFormSelectModal"]').forEach(function (btn) {
+                btn.addEventListener('click', closePdfFormSelect);
+            });
+        }
+
+        if (pdfJsonModal && !pdfJsonModal.dataset.boundClose) {
+            pdfJsonModal.dataset.boundClose = '1';
+            pdfJsonModal.addEventListener('click', function (e) {
+                if (e.target === pdfJsonModal) closePdfJson();
+            });
+            document.querySelectorAll('[data-modal-close="pdfJsonModal"]').forEach(function (btn) {
+                btn.addEventListener('click', closePdfJson);
+            });
+        }
+
+        if (btnPdfFormSelectContinue && !btnPdfFormSelectContinue.dataset.bound) {
+            btnPdfFormSelectContinue.dataset.bound = '1';
+            btnPdfFormSelectContinue.addEventListener('click', function () {
+                var payload = pendingPdfFormPayload;
+                var url = pendingPdfFormUrl;
+                if (!payload) {
+                    closePdfFormSelect();
+                    return;
+                }
+
+                var fileName = getSelectedPdfFormFileName() || 'siparis_form';
+                payload.form_dosya_adi = fileName;
+                payload.dosya_ad = fileName;
+                payload.dosya_adi = fileName;
+
+                closePdfFormSelect();
+                openPdfJson(payload, url);
+            });
+        }
+
+        if (btnPdfJsonContinue && !btnPdfJsonContinue.dataset.bound) {
+            btnPdfJsonContinue.dataset.bound = '1';
+            btnPdfJsonContinue.addEventListener('click', function () {
+                closePdfJson();
+                requestPdfFromTomcat(pendingPdfPayload);
+            });
+        }
+
+        if (menuPdf && !menuPdf.dataset.boundPdf) {
+            menuPdf.dataset.boundPdf = '1';
+            menuPdf.addEventListener('click', function () {
+                if (menuPdf.disabled || isInvoicePage) return;
+
+                var payload = null;
+                try {
+                    payload = buildOrderPrintPayload();
+                } catch (e) {
+                    alert('JSON veri hazirlanamadi.');
+                    return;
+                }
+
+                openPdfFormSelect(payload, buildSiparisTomcatServletUrl());
             });
         }
     });
@@ -4293,20 +5253,3 @@
     <script src="{{ asset('js/dashboard.js') }}"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

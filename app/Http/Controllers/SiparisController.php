@@ -14,9 +14,12 @@ use App\Models\SiparisDetay;
 use App\Models\StockRevision;
 use App\Models\Teklif;
 use App\Models\User;
+use App\Models\Parameter;
+use App\Models\FormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -72,6 +75,78 @@ class SiparisController extends Controller
         $active = $tur === 'alim' ? 'purchase-orders' : 'sales-orders';
 
         return view('orders.index', compact('siparisler', 'durumlar', 'islemTurleri', 'projects', 'tur', 'active'));
+    }
+
+    public function jsonToPdf(Request $request)
+    {
+        $payload = (array) $request->all();
+
+        if (trim((string) ($payload['form_dosya_adi'] ?? '')) === '') {
+            $payload['form_dosya_adi'] = 'siparis_form';
+        }
+
+        $params = Parameter::query()
+            ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'form_dosya_yolu'])
+            ->get(['anahtar', 'deger'])
+            ->keyBy('anahtar');
+
+        $ip = trim((string) ($params['tomcat_ip']->deger ?? '45.136.107.28'));
+        $port = trim((string) ($params['tomcat_port']->deger ?? '8080'));
+        $project = trim((string) ($params['tomcat_proje']->deger ?? ''));
+        $formDosyaYolu = trim((string) ($params['form_dosya_yolu']->deger ?? ''));
+
+        if ($formDosyaYolu !== '' && !array_key_exists('form_dosya_yolu', $payload)) {
+            $payload['form_dosya_yolu'] = $formDosyaYolu;
+        }
+
+        $base = $ip !== '' ? $ip : '45.136.107.28';
+        if (!str_starts_with($base, 'http://') && !str_starts_with($base, 'https://')) {
+            $base = 'http://' . $base;
+        }
+        $base = rtrim($base, '/');
+        if (!preg_match('/:[0-9]+$/', $base)) {
+            $base .= ':' . ($port !== '' ? $port : '8080');
+        }
+
+        $path = '';
+        if ($project !== '') {
+            $project = trim($project, '/');
+            if ($project !== '') {
+                $path .= '/' . $project;
+            }
+        }
+        $path .= '/api/siparis-json-to-pdf';
+
+        $url = $base . $path;
+
+        try {
+            $resp = Http::timeout(60)
+                ->accept('application/pdf')
+                ->asJson()
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tomcat servisine baglanilamadi.',
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ], 502);
+        }
+
+        if (!$resp->successful()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tomcat hata dondu.',
+                'url' => $url,
+                'status' => $resp->status(),
+                'body' => (string) $resp->body(),
+            ], 502);
+        }
+
+        return response($resp->body(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="siparis.pdf"',
+        ]);
     }
 
     public function planning(Request $request)
@@ -950,6 +1025,7 @@ class SiparisController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
         $salesUsers = $this->salesUsers();
+        $pdfSettings = $this->siparisPdfSettings();
 
         $start = $tur === 'satis' ? 20000001 : 10000001;
 
@@ -1006,6 +1082,11 @@ class SiparisController extends Controller
             'prefillLines' => $prefillLines,
             'autoSaveToken' => $autoSaveToken,
             'salesUsers'   => $salesUsers,
+            'tomcatIp'      => $pdfSettings['tomcatIp'],
+            'tomcatPort'    => $pdfSettings['tomcatPort'],
+            'tomcatProje'   => $pdfSettings['tomcatProje'],
+            'formDosyaYolu' => $pdfSettings['formDosyaYolu'],
+            'orderForms'    => $pdfSettings['orderForms'],
         ]);
     }
 
@@ -1277,6 +1358,7 @@ class SiparisController extends Controller
         $islemTurleri = IslemTuru::orderBy('ad')->get();
         $projects = Project::where('pasif', false)->orderBy('kod')->get();
         $salesUsers = $this->salesUsers();
+        $pdfSettings = $this->siparisPdfSettings();
 
         $siparis->load([
             'detaylar.urun',
@@ -1329,6 +1411,11 @@ class SiparisController extends Controller
             'tur'           => $tur,
             'active'        => $active,
             'salesUsers'    => $salesUsers,
+            'tomcatIp'      => $pdfSettings['tomcatIp'],
+            'tomcatPort'    => $pdfSettings['tomcatPort'],
+            'tomcatProje'   => $pdfSettings['tomcatProje'],
+            'formDosyaYolu' => $pdfSettings['formDosyaYolu'],
+            'orderForms'    => $pdfSettings['orderForms'],
         ]);
     }
 
@@ -1596,6 +1683,35 @@ class SiparisController extends Controller
             'siparis_doviz'     => ['nullable', 'string', 'max:3', 'in:TL,USD,EUR'],
             'siparis_kur'       => ['nullable', 'numeric', 'min:0'],
         ]);
+    }
+
+    protected function siparisPdfSettings(): array
+    {
+        $params = Parameter::query()
+            ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'form_dosya_yolu'])
+            ->get(['anahtar', 'deger'])
+            ->keyBy('anahtar');
+
+        $orderForms = FormDefinition::query()
+            ->where('ekran', 'siparis')
+            ->orderBy('gorunen_isim')
+            ->get(['dosya_ad', 'gorunen_isim'])
+            ->map(fn ($i) => ['dosya_ad' => $i->dosya_ad, 'gorunen_isim' => $i->gorunen_isim])
+            ->values();
+
+        if ($orderForms->isEmpty()) {
+            $orderForms = collect([
+                ['dosya_ad' => 'siparis_form', 'gorunen_isim' => 'Siparis Formu'],
+            ]);
+        }
+
+        return [
+            'tomcatIp'      => (string) ($params['tomcat_ip']->deger ?? '45.136.107.28'),
+            'tomcatPort'    => (string) ($params['tomcat_port']->deger ?? '8080'),
+            'tomcatProje'   => (string) ($params['tomcat_proje']->deger ?? ''),
+            'formDosyaYolu' => (string) ($params['form_dosya_yolu']->deger ?? ''),
+            'orderForms'    => $orderForms,
+        ];
     }
 
     protected function normalizePurchaseOnlyFields(array $data): array

@@ -83,7 +83,9 @@ class ProductController extends Controller
         $recipeItems = $this->validatedRecipeItems($request, null);
 
         if ($request->hasFile('resim')) {
-            $data['resim_yolu'] = $this->storeProductImage($request);
+            $imageData = $this->storeProductImage($request);
+            $data['resim_yolu'] = $imageData['resim_yolu'];
+            $data['original_name'] = $imageData['original_name'];
         }
 
         DB::transaction(function () use ($data, $recipeItems) {
@@ -156,7 +158,9 @@ class ProductController extends Controller
                 }
             }
 
-            $data['resim_yolu'] = $this->storeProductImage($request);
+            $imageData = $this->storeProductImage($request);
+            $data['resim_yolu'] = $imageData['resim_yolu'];
+            $data['original_name'] = $imageData['original_name'];
         }
 
         DB::transaction(function () use ($product, $data, $recipeItems) {
@@ -318,7 +322,7 @@ class ProductController extends Controller
         }
     }
 
-    protected function storeProductImage(Request $request): string
+    protected function storeProductImage(Request $request): array
     {
         $file = $request->file('resim');
 
@@ -327,9 +331,13 @@ class ProductController extends Controller
 
         $ext = $file->getClientOriginalExtension();
         $name = 'product_' . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . ($ext ? ('.' . $ext) : '');
+        $originalName = $file->getClientOriginalName();
 
         $file->move($dir, $name);
 
-        return 'uploads/products/' . $name;
+        return [
+            'resim_yolu' => 'uploads/products/' . $name,
+            'original_name' => $originalName ?: $name,
+        ];
     }
 }

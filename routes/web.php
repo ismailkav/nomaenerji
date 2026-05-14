@@ -103,6 +103,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('siparisler/{siparis}/planlama', [SiparisController::class, 'updatePlanning'])
         ->name('orders.planning.update');
 
+    Route::post('siparisler/json-to-pdf', [SiparisController::class, 'jsonToPdf'])
+        ->name('orders.json-to-pdf');
+
     Route::resource('siparisler', SiparisController::class)
         ->parameters(['siparisler' => 'siparis'])
         ->names('orders');

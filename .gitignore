@@ -16,9 +16,15 @@
 /public/build
 /public/hot
 /public/storage
+/public/uploads
 /storage/*.key
 /storage/pail
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+sources_all_utf8.txt
+test_utf8.txt
+_snippet.txt
+_teklif_tail.txt
+__rendered_*.html

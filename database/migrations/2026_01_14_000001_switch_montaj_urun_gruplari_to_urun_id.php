@@ -6,8 +6,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
+    private function isSqlite(): bool
+    {
+        return DB::getDriverName() === 'sqlite';
+    }
+
     private function foreignKeyName(string $table, string $column): ?string
     {
+        if ($this->isSqlite()) {
+            return null;
+        }
+
         $db = DB::getDatabaseName();
         if (!$db) {
             return null;
@@ -37,6 +46,12 @@ return new class extends Migration {
 
     private function indexNameExists(string $table, string $indexName): bool
     {
+        if ($this->isSqlite()) {
+            $indexes = collect(DB::select("PRAGMA index_list('$table')"));
+
+            return $indexes->contains(fn ($index) => ($index->name ?? null) === $indexName);
+        }
+
         $db = DB::getDatabaseName();
         if (!$db) {
             return false;
@@ -57,6 +72,26 @@ return new class extends Migration {
 
     private function hasLeftmostIndex(string $table, string $column): bool
     {
+        if ($this->isSqlite()) {
+            $indexes = DB::select("PRAGMA index_list('$table')");
+
+            foreach ($indexes as $index) {
+                $indexName = $index->name ?? null;
+                if (!$indexName) {
+                    continue;
+                }
+
+                $columns = DB::select("PRAGMA index_info('$indexName')");
+                $firstColumn = $columns[0]->name ?? null;
+
+                if ($firstColumn === $column) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         $db = DB::getDatabaseName();
         if (!$db) {
             return false;
@@ -79,13 +114,103 @@ return new class extends Migration {
     private function dropIndexIfExists(string $table, string $indexName): void
     {
         if ($this->indexNameExists($table, $indexName)) {
-            DB::statement("ALTER TABLE `$table` DROP INDEX `$indexName`");
+            if ($this->isSqlite()) {
+                DB::statement("DROP INDEX IF EXISTS \"$indexName\"");
+            } else {
+                DB::statement("ALTER TABLE `$table` DROP INDEX `$indexName`");
+            }
+        }
+    }
+
+    private function rebuildSqliteTableForUp(string $tableName): void
+    {
+        $rows = Schema::hasTable($tableName)
+            ? DB::table($tableName)->get([
+                'id',
+                'montaj_grup_id',
+                'montaj_urun_id',
+                'sirano',
+                'created_at',
+                'updated_at',
+            ])
+            : collect();
+
+        Schema::dropIfExists($tableName);
+
+        Schema::create($tableName, function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('montaj_grup_id')->constrained('montaj_gruplari')->cascadeOnDelete();
+            $table->foreignId('montaj_urun_id')->constrained('montaj_urunleri')->cascadeOnDelete();
+            $table->foreignId('urun_id')->nullable()->constrained('urunler')->nullOnDelete();
+            $table->unsignedInteger('sirano')->nullable();
+            $table->timestamps();
+            $table->index('urun_id', 'idx_montaj_urun_gruplari_urun_id');
+            $table->index('montaj_grup_id', 'idx_montaj_urun_gruplari_montaj_grup_id');
+            $table->unique(['montaj_grup_id', 'montaj_urun_id', 'urun_id'], 'uq_montaj_grup_urun');
+        });
+
+        foreach ($rows as $row) {
+            DB::table($tableName)->insert([
+                'id' => $row->id,
+                'montaj_grup_id' => $row->montaj_grup_id,
+                'montaj_urun_id' => $row->montaj_urun_id,
+                'urun_id' => null,
+                'sirano' => $row->sirano,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ]);
+        }
+    }
+
+    private function rebuildSqliteTableForDown(string $tableName): void
+    {
+        $rows = Schema::hasTable($tableName)
+            ? DB::table($tableName)->get([
+                'id',
+                'montaj_grup_id',
+                'montaj_urun_id',
+                'sirano',
+                'created_at',
+                'updated_at',
+            ])
+            : collect();
+
+        Schema::dropIfExists($tableName);
+
+        Schema::create($tableName, function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('montaj_grup_id')->constrained('montaj_gruplari')->cascadeOnDelete();
+            $table->foreignId('montaj_urun_id')->constrained('montaj_urunleri')->cascadeOnDelete();
+            $table->foreignId('urun_detay_grup_id')->nullable()->constrained('urun_detay_gruplari')->nullOnDelete();
+            $table->unsignedInteger('sirano')->nullable();
+            $table->timestamps();
+            $table->index('urun_detay_grup_id', 'idx_montaj_urun_gruplari_urun_detay_grup_id');
+            $table->index('montaj_grup_id', 'idx_montaj_urun_gruplari_montaj_grup_id');
+            $table->unique(['montaj_grup_id', 'montaj_urun_id', 'urun_detay_grup_id'], 'uq_montaj_grup_urun_detay');
+        });
+
+        foreach ($rows as $row) {
+            DB::table($tableName)->insert([
+                'id' => $row->id,
+                'montaj_grup_id' => $row->montaj_grup_id,
+                'montaj_urun_id' => $row->montaj_urun_id,
+                'urun_detay_grup_id' => null,
+                'sirano' => $row->sirano,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ]);
         }
     }
 
     public function up(): void
     {
         $tableName = 'montaj_urun_gruplari';
+
+        if ($this->isSqlite()) {
+            $this->rebuildSqliteTableForUp($tableName);
+
+            return;
+        }
 
         $this->dropForeignKeyIfExists($tableName, 'montaj_grup_id');
         $this->dropForeignKeyIfExists($tableName, 'urun_detay_grup_id');
@@ -135,6 +260,12 @@ return new class extends Migration {
     public function down(): void
     {
         $tableName = 'montaj_urun_gruplari';
+
+        if ($this->isSqlite()) {
+            $this->rebuildSqliteTableForDown($tableName);
+
+            return;
+        }
 
         $this->dropForeignKeyIfExists($tableName, 'montaj_grup_id');
         $this->dropForeignKeyIfExists($tableName, 'urun_id');

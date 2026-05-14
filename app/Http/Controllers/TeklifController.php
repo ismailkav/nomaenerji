@@ -58,6 +58,18 @@ class TeklifController extends Controller
             'uploads/products/' . $baseName,
         ];
 
+        $originalName = Product::query()
+            ->where(function ($q) use ($candidates, $baseName) {
+                foreach ($candidates as $cand) {
+                    $q->orWhere('resim_yolu', $cand);
+                }
+                $q->orWhere('resim_yolu', 'like', '%/' . $baseName);
+                $q->orWhere('resim_yolu', 'like', '%' . $baseName);
+            })
+            ->whereNotNull('original_name')
+            ->where('original_name', '<>', '')
+            ->value('original_name');
+
         $fullPath = null;
         foreach ($candidates as $cand) {
             if (Storage::disk('public')->exists($cand)) {
@@ -153,6 +165,7 @@ class TeklifController extends Controller
             'ok' => true,
             'image' => [
                 'baslik' => $baseName,
+                'original_name' => $originalName,
                 'mime' => $outMime,
                 'base64' => base64_encode($outData),
                 'width' => $tw ?: null,
@@ -170,7 +183,7 @@ class TeklifController extends Controller
             ->get(['anahtar', 'deger'])
             ->keyBy('anahtar');
 
-        $ip = trim((string) ($params['tomcat_ip']->deger ?? 'localhost'));
+        $ip = trim((string) ($params['tomcat_ip']->deger ?? '45.136.107.28'));
         $port = trim((string) ($params['tomcat_port']->deger ?? '8080'));
         $project = trim((string) ($params['tomcat_proje']->deger ?? ''));
         $formDosyaYolu = trim((string) ($params['form_dosya_yolu']->deger ?? ''));
@@ -179,7 +192,7 @@ class TeklifController extends Controller
             $payload['form_dosya_yolu'] = $formDosyaYolu;
         }
 
-        $base = $ip !== '' ? $ip : 'localhost';
+        $base = $ip !== '' ? $ip : '45.136.107.28';
         if (!str_starts_with($base, 'http://') && !str_starts_with($base, 'https://')) {
             $base = 'http://' . $base;
         }
@@ -510,7 +523,7 @@ class TeklifController extends Controller
             ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'form_dosya_yolu'])
             ->get(['anahtar', 'deger'])
             ->keyBy('anahtar');
-        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? 'localhost');
+        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? '45.136.107.28');
         $tomcatPort = (string) ($params['tomcat_port']->deger ?? '8080');
         $tomcatProje = (string) ($params['tomcat_proje']->deger ?? '');
         $formDosyaYolu = (string) ($params['form_dosya_yolu']->deger ?? '');
@@ -740,7 +753,7 @@ class TeklifController extends Controller
             ->whereIn('anahtar', ['tomcat_ip', 'tomcat_port', 'tomcat_proje', 'form_dosya_yolu'])
             ->get(['anahtar', 'deger'])
             ->keyBy('anahtar');
-        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? 'localhost');
+        $tomcatIp = (string) ($params['tomcat_ip']->deger ?? '45.136.107.28');
         $tomcatPort = (string) ($params['tomcat_port']->deger ?? '8080');
         $tomcatProje = (string) ($params['tomcat_proje']->deger ?? '');
         $formDosyaYolu = (string) ($params['form_dosya_yolu']->deger ?? '');
@@ -1609,4 +1622,3 @@ class TeklifController extends Controller
         ];
     }
 }
-

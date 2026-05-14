@@ -41,8 +41,23 @@
             display: flex;
             gap: 0.5rem;
         }
+        .offer-header-left .offer-header-row:has(#teklif_no),
+        .offer-header-left .offer-header-row:has(#carikod),
+        .offer-header-left .offer-header-row:has(#proje_kod) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: center;
+        }
         .offer-header-row .form-group {
             flex: 1 1 0;
+        }
+        .offer-header-row .form-group:has(#firma_adres_satir1),
+        .offer-header-row .form-group:has(#firma_il_ilce) {
+            display: none;
+        }
+        .offer-header-row .form-group:has(#proje_kod),
+        .offer-header-row .form-group:has(#yetkili_personel) {
+            flex: 1 1 100%;
         }
         .form-group {
             display: flex;
@@ -118,7 +133,6 @@
         }
         .lines-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             margin-bottom: 0.5rem;
         }
@@ -175,6 +189,7 @@
         .offer-lines td {
             border: 1px solid #e5e7eb;
             padding: 0.3rem 0.35rem;
+            overflow: visible;
         }
         .offer-lines thead {
             background: #f3f4f6;
@@ -226,6 +241,73 @@
             resize: none;
             overflow: hidden;
             line-height: 1.15rem;
+        }
+        .stok-kod-cell {
+            position: relative;
+        }
+        .stok-kod-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .product-autocomplete {
+            position: absolute;
+            top: calc(100% - 1px);
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            display: none;
+            max-height: 280px;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+        }
+        .product-autocomplete.is-open {
+            display: block;
+        }
+        .product-autocomplete-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.55rem 0.7rem;
+            cursor: pointer;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .product-autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .product-autocomplete-item.is-active,
+        .product-autocomplete-item:hover {
+            background: #eff6ff;
+        }
+        .product-autocomplete-main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .product-autocomplete-code {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .product-autocomplete-desc {
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-autocomplete-meta {
+            flex: 0 0 auto;
+            color: #475569;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
+        .product-autocomplete-empty {
+            padding: 0.65rem 0.7rem;
+            color: #64748b;
         }
         .offer-lines input[type="number"] {
             text-align: right;
@@ -782,14 +864,6 @@
 
             <div class="offer-header-row">
                 <div class="form-group">
-                    <label style="color:#9ca3af;">Adres:</label>
-                    <div class="offer-header-company-box">
-                        <div id="firma_adres_satir1">{{ isset($selectedFirm) ? $selectedFirm->adres1 : '' }}</div>
-                        <div id="firma_adres_satir2">{{ isset($selectedFirm) ? $selectedFirm->adres2 : '' }}</div>
-                    </div>
-                </div>
-
-                <div class="form-group">
                     <label for="proje_kod" style="color:#9ca3af;">Proje:</label>
                     <div class="input-with-button offer-header-compact-field">
                         <input id="proje_kod" type="text"
@@ -820,7 +894,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="yetkili_personel" style="color:#9ca3af;">Yetkili Personel:</label>
+                    <label for="yetkili_personel" style="color:#9ca3af;">Yetki Personel:</label>
                     <div class="input-with-button offer-header-compact-field">
                         <input id="yetkili_personel" name="yetkili_personel" type="text" value="{{ old('yetkili_personel', isset($teklif) ? $teklif->yetkili_personel : '') }}" style="border:none;background:transparent;outline:none;padding:0;">
                         <button type="button" class="small-btn" id="btnYetkiliSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/><line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
@@ -830,8 +904,16 @@
 
             <div class="offer-header-row">
                 <div class="form-group">
-                    <label for="gecen_sure" style="color:#9ca3af; min-width: 90px;">Geçen Süre:</label>
-                    <input id="gecen_sure" type="text" class="offer-header-gray-input" value="" style="text-align:left;" readonly>
+                    <label for="proje_turu_id" style="color:#9ca3af; min-width: 90px;">Proje Türü:</label>
+                    <select id="proje_turu_id" name="proje_turu_id" style="border:none;background:transparent;outline:none;padding:0;">
+                        @php
+                            $selectedProjectTypeId = old('proje_turu_id', isset($teklif) ? $teklif->proje_turu_id : null);
+                        @endphp
+                        <option value="" {{ $selectedProjectTypeId === null || $selectedProjectTypeId === '' ? 'selected' : '' }}>Seçiniz</option>
+                        @foreach(($projectTypes ?? []) as $projectType)
+                            <option value="{{ $projectType->id }}" {{ (string) $selectedProjectTypeId === (string) $projectType->id ? 'selected' : '' }}>{{ $projectType->kod }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -848,16 +930,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="proje_turu_id" style="color:#9ca3af; min-width: 90px;">Proje Türü:</label>
-                    <select id="proje_turu_id" name="proje_turu_id" style="border:none;background:transparent;outline:none;padding:0;">
-                        @php
-                            $selectedProjectTypeId = old('proje_turu_id', isset($teklif) ? $teklif->proje_turu_id : null);
-                        @endphp
-                        <option value="" {{ $selectedProjectTypeId === null || $selectedProjectTypeId === '' ? 'selected' : '' }}>Seçiniz</option>
-                        @foreach(($projectTypes ?? []) as $projectType)
-                            <option value="{{ $projectType->id }}" {{ (string) $selectedProjectTypeId === (string) $projectType->id ? 'selected' : '' }}>{{ $projectType->kod }}</option>
-                        @endforeach
-                    </select>
+                    <label for="gecen_sure" style="color:#9ca3af; min-width: 90px;">Geçen Süre:</label>
+                    <input id="gecen_sure" type="text" class="offer-header-gray-input" value="" style="text-align:left;" readonly>
                 </div>
 
                 <div class="form-group" style="display:none;">
@@ -957,7 +1031,7 @@
             </div>
             <div class="form-group">
                 <label for="satis_temsilcisi" style="color:#9ca3af;">Satış Temsilcisi:</label>
-                <div class="input-with-button">
+                <div class="input-with-button offer-header-compact-field">
                     <input id="satis_temsilcisi" name="satis_temsilcisi" type="text" class="offer-header-gray-input" value="{{ old('satis_temsilcisi', isset($teklif) ? $teklif->satis_temsilcisi : '') }}" style="border:none;background:transparent;outline:none;padding:0;" readonly>
                     <button type="button" class="small-btn" id="btnSalesRepSearch">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -978,8 +1052,8 @@
                                     <path d="M19.4 15a8.07 8.07 0 0 0 .04-1 8.07 8.07 0 0 0-.04-1l2.1-1.64a.5.5 0 0 0 .12-.65l-2-3.46a.5.5 0 0 0-.6-.22l-2.48 1a7.74 7.74 0 0 0-1.73-1l-.38-2.65A.5.5 0 0 0 13.94 3h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.62.24-1.2.57-1.73 1l-2.48-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.65L4.6 13c-.03.33-.04.66-.04 1s.01.67.04 1l-2.1 1.64a.5.5 0 0 0-.12.65l2 3.46a.5.5 0 0 0 .6.22l2.48-1c.53.43 1.11.76 1.73 1l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65c.62-.24 1.2-.57 1.73-1l2.48 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.65L19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                 </svg>
                             </button>
+                            <button type="button" id="btnAddLine">Satır Ekle</button>
                         </div>
-                        <button type="button" id="btnAddLine">Satır Ekle</button>
                     </div>
 
                     <table class="offer-lines">
@@ -1535,6 +1609,25 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        var teklifNoGroup = document.getElementById('teklif_no')?.closest('.form-group');
+        var firmaGroup = document.getElementById('carikod')?.closest('.form-group');
+        var projeGroup = document.getElementById('proje_kod')?.closest('.form-group');
+        var revizeGroup = document.getElementById('revize_no')?.closest('.form-group');
+        var teklifTuruGroup = document.getElementById('islem_turu_adi')?.closest('.form-group');
+        var salesRepGroup = document.getElementById('satis_temsilcisi')?.closest('.form-group');
+        var headerRight = document.querySelector('.offer-header-right');
+
+        if (!teklifNoGroup || !firmaGroup || !projeGroup || !revizeGroup || !teklifTuruGroup || !salesRepGroup || !headerRight) {
+            return;
+        }
+
+        projeGroup.parentElement?.appendChild(teklifTuruGroup);
+        headerRight.insertBefore(salesRepGroup, headerRight.firstElementChild);
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
         var onayDurumInput = document.getElementById('onay_durum');
         var onayTarihiInput = document.getElementById('onay_tarihi');
         var btnToggleOnay = document.getElementById('btnToggleOnay');
@@ -2079,6 +2172,53 @@
             headerCurrency.addEventListener('change', updateHeaderKur);
         })();
 
+        function parseMoney(val) {
+            if (val === null || val === undefined) return 0;
+            var s = String(val).trim();
+            if (!s) return 0;
+            if (s.indexOf(',') >= 0) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            }
+            s = s.replace(/\s/g, '');
+            var n = parseFloat(s);
+            return isFinite(n) ? n : 0;
+        }
+
+        function formatMoney(val) {
+            var n = Number(val || 0);
+            if (!isFinite(n)) n = 0;
+            return n.toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function toEditMoney(val) {
+            var n = Number(val || 0);
+            if (!isFinite(n)) n = 0;
+            return n.toFixed(2).replace('.', ',');
+        }
+
+        function bindMoneyFieldFormatting(tr) {
+            if (!tr || tr.dataset.moneyFormatBound === '1') return;
+            tr.dataset.moneyFormatBound = '1';
+
+            var birimFiyatInput = tr.querySelector('.birim-fiyat');
+            if (!birimFiyatInput) return;
+
+            birimFiyatInput.addEventListener('focus', function () {
+                var current = parseMoney(birimFiyatInput.value);
+                if (current || birimFiyatInput.value === '0' || birimFiyatInput.value === '0,00') {
+                    birimFiyatInput.value = toEditMoney(current);
+                }
+            });
+
+            birimFiyatInput.addEventListener('blur', function () {
+                var current = parseMoney(birimFiyatInput.value);
+                birimFiyatInput.value = current ? formatMoney(current) : '';
+            });
+        }
+
         function recalcTotals() {
             if (!linesBody) return;
 
@@ -2088,7 +2228,8 @@
             var kdvToplam = 0;
 
             rows.forEach(function (tr) {
-                var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
+                bindMoneyFieldFormatting(tr);
+                var price = parseMoney(tr.querySelector('.birim-fiyat')?.value || '0');
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
                 var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
                 var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
@@ -2142,19 +2283,15 @@
 
             var genelToplam = toplam - iskontoToplam + kdvToplam;
 
-            function fmt(val) {
-                return val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-
             var elToplam = document.getElementById('sumToplam');
             var elIskonto = document.getElementById('sumIskonto');
             var elKdv = document.getElementById('sumKdv');
             var elGenel = document.getElementById('sumGenel');
 
-            if (elToplam) elToplam.textContent = fmt(toplam);
-            if (elIskonto) elIskonto.textContent = fmt(iskontoToplam);
-            if (elKdv) elKdv.textContent = fmt(kdvToplam);
-            if (elGenel) elGenel.textContent = fmt(genelToplam);
+            if (elToplam) elToplam.textContent = formatMoney(toplam);
+            if (elIskonto) elIskonto.textContent = formatMoney(iskontoToplam);
+            if (elKdv) elKdv.textContent = formatMoney(kdvToplam);
+            if (elGenel) elGenel.textContent = formatMoney(genelToplam);
 
             var elToplamFx = document.getElementById('sumToplamFx');
             var elIskontoFx = document.getElementById('sumIskontoFx');
@@ -2170,10 +2307,10 @@
                     var kdvFx = kdvToplam / rate;
                     var genelFx = genelToplam / rate;
 
-                    if (elToplamFx) elToplamFx.textContent = fmt(toplamFx);
-                    if (elIskontoFx) elIskontoFx.textContent = fmt(iskontoFx);
-                    if (elKdvFx) elKdvFx.textContent = fmt(kdvFx);
-                    if (elGenelFx) elGenelFx.textContent = fmt(genelFx);
+                    if (elToplamFx) elToplamFx.textContent = formatMoney(toplamFx);
+                    if (elIskontoFx) elIskontoFx.textContent = formatMoney(iskontoFx);
+                    if (elKdvFx) elKdvFx.textContent = formatMoney(kdvFx);
+                    if (elGenelFx) elGenelFx.textContent = formatMoney(genelFx);
                 } else {
                     if (elToplamFx) elToplamFx.textContent = '0,00';
                     if (elIskontoFx) elIskontoFx.textContent = '0,00';
@@ -2206,8 +2343,8 @@
             var tr = document.createElement('tr');
             tr.innerHTML =
                 '<td class="stok-kod-cell">' +
-                '<div style="display:flex; align-items:center; gap:6px;">' +
-                '<textarea class="line-input stok-kod auto-grow" rows="1" style="flex:1 1 auto; width:auto;"></textarea>' +
+                '<div class="stok-kod-input-wrap">' +
+                '<input type="text" class="line-input stok-kod" style="flex:1 1 auto; width:auto;" autocomplete="off">' +
                 '<input type="hidden" class="line-input urun-id">' +
                 '<input type="hidden" class="line-input teklif-detay-id">' +
                 '<button type="button" class="small-btn stok-detay-btn" style="display:none;" title="Detay">' +
@@ -2216,9 +2353,10 @@
                 '</svg>' +
                 '</button>' +
                 '</div>' +
+                '<div class="product-autocomplete"></div>' +
                 '</td>' +
                 '<td class="stok-aciklama-cell"><textarea class="line-input stok-aciklama auto-grow" rows="1"></textarea></td>' +
-                '<td class="birim-fiyat-cell"><input type="number" step="0.01" class="line-input birim-fiyat"></td>' +
+                '<td class="birim-fiyat-cell"><input type="text" inputmode="decimal" class="line-input birim-fiyat"></td>' +
                 '<td class="miktar-cell"><input type="number" step="0.001" class="line-input miktar"></td>' +
                 '<td class="doviz-cell"><select class="line-input doviz"><option value="TL" selected>TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></td>' +
                 '<td class="kur-cell">' +
@@ -2237,11 +2375,11 @@
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk4"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk5"></td>' +
                 '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk6"></td>' +
-                '<td class="iskonto-cell"><input type="number" step="0.01" class="line-input isk-tutar" readonly></td>' +
+                '<td class="iskonto-cell"><input type="text" class="line-input isk-tutar" readonly></td>' +
                 '<td class="kdv-cell"><input type="number" step="0.01" class="line-input kdv-oran"></td>' +
                 '<td class="kdv-durum-cell"><select class="line-input kdv-durum"><option value="D">D</option><option value="H">H</option></select></td>' +
-                '<td class="satir-tutar-doviz-cell"><input type="number" step="0.01" class="line-input satir-tutar-doviz" readonly></td>' +
-                '<td class="satir-tutar-cell"><input type="number" step="0.01" class="line-input satir-tutar" readonly></td>' +
+                '<td class="satir-tutar-doviz-cell"><input type="text" class="line-input satir-tutar-doviz" readonly></td>' +
+                '<td class="satir-tutar-cell"><input type="text" class="line-input satir-tutar" readonly></td>' +
                 '<input type="hidden" class="satir-aciklama-hidden">';
 
             // Varsayılan değerler: miktar 1, iskonto alanları 0, iskonto tutar 0, KDV %20, KDV Durum H
@@ -2285,7 +2423,7 @@
 
             // Satır iskonto tutarı hesaplama fonksiyonu
             function recalcDiscountBase() {
-                var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
+                var price = parseMoney(tr.querySelector('.birim-fiyat')?.value || '0');
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
                 var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
                 var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
@@ -2296,7 +2434,7 @@
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
                     var el = tr.querySelector('.' + cls);
-                    var val = parseFloat(el && el.value !== '' ? el.value : '0') || 0;
+                    var val = parseMoney(el && el.value !== '' ? el.value : '0');
                     discounts.push(val);
                 });
 
@@ -2313,13 +2451,13 @@
                 var iskField = tr.querySelector('.isk-tutar');
                 if (iskField) {
                     var totalDiscountTl = totalDiscountFx * lineRate;
-                    iskField.value = totalDiscountTl ? totalDiscountTl.toFixed(2) : '0';
+                    iskField.value = totalDiscountTl ? formatMoney(totalDiscountTl) : '0,00';
                 }
             }
 
             // Satır iskonto, KDV ve satır toplam hesaplama fonksiyonu
             function recalcDiscount() {
-                var price = parseFloat(tr.querySelector('.birim-fiyat')?.value || '0') || 0;
+                var price = parseMoney(tr.querySelector('.birim-fiyat')?.value || '0');
                 var qty = parseFloat(tr.querySelector('.miktar')?.value || '0') || 0;
                 var doviz = (tr.querySelector('.doviz')?.value || 'TL').toString();
                 var kur = parseFloat(tr.querySelector('.kur')?.value || '0') || 0;
@@ -2330,7 +2468,7 @@
                 var discounts = [];
                 ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
                     var el = tr.querySelector('.' + cls);
-                    var val = parseFloat(el && el.value !== '' ? el.value : '0') || 0;
+                    var val = parseMoney(el && el.value !== '' ? el.value : '0');
                     discounts.push(val);
                 });
 
@@ -2367,7 +2505,7 @@
                 var iskField = tr.querySelector('.isk-tutar');
                 if (iskField) {
                     var totalDiscountTl = totalDiscountFx * lineRate;
-                    iskField.value = totalDiscountTl ? totalDiscountTl.toFixed(2) : '0';
+                    iskField.value = totalDiscountTl ? formatMoney(totalDiscountTl) : '0,00';
                 }
 
                 // KDV oranı ve durumu
@@ -2414,15 +2552,15 @@
                 }
 
                 var satirDovizField = tr.querySelector('.satir-tutar-doviz');
-                var lineTotalFxRounded = Math.round((lineTotalFx || 0) * 100) / 100;
+                var lineNetFxRounded = Math.round((netFx || 0) * 100) / 100;
                 if (satirDovizField) {
-                    satirDovizField.value = lineTotalFxRounded ? lineTotalFxRounded.toFixed(2) : '0';
+                    satirDovizField.value = formatMoney(lineNetFxRounded || 0);
                 }
 
                 var satirField = tr.querySelector('.satir-tutar');
                 if (satirField) {
-                    var lineTotalTl = lineTotalFxRounded * lineRate;
-                    satirField.value = lineTotalTl ? lineTotalTl.toFixed(2) : '0';
+                    var lineNetTl = lineNetFxRounded * lineRate;
+                    satirField.value = formatMoney(lineNetTl || 0);
                 }
 
                 recalcTotals();
@@ -2488,6 +2626,9 @@
                 tr.dataset.multi = '0';
                 tr.dataset.montaj = '0';
                 linesBody.appendChild(tr);
+                if (window.__offerBindLineProductAutocomplete) {
+                    window.__offerBindLineProductAutocomplete(tr);
+                }
                 applyOfferLineColumnSettingsToRow(tr);
                 lineIndex++;
             }
@@ -2777,7 +2918,7 @@
                     satirAciklamaHidden.value = lineDesc;
                 }
                 autoGrowTextareasInRow(tr);
-                if (fiyatInput && line.birim_fiyat != null) fiyatInput.value = line.birim_fiyat;
+                if (fiyatInput && line.birim_fiyat != null) fiyatInput.value = formatMoney(line.birim_fiyat);
                 if (miktarInput && line.miktar != null) miktarInput.value = line.miktar;
                 if (dovizInput && line.doviz) dovizInput.value = line.doviz;
                 if (kurInput && line.kur != null) kurInput.value = line.kur;
@@ -2965,6 +3106,304 @@
             isk4: {{ isset($selectedFirm) && $selectedFirm->iskonto4 !== null ? (float)$selectedFirm->iskonto4 : 0 }},
             isk5: {{ isset($selectedFirm) && $selectedFirm->iskonto5 !== null ? (float)$selectedFirm->iskonto5 : 0 }},
             isk6: {{ isset($selectedFirm) && $selectedFirm->iskonto6 !== null ? (float)$selectedFirm->iskonto6 : 0 }}
+        };
+        var productOptions = Array.prototype.map.call(document.querySelectorAll('#productModal .product-row'), function (row) {
+            return {
+                id: row.dataset.id || '',
+                kod: row.dataset.kod || '',
+                aciklama: row.dataset.aciklama || '',
+                fiyat: row.dataset.fiyat || '',
+                doviz: row.dataset.doviz || 'TL',
+                multi: (row.dataset.multi || '') === '1',
+                montaj: (row.dataset.montaj || '') === '1',
+                detaygrup: row.dataset.detaygrup || '',
+                resim: row.dataset.resim || '',
+                marka: row.dataset.marka || '',
+                prm3: row.dataset.prm3 || '',
+                prm4: row.dataset.prm4 || '',
+                stokAnagrup: row.dataset.stokAnagrup || '',
+                stokAltgrup: row.dataset.stokAltgrup || '',
+                stokDetaygrup: row.dataset.stokDetaygrup || ''
+            };
+        });
+
+        function filterProductOptions(query) {
+            var q = (query || '').toString().trim().toLocaleLowerCase('tr');
+            return productOptions.filter(function (item) {
+                if (!q) return true;
+                var kod = String(item.kod || '').toLocaleLowerCase('tr');
+                var aciklama = String(item.aciklama || '').toLocaleLowerCase('tr');
+                return kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function ensureProductAutocomplete(tr) {
+            if (!tr) return null;
+            var cell = tr.querySelector('.stok-kod-cell');
+            if (!cell) return null;
+            var dropdown = cell.querySelector('.product-autocomplete');
+            if (!dropdown) {
+                dropdown = document.createElement('div');
+                dropdown.className = 'product-autocomplete';
+                cell.appendChild(dropdown);
+            }
+            return dropdown;
+        }
+
+        function closeProductAutocomplete(tr) {
+            if (!tr) return;
+            var dropdown = ensureProductAutocomplete(tr);
+            if (!dropdown) return;
+            dropdown.classList.remove('is-open');
+            dropdown.innerHTML = '';
+            tr._productAutocompleteItems = [];
+            tr._productAutocompleteIndex = -1;
+        }
+
+        function closeAllProductAutocompletes(exceptTr) {
+            if (!linesBody) return;
+            Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (row) {
+                if (row !== exceptTr) {
+                    closeProductAutocomplete(row);
+                }
+            });
+        }
+
+        function setProductAutocompleteActive(tr, index) {
+            if (!tr) return;
+            var dropdown = ensureProductAutocomplete(tr);
+            var items = tr._productAutocompleteItems || [];
+            if (!dropdown || !items.length) return;
+            if (index < 0) index = items.length - 1;
+            if (index >= items.length) index = 0;
+            tr._productAutocompleteIndex = index;
+            Array.prototype.forEach.call(dropdown.querySelectorAll('.product-autocomplete-item'), function (item, itemIndex) {
+                item.classList.toggle('is-active', itemIndex === index);
+                if (itemIndex === index) {
+                    try {
+                        item.scrollIntoView({ block: 'nearest' });
+                    } catch (e) { }
+                }
+            });
+        }
+
+        function renderProductAutocomplete(tr, query) {
+            if (!tr) return;
+            closeAllProductAutocompletes(tr);
+            var dropdown = ensureProductAutocomplete(tr);
+            if (!dropdown) return;
+
+            var items = filterProductOptions(query).slice(0, 12);
+            tr._productAutocompleteItems = items;
+            tr._productAutocompleteIndex = items.length ? 0 : -1;
+
+            if (!items.length) {
+                dropdown.innerHTML = '<div class="product-autocomplete-empty">Sonuç bulunamadı.</div>';
+                dropdown.classList.add('is-open');
+                return;
+            }
+
+            dropdown.innerHTML = items.map(function (item, index) {
+                var fiyat = item.fiyat !== '' && item.fiyat != null ? item.fiyat : '';
+                var meta = fiyat !== '' ? (fiyat + ' ' + (item.doviz || 'TL')) : (item.doviz || 'TL');
+                return '' +
+                    '<div class="product-autocomplete-item' + (index === 0 ? ' is-active' : '') + '" data-index="' + index + '">' +
+                    '<div class="product-autocomplete-main">' +
+                    '<span class="product-autocomplete-code">' + escapeHtml(item.kod || '') + '</span>' +
+                    '<span class="product-autocomplete-desc">' + escapeHtml(item.aciklama || '') + '</span>' +
+                    '</div>' +
+                    '<div class="product-autocomplete-meta">' + escapeHtml(meta) + '</div>' +
+                    '</div>';
+            }).join('');
+
+            dropdown.classList.add('is-open');
+        }
+
+        function applyProductSelection(lineRow, product) {
+            if (!lineRow || !product) return;
+
+            var kodInput = lineRow.querySelector('.stok-kod');
+            var aciklamaInput = lineRow.querySelector('.stok-aciklama');
+            var fiyatInput = lineRow.querySelector('.birim-fiyat');
+            var miktarInput = lineRow.querySelector('.miktar');
+            var dovizSelect = lineRow.querySelector('.doviz');
+            var urunIdInput = lineRow.querySelector('.urun-id');
+            var satirAciklamaHidden = lineRow.querySelector('.satir-aciklama-hidden');
+
+            if (kodInput) kodInput.value = product.kod || '';
+            if (aciklamaInput) aciklamaInput.value = product.aciklama || '';
+            if (fiyatInput) fiyatInput.value = formatMoney(product.fiyat || 0);
+            if (miktarInput && !miktarInput.value) miktarInput.value = '1';
+            if (urunIdInput) urunIdInput.value = product.id || '';
+            if (satirAciklamaHidden) satirAciklamaHidden.value = product.aciklama || '';
+            if (aciklamaInput) {
+                try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                try { aciklamaInput.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { }
+            }
+
+            if (dovizSelect) {
+                var dovizValue = (product.doviz || 'TL').toString().trim().toUpperCase();
+                if (dovizValue !== 'TL' && dovizValue !== 'USD' && dovizValue !== 'EUR') dovizValue = 'TL';
+                var previousDoviz = (dovizSelect.value || '').toString().trim().toUpperCase();
+                dovizSelect.value = dovizValue;
+                if (previousDoviz !== dovizValue) {
+                    dovizSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
+            if (currentFirmDiscounts) {
+                ['isk1', 'isk2', 'isk3', 'isk4', 'isk5', 'isk6'].forEach(function (cls) {
+                    var el = lineRow.querySelector('.' + cls);
+                    if (el && currentFirmDiscounts[cls] != null) {
+                        el.value = currentFirmDiscounts[cls];
+                    }
+                });
+            }
+
+            if (window.__offerSetLineDetayVisible) {
+                window.__offerSetLineDetayVisible(lineRow, !!(product.multi || product.montaj));
+            }
+
+            lineRow.dataset.multi = product.multi ? '1' : '0';
+            lineRow.dataset.montaj = product.montaj ? '1' : '0';
+            lineRow.dataset.detaygrup = product.detaygrup ? String(product.detaygrup) : '';
+            lineRow.dataset.resim = product.resim ? String(product.resim) : '';
+            lineRow.dataset.marka = product.marka ? String(product.marka) : '';
+            lineRow.dataset.prm3 = product.prm3 ? String(product.prm3) : '';
+            lineRow.dataset.prm4 = product.prm4 ? String(product.prm4) : '';
+            lineRow.dataset.stokAnagrup = product.stokAnagrup ? String(product.stokAnagrup) : '';
+            lineRow.dataset.stokAltgrup = product.stokAltgrup ? String(product.stokAltgrup) : '';
+            lineRow.dataset.stokDetaygrup = product.stokDetaygrup ? String(product.stokDetaygrup) : '';
+
+            autoGrowTextareasInRow(lineRow);
+
+            var triggerInput = lineRow.querySelector('.birim-fiyat') || lineRow.querySelector('.miktar');
+            if (triggerInput) {
+                triggerInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            if (typeof scheduleMontajDetailAutoFill === 'function') {
+                scheduleMontajDetailAutoFill();
+            }
+
+            closeProductAutocomplete(lineRow);
+        }
+
+        window.__offerBindLineProductAutocomplete = function (tr) {
+            if (!tr) return;
+            var kodInput = tr.querySelector('.stok-kod');
+            var aciklamaInput = tr.querySelector('.stok-aciklama');
+            var dropdown = ensureProductAutocomplete(tr);
+            if (!kodInput || !dropdown || kodInput.dataset.productAutocompleteBound === '1') return;
+
+            kodInput.dataset.productAutocompleteBound = '1';
+
+            function openProductPickerModal() {
+                currentProductRow = tr;
+                closeProductAutocomplete(tr);
+                openModal(productModal);
+            }
+
+            kodInput.addEventListener('focus', function () {
+                renderProductAutocomplete(tr, kodInput.value);
+            });
+
+            kodInput.addEventListener('click', function () {
+                renderProductAutocomplete(tr, kodInput.value);
+            });
+
+            kodInput.addEventListener('input', function () {
+                renderProductAutocomplete(tr, kodInput.value);
+            });
+
+            kodInput.addEventListener('dblclick', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openProductPickerModal();
+            });
+
+            if (aciklamaInput && aciklamaInput.dataset.productPickerBound !== '1') {
+                aciklamaInput.dataset.productPickerBound = '1';
+                aciklamaInput.addEventListener('dblclick', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openProductPickerModal();
+                });
+            }
+
+            kodInput.addEventListener('keydown', function (e) {
+                var isOpen = dropdown.classList.contains('is-open');
+                var items = tr._productAutocompleteItems || [];
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isOpen) {
+                        renderProductAutocomplete(tr, kodInput.value);
+                        return;
+                    }
+                    setProductAutocompleteActive(tr, (tr._productAutocompleteIndex || 0) + 1);
+                    return;
+                }
+
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isOpen) {
+                        renderProductAutocomplete(tr, kodInput.value);
+                        return;
+                    }
+                    setProductAutocompleteActive(tr, (tr._productAutocompleteIndex || 0) - 1);
+                    return;
+                }
+
+                if (e.key === 'Enter' && isOpen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (items.length) {
+                        var currentIndex = tr._productAutocompleteIndex != null ? tr._productAutocompleteIndex : 0;
+                        applyProductSelection(tr, items[currentIndex] || items[0]);
+                    } else {
+                        closeProductAutocomplete(tr);
+                    }
+                    return;
+                }
+
+                if (e.key === 'Escape' && isOpen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeProductAutocomplete(tr);
+                }
+            });
+
+            kodInput.addEventListener('blur', function () {
+                window.setTimeout(function () {
+                    closeProductAutocomplete(tr);
+                }, 150);
+            });
+
+            dropdown.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+            });
+
+            dropdown.addEventListener('click', function (e) {
+                var item = e.target && e.target.closest ? e.target.closest('.product-autocomplete-item') : null;
+                if (!item) return;
+                var index = parseInt(item.dataset.index || '-1', 10);
+                var items = tr._productAutocompleteItems || [];
+                if (index >= 0 && items[index]) {
+                    applyProductSelection(tr, items[index]);
+                }
+            });
         };
 
         if (btnYetkiliSearch && carikodInput) {
@@ -4132,129 +4571,7 @@
             });
 
             // ÃœrÃ¼n seÃ§imi â€“ stok kodu veya aÃ§Ä±klamaya Ã§ift tÄ±k
-        if (linesBody && productModal) {
-            var productSearchInput = document.getElementById('productModalSearch');
-            if (productSearchInput && !productSearchInput.dataset.bound) {
-                productSearchInput.dataset.bound = '1';
-                productSearchInput.addEventListener('input', function () {
-                    var q = (productSearchInput.value || '').toString().trim().toLowerCase();
-                    document.querySelectorAll('#productModal .product-row').forEach(function (row) {
-                        var kod = (row.dataset.kod || '').toString().toLowerCase();
-                        var aciklama = (row.dataset.aciklama || '').toString().toLowerCase();
-                        var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
-                        row.style.display = ok ? '' : 'none';
-                    });
-                });
-            }
-
-            linesBody.addEventListener('dblclick', function (e) {
-                var target = e.target;
-                if (!target || !target.classList) return;
-                if (!target.classList.contains('stok-kod') &&
-                    !target.classList.contains('stok-aciklama')) {
-                    return;
-                }
-                currentProductRow = target.closest('tr');
-                if (currentProductRow) {
-                    openModal(productModal);
-                }
-            });
-
-            productModal.addEventListener('click', function (e) {
-                if (e.target === productModal) {
-                    closeModal(productModal);
-                }
-            });
-
-            document.querySelectorAll('.product-row').forEach(function (row) {
-                row.addEventListener('click', function () {
-                    if (!currentProductRow) return;
-
-                    var kod = this.dataset.kod || '';
-                    var aciklama = this.dataset.aciklama || '';
-                    var fiyat = this.dataset.fiyat || '';
-                    var doviz = this.dataset.doviz || 'TL';
-                    var doviz = this.dataset.doviz || 'TL';
-                    var urunId = this.dataset.id || '';
-                    var isMulti = (this.dataset.multi || '') === '1';
-                    var isMontaj = (this.dataset.montaj || '') === '1';
-                    var detayGrupId = this.dataset.detaygrup || '';
-                    var resimYolu = this.dataset.resim || '';
-                    var marka = this.dataset.marka || '';
-                    var prm3 = this.dataset.prm3 || '';
-                    var prm4 = this.dataset.prm4 || '';
-                    var stokAnaGrup = this.dataset.stokAnagrup || '';
-                    var stokAltGrup = this.dataset.stokAltgrup || '';
-                    var stokDetayGrup = this.dataset.stokDetaygrup || '';
-
-                    var kodInput = currentProductRow.querySelector('.stok-kod');
-                    var aciklamaInput = currentProductRow.querySelector('.stok-aciklama');
-                    var fiyatInput = currentProductRow.querySelector('.birim-fiyat');
-                    var dovizSelect = currentProductRow.querySelector('.doviz');
-                    var dovizSelect = currentProductRow.querySelector('.doviz');
-                    var urunIdInput = currentProductRow.querySelector('.urun-id');
-                    var satirAciklamaHidden = currentProductRow.querySelector('.satir-aciklama-hidden');
-
-                    if (kodInput) {
-                        kodInput.value = kod;
-                        try { kodInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
-                    }
-                    if (aciklamaInput) {
-                        aciklamaInput.value = aciklama;
-                        try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
-                    }
-                    if (fiyatInput) fiyatInput.value = fiyat;
-                    if (dovizSelect) {
-                        var val = (doviz || 'TL').toString().trim().toUpperCase();
-                        if (val !== 'TL' && val !== 'USD' && val !== 'EUR') val = 'TL';
-                        var old = (dovizSelect.value || '').toString().trim().toUpperCase();
-                        dovizSelect.value = val;
-                        if (old !== val) {
-                            dovizSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                    if (urunIdInput) urunIdInput.value = urunId;
-                    if (satirAciklamaHidden) satirAciklamaHidden.value = aciklama;
-                    if (dovizSelect) {
-                        var val = (doviz || 'TL').toString().trim().toUpperCase();
-                        if (val !== 'TL' && val !== 'USD' && val !== 'EUR') val = 'TL';
-                        var old = (dovizSelect.value || '').toString().trim().toUpperCase();
-                        dovizSelect.value = val;
-                        if (old !== val) {
-                            dovizSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                    if (dovizSelect) {
-                        var val = (doviz || 'TL').toString().trim().toUpperCase();
-                        if (val !== 'TL' && val !== 'USD' && val !== 'EUR') val = 'TL';
-                        var old = (dovizSelect.value || '').toString().trim().toUpperCase();
-                        dovizSelect.value = val;
-                        if (old !== val) {
-                            dovizSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                    if (urunIdInput) urunIdInput.value = urunId;
-                    if (satirAciklamaHidden) satirAciklamaHidden.value = aciklama;
-                    if (window.__offerSetLineDetayVisible) {
-                        window.__offerSetLineDetayVisible(currentProductRow, isMulti || isMontaj);
-                    }
-                    currentProductRow.dataset.multi = isMulti ? '1' : '0';
-                    currentProductRow.dataset.montaj = isMontaj ? '1' : '0';
-                    currentProductRow.dataset.detaygrup = detayGrupId ? String(detayGrupId) : '';
-                    currentProductRow.dataset.resim = resimYolu ? String(resimYolu) : '';
-                    currentProductRow.dataset.marka = marka ? String(marka) : '';
-                    currentProductRow.dataset.prm3 = prm3 ? String(prm3) : '';
-                    currentProductRow.dataset.prm4 = prm4 ? String(prm4) : '';
-                    currentProductRow.dataset.stokAnagrup = stokAnaGrup ? String(stokAnaGrup) : '';
-                    currentProductRow.dataset.stokAltgrup = stokAltGrup ? String(stokAltGrup) : '';
-                    currentProductRow.dataset.stokDetaygrup = stokDetayGrup ? String(stokDetayGrup) : '';
-
-                    autoGrowTextareasInRow(currentProductRow);
-                    scheduleMontajDetailAutoFill();
-                    closeModal(productModal);
-                });
-            });
-        }
+        
 
 
             var firmSearchInput = document.getElementById('firmModalSearch');
@@ -4430,39 +4747,49 @@
             if (productSearchInput2 && !productSearchInput2.dataset.bound) {
                 productSearchInput2.dataset.bound = '1';
                 productSearchInput2.addEventListener('input', function () {
-                    var q = (productSearchInput2.value || '').toString().trim().toLowerCase();
+                    var q = (productSearchInput2.value || '').toString().trim().toLocaleLowerCase('tr');
                     document.querySelectorAll('#productModal .product-row').forEach(function (row) {
-                        var kod = (row.dataset.kod || '').toString().toLowerCase();
-                        var aciklama = (row.dataset.aciklama || '').toString().toLowerCase();
+                        var kod = (row.dataset.kod || '').toString().toLocaleLowerCase('tr');
+                        var aciklama = (row.dataset.aciklama || '').toString().toLocaleLowerCase('tr');
                         var ok = !q || kod.indexOf(q) !== -1 || aciklama.indexOf(q) !== -1;
                         row.style.display = ok ? '' : 'none';
                     });
                 });
             }
 
-            linesBody.addEventListener('dblclick', function (e) {
-                if (e.target && e.target.closest && e.target.closest('.stok-detay-btn')) {
-                    return;
-                }
-                var cell = e.target.closest('td');
-                if (!cell) return;
-
-                if (!cell.classList.contains('stok-kod-cell') &&
-                    !cell.classList.contains('stok-aciklama-cell')) {
-                    return;
-                }
-
-                currentProductRow = cell.parentElement;
-                if (currentProductRow) {
-                    openModal(productModal);
+            Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (tr) {
+                if (window.__offerBindLineProductAutocomplete) {
+                    window.__offerBindLineProductAutocomplete(tr);
                 }
             });
 
-            productModal.addEventListener('click', function (e) {
-                if (e.target === productModal) {
-                    closeModal(productModal);
-                }
-            });
+            if (!linesBody.dataset.productAutocompleteBound) {
+                linesBody.dataset.productAutocompleteBound = '1';
+                linesBody.addEventListener('dblclick', function (e) {
+                    if (e.target && e.target.closest && e.target.closest('.stok-detay-btn')) {
+                        return;
+                    }
+                    var target = e.target;
+                    if (!target) return;
+                    if (!target.classList || (!target.classList.contains('stok-kod') && !target.classList.contains('stok-aciklama'))) {
+                        return;
+                    }
+
+                    currentProductRow = target.closest('tr');
+                    if (currentProductRow) {
+                        closeProductAutocomplete(currentProductRow);
+                        openModal(productModal);
+                    }
+                });
+            }
+
+            if (!productModal.dataset.linePickBound) {
+                productModal.dataset.linePickBound = '1';
+                productModal.addEventListener('click', function (e) {
+                    if (e.target === productModal) {
+                        closeModal(productModal);
+                    }
+                });
 
             document.querySelectorAll('.product-row').forEach(function (row) {
                 row.addEventListener('click', function () {
@@ -4492,7 +4819,7 @@
                         aciklamaInput.value = aciklama;
                         try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
                     }
-                    if (fiyatInput) fiyatInput.value = fiyat;
+                    if (fiyatInput) fiyatInput.value = formatMoney(fiyat || 0);
 
                     // Ürün seçildiğinde miktar 1 olsun (boşsa)
                     if (miktarInput && !miktarInput.value) {
@@ -4535,6 +4862,69 @@
                     closeModal(productModal);
                 });
             });
+        }
+
+        if (linesBody && productModal) {
+            Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (tr) {
+                if (window.__offerBindLineProductAutocomplete) {
+                    window.__offerBindLineProductAutocomplete(tr);
+                }
+            });
+
+            if (!productModal.dataset.richLinePickBound) {
+                productModal.dataset.richLinePickBound = '1';
+
+                document.querySelectorAll('.product-row').forEach(function (row) {
+                    row.addEventListener('click', function () {
+                        if (!currentProductRow) return;
+                        var selected = productOptions.find(function (item) {
+                            return String(item.id) === String(row.dataset.id || '');
+                        });
+                        if (!selected) return;
+                        applyProductSelection(currentProductRow, selected);
+                    });
+                });
+
+                document.addEventListener('mousedown', function (e) {
+                    var insideAutocomplete = e.target && e.target.closest ? e.target.closest('.product-autocomplete') : null;
+                    var insideStokInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+                    if (!insideAutocomplete && !insideStokInput) {
+                        closeAllProductAutocompletes(null);
+                    }
+                });
+            }
+
+            if (!linesBody.dataset.productAutocompleteDelegateBound) {
+                linesBody.dataset.productAutocompleteDelegateBound = '1';
+
+                linesBody.addEventListener('click', function (e) {
+                    var kodInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+                    if (!kodInput) return;
+                    var tr = kodInput.closest('tr');
+                    if (!tr) return;
+                    currentProductRow = tr;
+                    renderProductAutocomplete(tr, kodInput.value || '');
+                });
+
+                linesBody.addEventListener('input', function (e) {
+                    var kodInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+                    if (!kodInput) return;
+                    var tr = kodInput.closest('tr');
+                    if (!tr) return;
+                    currentProductRow = tr;
+                    renderProductAutocomplete(tr, kodInput.value || '');
+                });
+
+                linesBody.addEventListener('dblclick', function (e) {
+                    var target = e.target && e.target.closest ? e.target.closest('.stok-kod, .stok-aciklama') : null;
+                    if (!target) return;
+                    var tr = target.closest('tr');
+                    if (!tr) return;
+                    currentProductRow = tr;
+                    closeProductAutocomplete(tr);
+                    openModal(productModal);
+                });
+            }
         }
 
         if (btnYetkiliSearch && authorityModal) {
@@ -4796,6 +5186,7 @@
                     var img = await getSmallBase64Image(src);
                     if (img) {
                         line.resim = img;
+                        line.resim_original_name = img.original_name || line.resim_original_name || null;
                     }
                 } catch (e) { }
             });
@@ -5000,6 +5391,7 @@
                                 if (!stokAnaGrup && meta.stokAnagrup) stokAnaGrup = String(meta.stokAnagrup).trim();
                                 if (!stokAltGrup && meta.stokAltgrup) stokAltGrup = String(meta.stokAltgrup).trim();
                                 if (!stokDetayGrup && meta.stokDetaygrup) stokDetayGrup = String(meta.stokDetaygrup).trim();
+                                if (!resimYolu && meta.resimYolu) resimYolu = String(meta.resimYolu).trim();
 
                                 // Kalici olsun diye dataset'e de yaz
                                 if (marka) tr.dataset.marka = marka;
@@ -5008,6 +5400,7 @@
                                 if (stokAnaGrup) tr.dataset.stokAnagrup = stokAnaGrup;
                                 if (stokAltGrup) tr.dataset.stokAltgrup = stokAltGrup;
                                 if (stokDetayGrup) tr.dataset.stokDetaygrup = stokDetayGrup;
+                                if (resimYolu) tr.dataset.resim = resimYolu;
                             }
                         } catch (e) { }
                     }
@@ -5047,6 +5440,7 @@
                         montaj: isMontaj,
                         resim_yolu: resimYolu || null,
                         resim_url: buildProductImageUrl(resimYolu),
+                        resim_original_name: null,
                         resim: null,
                     });
                 });
@@ -5071,7 +5465,7 @@
         }
 
         function sendToJavaServlet(payload) {
-            var url = (window.JAVA_SERVLET_URL || 'http://localhost:8080/teklif-print').toString();
+            var url = (window.JAVA_SERVLET_URL || 'http://45.136.107.28:8080/teklif-print').toString();
 
             try {
                 window.__lastOfferPrintPayload = payload;
@@ -5108,10 +5502,10 @@
         }
 
         function buildTomcatServletUrl() {
-            var ip = @json($tomcatIp ?? 'localhost');
+            var ip = @json($tomcatIp ?? '45.136.107.28');
             var port = @json($tomcatPort ?? '8080');
             var project = @json($tomcatProje ?? '');
-            ip = (ip || 'localhost').toString().trim();
+            ip = (ip || '45.136.107.28').toString().trim();
             port = (port || '8080').toString().trim();
             project = (project || '').toString().trim();
 
@@ -5160,6 +5554,15 @@
                 return;
             }
 
+            var preferredFileName = '';
+            try {
+                var preferred = (offerForms || []).find(function (x) {
+                    var name = (x && x.dosya_ad ? String(x.dosya_ad) : '').trim().toLowerCase();
+                    return name === 'nomaenerji_form_resim';
+                });
+                preferredFileName = preferred && preferred.dosya_ad ? String(preferred.dosya_ad).trim() : '';
+            } catch (e) { }
+
             offerForms.forEach(function (item, idx) {
                 var fileName = (item && item.dosya_ad ? String(item.dosya_ad) : '').trim();
                 var title = (item && item.gorunen_isim ? String(item.gorunen_isim) : '').trim() || fileName;
@@ -5181,7 +5584,9 @@
                 radio.name = 'pdfFormChoice';
                 radio.value = fileName;
                 radio.style.marginTop = '0.25rem';
-                if (idx === 0) radio.checked = true;
+                if ((preferredFileName && fileName === preferredFileName) || (!preferredFileName && idx === 0)) {
+                    radio.checked = true;
+                }
 
                 var textWrap = document.createElement('div');
                 var titleDiv = document.createElement('div');
@@ -5465,23 +5870,285 @@
         }
     });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var linesBody = document.getElementById('offerLinesBody');
+        var productModal = document.getElementById('productModal');
+        if (!linesBody || !productModal || linesBody.dataset.forceProductUxBound === '1') {
+            return;
+        }
+        linesBody.dataset.forceProductUxBound = '1';
+
+        var currentRow = null;
+
+        function formatMoney(val) {
+            var n = Number(val || 0);
+            if (!isFinite(n)) n = 0;
+            return n.toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function getProducts() {
+            return Array.prototype.map.call(document.querySelectorAll('#productModal .product-row'), function (row) {
+                return {
+                    id: row.dataset.id || '',
+                    kod: row.dataset.kod || '',
+                    aciklama: row.dataset.aciklama || '',
+                    fiyat: row.dataset.fiyat || '',
+                    doviz: row.dataset.doviz || 'TL',
+                    multi: (row.dataset.multi || '') === '1',
+                    montaj: (row.dataset.montaj || '') === '1',
+                    detaygrup: row.dataset.detaygrup || '',
+                    resim: row.dataset.resim || '',
+                    marka: row.dataset.marka || '',
+                    prm3: row.dataset.prm3 || '',
+                    prm4: row.dataset.prm4 || '',
+                    stokAnagrup: row.dataset.stokAnagrup || '',
+                    stokAltgrup: row.dataset.stokAltgrup || '',
+                    stokDetaygrup: row.dataset.stokDetaygrup || ''
+                };
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function ensureDropdown(tr) {
+            var cell = tr && tr.querySelector ? tr.querySelector('.stok-kod-cell') : null;
+            if (!cell) return null;
+            var dropdown = cell.querySelector('.product-autocomplete');
+            if (!dropdown) {
+                dropdown = document.createElement('div');
+                dropdown.className = 'product-autocomplete';
+                cell.appendChild(dropdown);
+            }
+            return dropdown;
+        }
+
+        function closeDropdown(tr) {
+            var dropdown = ensureDropdown(tr);
+            if (!dropdown) return;
+            dropdown.classList.remove('is-open');
+            dropdown.innerHTML = '';
+            tr._forceProductItems = [];
+            tr._forceProductIndex = -1;
+        }
+
+        function closeAllDropdowns(exceptTr) {
+            Array.prototype.forEach.call(linesBody.querySelectorAll('tr'), function (tr) {
+                if (tr !== exceptTr) closeDropdown(tr);
+            });
+        }
+
+        function renderDropdown(tr, query) {
+            if (!tr) return;
+            var dropdown = ensureDropdown(tr);
+            if (!dropdown) return;
+
+            var q = String(query || '').trim().toLocaleLowerCase('tr');
+            var items = getProducts().filter(function (item) {
+                if (!q) return true;
+                return String(item.kod || '').toLocaleLowerCase('tr').indexOf(q) !== -1
+                    || String(item.aciklama || '').toLocaleLowerCase('tr').indexOf(q) !== -1;
+            }).slice(0, 12);
+
+            tr._forceProductItems = items;
+            tr._forceProductIndex = items.length ? 0 : -1;
+            closeAllDropdowns(tr);
+
+            if (!items.length) {
+                dropdown.innerHTML = '<div class="product-autocomplete-empty">Sonuç bulunamadı.</div>';
+                dropdown.classList.add('is-open');
+                return;
+            }
+
+            dropdown.innerHTML = items.map(function (item, index) {
+                var meta = ((item.fiyat || '') ? String(item.fiyat) + ' ' : '') + String(item.doviz || 'TL');
+                return '' +
+                    '<div class="product-autocomplete-item' + (index === 0 ? ' is-active' : '') + '" data-index="' + index + '">' +
+                    '<div class="product-autocomplete-main">' +
+                    '<span class="product-autocomplete-code">' + escapeHtml(item.kod || '') + '</span>' +
+                    '<span class="product-autocomplete-desc">' + escapeHtml(item.aciklama || '') + '</span>' +
+                    '</div>' +
+                    '<div class="product-autocomplete-meta">' + escapeHtml(meta) + '</div>' +
+                    '</div>';
+            }).join('');
+
+            dropdown.classList.add('is-open');
+        }
+
+        function setActiveItem(tr, nextIndex) {
+            var dropdown = ensureDropdown(tr);
+            var items = tr && tr._forceProductItems ? tr._forceProductItems : [];
+            if (!dropdown || !items.length) return;
+            if (nextIndex < 0) nextIndex = items.length - 1;
+            if (nextIndex >= items.length) nextIndex = 0;
+            tr._forceProductIndex = nextIndex;
+            Array.prototype.forEach.call(dropdown.querySelectorAll('.product-autocomplete-item'), function (el, index) {
+                el.classList.toggle('is-active', index === nextIndex);
+                if (index === nextIndex) {
+                    try { el.scrollIntoView({ block: 'nearest' }); } catch (e) { }
+                }
+            });
+        }
+
+        function applySelection(tr, item) {
+            if (!tr || !item) return;
+            var kodInput = tr.querySelector('.stok-kod');
+            var aciklamaInput = tr.querySelector('.stok-aciklama');
+            var fiyatInput = tr.querySelector('.birim-fiyat');
+            var miktarInput = tr.querySelector('.miktar');
+            var dovizSelect = tr.querySelector('.doviz');
+            var urunIdInput = tr.querySelector('.urun-id');
+            var satirAciklamaHidden = tr.querySelector('.satir-aciklama-hidden');
+
+            if (kodInput) kodInput.value = item.kod || '';
+            if (aciklamaInput) aciklamaInput.value = item.aciklama || '';
+            if (fiyatInput) fiyatInput.value = formatMoney(item.fiyat || 0);
+            if (miktarInput && !miktarInput.value) miktarInput.value = '1';
+            if (urunIdInput) urunIdInput.value = item.id || '';
+            if (satirAciklamaHidden) satirAciklamaHidden.value = item.aciklama || '';
+            if (aciklamaInput) {
+                try { aciklamaInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                try { aciklamaInput.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { }
+            }
+
+            if (dovizSelect) {
+                var val = String(item.doviz || 'TL').trim().toUpperCase();
+                if (val !== 'TL' && val !== 'USD' && val !== 'EUR') val = 'TL';
+                dovizSelect.value = val;
+                try { dovizSelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { }
+            }
+
+            tr.dataset.multi = item.multi ? '1' : '0';
+            tr.dataset.montaj = item.montaj ? '1' : '0';
+            tr.dataset.detaygrup = item.detaygrup ? String(item.detaygrup) : '';
+            tr.dataset.resim = item.resim ? String(item.resim) : '';
+            tr.dataset.marka = item.marka ? String(item.marka) : '';
+            tr.dataset.prm3 = item.prm3 ? String(item.prm3) : '';
+            tr.dataset.prm4 = item.prm4 ? String(item.prm4) : '';
+            tr.dataset.stokAnagrup = item.stokAnagrup ? String(item.stokAnagrup) : '';
+            tr.dataset.stokAltgrup = item.stokAltgrup ? String(item.stokAltgrup) : '';
+            tr.dataset.stokDetaygrup = item.stokDetaygrup ? String(item.stokDetaygrup) : '';
+
+            try {
+                (fiyatInput || miktarInput || kodInput).dispatchEvent(new Event('input', { bubbles: true }));
+            } catch (e) { }
+
+            closeDropdown(tr);
+        }
+
+        linesBody.addEventListener('click', function (e) {
+            var kodInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+            if (!kodInput) return;
+            var tr = kodInput.closest('tr');
+            if (!tr) return;
+            currentRow = tr;
+            renderDropdown(tr, kodInput.value || '');
+        });
+
+        linesBody.addEventListener('input', function (e) {
+            var kodInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+            if (!kodInput) return;
+            var tr = kodInput.closest('tr');
+            if (!tr) return;
+            currentRow = tr;
+            renderDropdown(tr, kodInput.value || '');
+        });
+
+        linesBody.addEventListener('keydown', function (e) {
+            var kodInput = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+            if (!kodInput) return;
+            var tr = kodInput.closest('tr');
+            if (!tr) return;
+            var items = tr._forceProductItems || [];
+            var dropdown = ensureDropdown(tr);
+            var isOpen = !!(dropdown && dropdown.classList.contains('is-open'));
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!isOpen) renderDropdown(tr, kodInput.value || '');
+                else setActiveItem(tr, (tr._forceProductIndex || 0) + 1);
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!isOpen) renderDropdown(tr, kodInput.value || '');
+                else setActiveItem(tr, (tr._forceProductIndex || 0) - 1);
+                return;
+            }
+
+            if (e.key === 'Enter' && isOpen) {
+                e.preventDefault();
+                if (items.length) {
+                    applySelection(tr, items[tr._forceProductIndex >= 0 ? tr._forceProductIndex : 0]);
+                } else {
+                    closeDropdown(tr);
+                }
+                return;
+            }
+
+            if (e.key === 'Escape' && isOpen) {
+                e.preventDefault();
+                closeDropdown(tr);
+            }
+        });
+
+        linesBody.addEventListener('dblclick', function (e) {
+            var field = e.target && e.target.closest ? e.target.closest('.stok-kod, .stok-aciklama') : null;
+            if (!field) return;
+            var tr = field.closest('tr');
+            if (!tr) return;
+            currentRow = tr;
+            closeDropdown(tr);
+            productModal.style.display = 'flex';
+        });
+
+        linesBody.addEventListener('mousedown', function (e) {
+            var option = e.target && e.target.closest ? e.target.closest('.product-autocomplete-item') : null;
+            if (!option) return;
+            var tr = option.closest('tr');
+            if (!tr) return;
+            var index = parseInt(option.dataset.index || '-1', 10);
+            var items = tr._forceProductItems || [];
+            if (index >= 0 && items[index]) {
+                e.preventDefault();
+                applySelection(tr, items[index]);
+            }
+        });
+
+        document.querySelectorAll('#productModal .product-row').forEach(function (row) {
+            if (row.dataset.forceProductRowBound === '1') return;
+            row.dataset.forceProductRowBound = '1';
+            row.addEventListener('click', function () {
+                if (!currentRow) return;
+                var selected = getProducts().find(function (item) {
+                    return String(item.id) === String(row.dataset.id || '');
+                });
+                if (!selected) return;
+                applySelection(currentRow, selected);
+                productModal.style.display = 'none';
+            });
+        });
+
+        document.addEventListener('mousedown', function (e) {
+            var insideAutocomplete = e.target && e.target.closest ? e.target.closest('.product-autocomplete') : null;
+            var insideKod = e.target && e.target.closest ? e.target.closest('.stok-kod') : null;
+            if (!insideAutocomplete && !insideKod) {
+                closeAllDropdowns(null);
+            }
+        });
+    });
+</script>
     <script src="{{ asset('js/dashboard.js') }}"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
